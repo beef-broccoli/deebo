@@ -1,5 +1,5 @@
 # simulate bandit optimization with Suzuki dataset
-# using ligand as only parameter, one hot encode, randomly fetch reactivity data
+# using ligand as only parameter, randomly fetch reactivity data, use average as metric
 # https://ax.dev/versions/latest/tutorials/factorial.html
 
 import random

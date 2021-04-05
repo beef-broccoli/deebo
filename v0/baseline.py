@@ -10,10 +10,12 @@ from suzuki_analysis import get_results
 
 def main():
     names, _, results = get_results('ligand')
-    baseline_1(names, results, 100)
+    names, samples_n, samples = baseline_random(names, results, 100)
+    plt.boxplot(samples.T, vert=False, labels=names)
+    plt.show()
 
 
-def baseline_1(names, results, total_exps=100):  # n=total number of experiments
+def baseline_random(names, results, total_exps=100):  # n=total number of experiments
     sample_n = total_exps//len(names) + 1  # make sure every component is evaluated evenly
     # for every row of results np array, randomly pick n elements
 
@@ -22,8 +24,6 @@ def baseline_1(names, results, total_exps=100):  # n=total number of experiments
         return a[index]
 
     samples = np.apply_along_axis(f, 1, results)
-    plt.boxplot(samples.T, vert=False, labels=names)
-    plt.show()
     return names, sample_n, samples
 
 

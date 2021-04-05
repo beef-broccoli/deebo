@@ -10,6 +10,7 @@ __pycache__
 playground/
 ax_tutorials/
 .ipynb_checkpoints
+.DS_Store
 
 # C extensions
 *.so

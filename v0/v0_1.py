@@ -1,0 +1,1 @@
+# apply a cutoff to data, mimic click thru rate
