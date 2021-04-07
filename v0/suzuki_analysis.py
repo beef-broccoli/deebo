@@ -8,9 +8,8 @@ import matplotlib.pyplot as plt
 
 
 def main():
-    ligands, average, results = get_results('ligand', short=False, cutoff=0.7)
-    plt.imshow(results)
-    plt.show()
+    ligands, average, results = get_results(components=['base', 'ligand'], short=False, cutoff=0.7)
+    print(np.count_nonzero(results))
     exit()
     plt.boxplot(results.T, vert=False, labels=ligands)
     plt.show()
@@ -18,7 +17,7 @@ def main():
     return None
 
 
-def get_results(*components, short=False, cutoff=None):
+def get_results(components, short=False, cutoff=None):
     """short only chooses normal reactants (reactant 1: aryl halide; reactant 2: bronic acid and boronate)
 
     :param components: TODO
@@ -52,23 +51,27 @@ def get_results(*components, short=False, cutoff=None):
         raw[dic['yield']] = (y/y_max) >= cutoff
 
     for component in components:
+        if component == 'solvent':  # clean up mismatched solvent names
+            raw.loc[raw[dic['solvent']] == 'MeOH/H2O_V2 9:1', dic['solvent']] = 'MeOH'
+            raw.loc[raw[dic['solvent']] == 'THF_V2', dic['solvent']] = 'THF'
         if component not in dic.keys():
             raise ValueError('Reaction component not found.')
 
-    if len(components) == 1:
-        df_col_name = dic[components[0]]
-        w_yield = raw[[df_col_name, dic['yield']]]
-        average = w_yield.groupby(df_col_name).mean()
-        g = w_yield.groupby(df_col_name).cumcount()
-        gb = w_yield.set_index([df_col_name, g]).unstack(fill_value=0).stack().groupby(level=0)
-        results = np.array(gb.apply(lambda x: x.values.tolist()).tolist())  # this will list one row, output shape (num ligands, num exps, 1)
-        names = list(gb.groups.keys())  # get ligand names from group by, preserve sequence
-        results = results.reshape(len(names), -1)
-        return names, average, results
+    col_names = [dic[component] for component in components]
+    cols = col_names + [dic['yield']]  # column name with yield name
+    w_yield = raw[cols]
+    gb = w_yield.groupby(col_names)
+    average = gb.mean()
+    results = np.array(gb.apply(lambda x: x.values.tolist()).tolist())[:, :, -1]
+
+    # clean up np array dtype
+    if cutoff is not None:
+        results = results == 'True'
     else:
-        # TODO
-        # handle multiple components
-        pass
+        results = results.astype(np.float32)
+    keys = list(gb.groups.keys())
+
+    return keys, average, results
 
 
 def two_component_visualization(component1, component2):
