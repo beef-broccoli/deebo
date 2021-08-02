@@ -14,7 +14,7 @@ from ax.utils.notebook.plotting import render, init_notebook_plotting
 from ax.utils.stats.statstools import agresti_coull_sem
 import plotly.io as pio
 
-from suzuki_analysis import get_results
+from data_loader import get_results
 
 init_notebook_plotting()
 

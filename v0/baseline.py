@@ -5,11 +5,11 @@
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-from suzuki_analysis import get_results
+from data_loader import get_results_suzuki
 
 
 def main():
-    names, _, results = get_results('ligand')
+    names, _, results = get_results_suzuki('ligand')
     names, samples_n, samples = baseline_random(names, results, 100)
     plt.boxplot(samples.T, vert=False, labels=names)
     plt.show()
