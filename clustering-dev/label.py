@@ -66,7 +66,7 @@ def score_func(l, mode='avg'):
         return np.mean(l)
     elif mode == 'max':
         return np.max(l)
-    elif mode == 'pts':  # TODO
+    elif mode == 'pts':  # TODO: too many ties
         score = 0
         for ll in l:
             if ll <= 20:
