@@ -9,7 +9,7 @@ __pycache__
 .idea
 playground/
 ax_tutorials/
-.ipynb_checkpoints
+/.ipynb_checkpoints/
 .DS_Store
 
 # C extensions
