@@ -5,11 +5,12 @@
 
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, OneHotEncoder
 from sklearn.feature_selection import VarianceThreshold
 import matplotlib.pyplot as plt
 
 
+# yield cutoff = 20
 def partition(df, cutoff=20):
 
     df['success'] = df['yield'].apply(lambda x: x >= cutoff)
@@ -78,16 +79,38 @@ def featurize_kraken(df):
 
     ll = ['ID', 'ligand', 'can_smiles', 'smiles', 'smiles(dft_sheet)']
     identifiers = kraken[ll].copy()
+    id_list = list(identifiers['ID'])
     kraken.drop(ll, axis=1, inplace=True)
 
     kraken, features = sanitize(kraken, var_threshold=1, corr_threshold=0.9, scaler='standard')
 
-    print(kraken.shape)
-    
-    return kraken  # change
+    # filling the ligand part of data
+    def f(x):
+        id = lookup.loc[lookup['ligand_smiles'] == x]['kraken_id'].item()  # use smiles and find ligand ID in lookup table
+        idx = id_list.index(id)  # find index of this ligand within fetched list of ligands
+        return kraken[idx, :]
+
+    df['ligand_descriptors'] = df['ligand_smiles'].apply(f)
+    X_ligands = np.stack(list(df['ligand_descriptors']))
+
+    # filling the substrates part (ohe)
+    ohe_enc = OneHotEncoder()
+    X_ohe = ohe_enc.fit_transform(df[['electrophile_smiles', 'nucleophile_smiles']]).toarray()
+
+    # add col names for ohe features
+    for e in ohe_enc.categories_[0]:
+        features.append(str('electrophile=' + e))
+    for n in ohe_enc.categories_[1]:
+        features.append(str('nucleophile=' + n))
+
+    # combine to give X and y
+    X = np.hstack([X_ligands, X_ohe])
+    y = df['success'].to_numpy()
+
+    return X, y, features   # change
 
 
 df = pd.read_csv('../data/arylation/scope_ligand.csv')
 df = df[['yield', 'ligand_smiles', 'electrophile_smiles', 'nucleophile_smiles']]  # dropped product_smiles
 
-featurize_kraken(partition(df))
+X, y, features = featurize_kraken(partition(df))
