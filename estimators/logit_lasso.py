@@ -6,7 +6,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, OneHotEncoder
-from sklearn.feature_selection import VarianceThreshold
+from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 import matplotlib.pyplot as plt
 
 
@@ -107,10 +107,32 @@ def featurize_kraken(df):
     X = np.hstack([X_ligands, X_ohe])
     y = df['success'].to_numpy()
 
-    return X, y, features   # change
+    return X, y, features
+
+
+def featurize_all_ohe(df):
+
+    ohe_enc = OneHotEncoder()
+    X = ohe_enc.fit_transform(df[['ligand_smiles', 'electrophile_smiles', 'nucleophile_smiles']]).toarray()
+
+    features = []
+    # add col names for ohe features
+    for l in ohe_enc.categories_[0]:
+        features.append(str('electrophile=' + l))
+    for e in ohe_enc.categories_[1]:
+        features.append(str('electrophile=' + e))
+    for n in ohe_enc.categories_[2]:
+        features.append(str('nucleophile=' + n))
+
+    y = df['success'].to_numpy()
+
+    return X, y, features
 
 
 df = pd.read_csv('../data/arylation/scope_ligand.csv')
 df = df[['yield', 'ligand_smiles', 'electrophile_smiles', 'nucleophile_smiles']]  # dropped product_smiles
 
-X, y, features = featurize_kraken(partition(df))
+X, y, features = featurize_all_ohe(partition(df))
+print(X.shape)
+lr = LogisticRegressionCV(cv=5, random_state=0, verbose=0, solver='liblinear', penalty='l1').fit(X, y)
+print(lr.score(X, y))
