@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, OneHotEncoder
 from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
+from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 
 
@@ -37,6 +38,7 @@ def sanitize(df, var_threshold=1, corr_threshold=0.95, scaler='standard'):
     df = df.loc[:, df.var() > var_threshold]
 
     # drop columns that have high correlation >0.95
+    # this doesn't drop too many features (check if the other column has already been deleted)
     # MAYBE: keep a list of correlations for interpretability
     del_cols = set()  # Set of all the names of deleted columns
     corr = df.corr().abs()
@@ -132,7 +134,11 @@ def featurize_all_ohe(df):
 df = pd.read_csv('../data/arylation/scope_ligand.csv')
 df = df[['yield', 'ligand_smiles', 'electrophile_smiles', 'nucleophile_smiles']]  # dropped product_smiles
 
-X, y, features = featurize_all_ohe(partition(df))
-print(X.shape)
-lr = LogisticRegressionCV(cv=5, random_state=0, verbose=0, solver='liblinear', penalty='l1').fit(X, y)
-print(lr.score(X, y))
+#X, y, features = featurize_all_ohe(partition(df))
+X, y, features = featurize_kraken(partition(df))
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.95)
+
+lr = LogisticRegression(penalty='l1', random_state=0, verbose=0, solver='liblinear').fit(X_train, y_train)
+print(lr.score(X_train, y_train))
+print(lr.score(X_test, y_test))
