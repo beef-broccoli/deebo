@@ -14,7 +14,7 @@ def _check_dataframe(df):
     return None
 
 
-def ground_truth(ground_truth_data, query_conditions, metric='75%'):
+def evaluate(ground_truth_data, query_conditions, metric='75%'):
     """
     find ground truth data with query conditions and metrics
 
@@ -27,7 +27,8 @@ def ground_truth(ground_truth_data, query_conditions, metric='75%'):
         1      xx          xx
         2      xx          xx
     :param metric: name of the metrics for evaluation
-    :return: best condition combinations according to metric
+    :return: target label and metric, best condition combinations according to metric, all conditions and their performance
+    :rtype: tuple, tuple, pandas.Series
     """
 
     df1 = ground_truth_data
@@ -45,13 +46,14 @@ def ground_truth(ground_truth_data, query_conditions, metric='75%'):
     in_describe = ['count', 'mean', 'std', 'min', '25%', '50%', '75%', 'max']
     other_metrics = {''}  #TODO: other metrics (SEM, counts,
 
+    #print(stats.loc[:, ('yield', metric)].name)
     if metric in in_describe:
-        return stats.loc[:, ('yield', metric)].idxmax()
+        return stats.loc[:, ('yield', metric)].name, stats.loc[:, ('yield', metric)].idxmax(), stats.loc[:, ('yield', metric)]
     else:
         pass
 
 
-if __name__ == '__main__':
+def _basic_test():
     data = pd.DataFrame(np.array([['A1', 'B1', 'C1'],
                                   ['A2', 'B1', 'C1'],
                                   ['A1', 'B2', 'C1'],
@@ -63,8 +65,12 @@ if __name__ == '__main__':
                                   ]), columns=['As', 'Bs', 'Cs'])
     data['yield'] = np.linspace(0, 100, 8)
     query_conditions = pd.DataFrame(np.array([['A1', 'B2'], ['A2', 'B2']]), columns=['As', 'Bs'])
+    a, b = evaluate(data, query_conditions)
+    assert a == ('A2', 'B2'), 'did not pass basic test'
+    query_conditions = pd.DataFrame(np.array([['A1', 'B2', 'C1'], ['A2', 'B2', 'C2']]), columns=['As', 'Bs', 'Cs'])
+    a, b = evaluate(data, query_conditions)
+    assert a == ('A2', 'B2', 'C2'), 'did not pass basic test'
+    return None
 
-    _check_dataframe(data)
-    print(
-    ground_truth(data, query_conditions)
-    )
+if __name__ == '__main__':
+    _basic_test()
