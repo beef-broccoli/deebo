@@ -12,7 +12,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+import matplotlib.patches as mpatches
 from collections import Counter
+from tqdm import tqdm
 
 # df = pd.read_csv('../data/arylation/scope_ligand.csv')
 # df = df[['ligand', 'electrophile_pci_name', 'nucleophile_pci_name', 'yield']]
@@ -40,6 +42,7 @@ df = df.sort_values(by=['ligand_name', 'electrophile_id', 'nucleophile_id'])
 ligand_names = list(df['ligand_name'].unique())
 nuc_names = list(df['nucleophile_id'].unique())
 elec_names = list(df['electrophile_id'].unique())
+
 for ligand in ligands:
     tempdf = df.loc[df['ligand_name'] == ligand]
     tempdf = tempdf.drop(['ligand_name'], axis=1)
@@ -53,8 +56,8 @@ a3 = np.hstack(l[12:18])
 a4 = np.hstack(l[18:24])
 a = np.vstack([a1, a2, a3, a4])
 
-
 def plot_all_results():  # heatmap for all results, grouped by ligand
+
     fig, ax = plt.subplots()
     im = ax.imshow(a, cmap='inferno')
     text_kwargs = dict(ha='center', va='center', fontsize=12, color='white')
@@ -169,16 +172,62 @@ def plot_results_with_model_substrates():
         else:
             return 6
 
-    max['valid'] = df['yield'].apply(lambda x: 0 if x<75 else 1)
+    max['valid'] = df['yield'].apply(lambda x: 0 if x<75 else 1)  # 0 for plotting, if highest yield < 75%
     max['plot'] = df['ligand_name'].apply(f)
     max['plot'] = max['plot']*max['valid']
     max = max.pivot(index='nucleophile_id', columns='electrophile_id', values='plot')
+
     fig, ax = plt.subplots()
-    hm = ax.imshow(max)
-    ax.set_xticklabels(list(max.columns))
-    ax.set_yticklabels(list(max.index))
+    im = ax.imshow(max, cmap='turbo')
+
+    # grid line
+    for i in range(8):
+        for j in range(8):
+            ax.add_patch(Rectangle((j-0.5, i-0.5), 1, 1, fill=False, edgecolor='white', lw=1))
+
+    ax.set_xticks(np.arange(8), labels=list(max.columns))
+    ax.set_yticks(np.arange(8), labels=list(max.index))
+    ax.set_xlabel('aryl bromide')
+    ax.set_ylabel('imidazole')
+    values = list(np.arange(7))
+    colors = [im.cmap(im.norm(value)) for value in values]
+    ligand_color = ['Not optimized (<75%)', 'CgMe-PPh', 'tBPh-CPhos', 'Cy-BippyPhos', 'Et-PhenCar-Phos', 'PPh3', 'other ligands']
+    patches = [mpatches.Patch(color=colors[i], label=ligand_color[i]) for i in range(len(values))]
+    plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+
+    plt.rcParams['savefig.dpi'] = 300
     plt.show()
-    #TODO
+
+
+def plot_simulations_need_to_rename():
+    n_simulations = 10000
+    best = []
+    gb = df.groupby(by=['ligand_name'])
+    for i in tqdm(range(n_simulations)):
+        sample = gb.apply(lambda x: x.sample(1))
+        best.append(sample['yield'].idxmax()[0])
+
+    c = Counter(best).most_common(6)  # outputs a list of tuples
+    labels, values = zip(*c)
+    percentage = np.array(values)/n_simulations*100
+    percentage = [str(round(p, 1)) + '%' for p in percentage]
+
+    fig, ax = plt.subplots()
+
+    index = labels.index('Cy-BippyPhos')  # find Cy-BippyPhos and assign a diff color
+    colors = ['#1f77b4']*len(labels)
+    colors[index] = '#ff7f0e'
+
+    b = ax.bar(np.arange(len(labels)), values, color=colors, width=0.5)
+    ax.set_xticks(np.arange(len(labels)), labels=labels)
+    ax.set_xlabel('ligand')
+    ax.set_ylabel('N times identified as optimal')
+    ax.tick_params(axis='x', labelrotation=25)
+    ax.bar_label(b, percentage, padding=3)
+
+    plt.tight_layout()
+    plt.rcParams['savefig.dpi'] = 300
+    plt.show()
 
 
 def model_substrate_baseline():
@@ -198,6 +247,6 @@ def model_substrate_baseline():
 
 
 #plot_all_results()
-plot_results_with_model_substrates()
+plot_simulations_need_to_rename()
 
 
