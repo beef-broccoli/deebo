@@ -11,6 +11,7 @@ import math
 
 import pandas as pd
 import numpy as np
+import itertools
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.patches as mpatches
@@ -23,6 +24,16 @@ from rdkit.Chem import rdMolDescriptors, DataStructs
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from scipy import interpolate
+
+classic_blue_hex = '#0f4c81'
+coral_essence_hex = '#f26b5b'
+lime_punch_hex = '#c0d725'
+pink_tint_hex = '#dbcbbc'
+pirate_black_hex = '#373838'
+monument_hex = '#84898c'
+jasmine_green_hex = '#7EC845'
+cornhusk_hex = '#f2d6ae'
+peach_quartz_hex = '#f5b895'
 
 
 # df = pd.read_csv('../data/arylation/scope_ligand.csv')
@@ -46,7 +57,6 @@ df = df[['ligand_name', 'electrophile_id', 'nucleophile_id', 'yield']]
 ligands = list(df['ligand_name'].unique())
 
 # plot all results. 4x6 for ligands, and each ligand is represented by a 8x8 block, overall 32x48
-l = []
 df = df.sort_values(by=['ligand_name', 'electrophile_id', 'nucleophile_id'])
 ligand_names = list(df['ligand_name'].unique())
 nuc_names = list(df['nucleophile_id'].unique())
@@ -54,6 +64,7 @@ elec_names = list(df['electrophile_id'].unique())
 
 
 def plot_all_results():  # heatmap for all results, grouped by ligand
+    l = []
 
     for ligand in ligands:
         tempdf = df.loc[df['ligand_name'] == ligand]
@@ -85,6 +96,7 @@ def plot_all_results():  # heatmap for all results, grouped by ligand
 
 
 def plot_one_ligand_result():  # heatmap for one ligand, with numerical yield
+    l = []
 
     for ligand in ligands:
         tempdf = df.loc[df['ligand_name'] == ligand]
@@ -225,9 +237,10 @@ def plot_results_with_model_substrates():  # a heatmap, with each substrate pair
     plt.rcParams['savefig.dpi'] = 300
     plt.show()
 
+
 # random sampling baseline, for each ligand, sample n experiments, plot the top 5 ligands as bar plots
 # parameters: identify the ligand of interest, and how many experiments per ligand
-def plot_simulations_random_sampling(ligand='Cy-BippyPhos', n_exp_per_ligand=1):
+def plot_simulations_random_sampling(ligand='Cy-BippyPhos', n_exp_per_ligand=3):
     n_simulations = 10000
     best = []
     gb = df.groupby(by=['ligand_name'])
@@ -243,8 +256,8 @@ def plot_simulations_random_sampling(ligand='Cy-BippyPhos', n_exp_per_ligand=1):
     fig, ax = plt.subplots()
 
     index = labels.index(ligand)  # find Cy-BippyPhos and assign a diff color
-    colors = ['#1f77b4']*len(labels)
-    colors[index] = '#ff7f0e'
+    colors = [classic_blue_hex]*len(labels) # classic blue
+    colors[index] = coral_essence_hex  # coralessence
 
     b = ax.bar(np.arange(len(labels)), values, color=colors, width=0.5)
     ax.set_xticks(np.arange(len(labels)), labels=labels)
@@ -277,16 +290,16 @@ def plot_simulations_random_sampling_all():
     fig, ax = plt.subplots()
 
     ax.plot([n_exps[0], n_exps[-1]], [probs[0], probs[-1]], c='lightgray', ls='--', zorder=1)  # straight line to demonstrate non-linear
-    ax.scatter(n_exps[-1], probs[-1], c='#ff7f0e', s=100, zorder=5)  # full HTE
-    ax.scatter(0, 1/24*100, c='#2ca02c', s=100, zorder=2)  # random guess with zero experiments
-    ax.scatter(n_exps[:-1], probs[:-1], s=25, zorder=3)  # all random sampling points
+    ax.scatter(n_exps[-1], probs[-1], c=coral_essence_hex, s=100, zorder=5)  # full HTE
+    ax.scatter(0, 1/24*100, c=jasmine_green_hex, s=100, zorder=2)  # random guess with zero experiments
+    ax.scatter(n_exps[:-1], probs[:-1], c=classic_blue_hex, zorder=3)  # all random sampling points
 
     # interpolate with spline
     sample_position = [0, 10, 20, 30, 40, 50, 55, 58, 60, 63]
     spline_x = [n_exps[i] for i in sample_position]
     spline_y = [probs[i] for i in sample_position]
     cs = interpolate.CubicSpline(spline_x, spline_y)
-    ax.plot(n_exps, cs(n_exps), c='k', zorder=4)
+    ax.plot(n_exps, cs(n_exps), c=pirate_black_hex, zorder=4)
 
     ax.grid(which='both', alpha=0.5)
     ax.set_xlabel('number of experiments (24 x sample_size)')
@@ -297,45 +310,7 @@ def plot_simulations_random_sampling_all():
     return None
 
 
-def _calculate_random_sampling_deprecated():
-
-    # bad implementation, too complicated
-
-    roi = 2  # row number for the row of interest
-
-    a = [2,2,6]
-    b = [1,3,5]
-    c = [3,4,5]
-    d = [2,3,7]
-    X = np.vstack([a,b,c])
-
-    (n_rows, n_cols) = X.shape
-    indexes = np.repeat(np.arange(n_cols), n_rows)
-    X = X.flatten()
-    args = np.argsort(X)
-    X = X[args]
-    indexes = indexes[args]
-
-    rows_to_search = np.delete(np.arange(n_rows), roi)  # exclude the row of interest
-
-    indexes_list = list(indexes)
-    firsts = [indexes_list.index(r) for r in rows_to_search]
-    max = np.amax(firsts)
-    roi_index = [index+max for index, element in enumerate(indexes_list[max:]) if element == roi]  # roi index that need to be examined
-
-    def count_and_multiply(r):
-        ctr = Counter(indexes_list[:r])
-        ctr.pop(roi, 'None')
-        combo = np.prod(list(ctr.values()))
-        return combo
-
-    combos = [count_and_multiply(r) for r in roi_index]
-    combos_all_possible = np.sum(combos)
-
-    print(combos_all_possible/pow(n_cols, n_rows))
-
-
-def calculate_random_sampling():
+def _calculate_random_sampling_1():
 
     # random sampling 1
     #
@@ -356,6 +331,8 @@ def calculate_random_sampling():
     # np.random.shuffle(X)
     # X = X.reshape(4,6)
     # print(X)
+
+    l = []
 
     for ligand in ligands:
         tempdf = df.loc[df['ligand_name'] == ligand]
@@ -393,6 +370,69 @@ def calculate_random_sampling():
     #     probs.append(probability)
     # print(probs)
     # print(np.sum(probs))
+
+
+def calculate_random_sampling_n(N=2):
+
+    # same as sampling 1
+    # except need to construct a new array with the average of selections (select n from 64)
+    # this array will get really big after the first few n's
+
+    # # test array
+    # X = np.array(np.linspace(0,23,24))
+    # np.random.shuffle(X)
+    # X = X.reshape(4,6)
+    # print(X)
+
+    def select_n_and_average_list(l, n):
+        # l: the list
+        # n: choose n from list
+        combos = list(itertools.combinations(l, n))
+        avgs = list(map(lambda x: sum(x)/len(x), combos))  # x: iterable; lambda function calcs average
+        return avgs
+
+    l = []
+    names = []
+
+    for ligand in ligands:
+        names.append(ligand)
+        tempdf = df.loc[df['ligand_name'] == ligand]
+        tempdf = tempdf.drop(['ligand_name'], axis=1)
+        a = tempdf.groupby(['electrophile_id'], sort=True)['yield'].apply(list).to_list()
+        a = list(itertools.chain(*a))  # raw reaction data, list of list flattened
+        l.append(select_n_and_average_list(a, n=N))  # exhaustively select n, average
+
+    X = np.vstack(l)
+
+    def count_and_multiply(n):
+        a = X.copy()
+        a[a > n] = -1  # This line will cause overcount in cases where there are duplicate values (rare for actual reaction yield)
+        smaller = np.sum(a != -1, 1)
+        smaller = np.delete(smaller, roi)  # need to delete the row of interest
+        assert smaller.shape[0] == a.shape[0]-1
+        smaller = np.divide(smaller, X.shape[1])  # overflow here if np.prod() or math.prod() directly! need to divide and make smaller
+        prod = math.prod(smaller)
+        return prod/X.shape[1]  # one extra division for the roi
+
+    # # Calculate for Cy-BippyPhos
+    # roi = ligands.index('Cy-BippyPhos')  # row number for the row of interest
+    # ll = X[roi, :]
+    # combos = [count_and_multiply(n) for n in tqdm(ll)]
+    # probability = np.sum(combos)  # probability = n of (roi value bigger than all other rows)/ total number of combinations
+    # print(probability)
+
+    # test on all ligands, should sum to 1
+    probs = []
+    for i in tqdm(range(X.shape[0]), desc='1st loop'):
+        # roi = ligands.index(ligand)
+        roi = i
+        ll = X[roi, :]
+        combos = [count_and_multiply(n) for n in tqdm(ll, desc='2nd loop', leave=False)]
+        probability = np.sum(combos)  # probability = n of (roi value bigger than all other rows)/ total number of combinations
+        probs.append(probability)
+    print(names)
+    print(probs)
+    print(np.sum(probs))
 
 
 def cluster_substrates(draw_product=1):
@@ -491,4 +531,42 @@ def cluster_substrates(draw_product=1):
 
 
 if __name__ == '__main__':
-    calculate_random_sampling()
+    calculate_random_sampling_n()
+
+
+def _calculate_random_sampling_deprecated():
+
+    # bad implementation, too complicated
+
+    roi = 2  # row number for the row of interest
+
+    a = [2,2,6]
+    b = [1,3,5]
+    c = [3,4,5]
+    d = [2,3,7]
+    X = np.vstack([a,b,c])
+
+    (n_rows, n_cols) = X.shape
+    indexes = np.repeat(np.arange(n_cols), n_rows)
+    X = X.flatten()
+    args = np.argsort(X)
+    X = X[args]
+    indexes = indexes[args]
+
+    rows_to_search = np.delete(np.arange(n_rows), roi)  # exclude the row of interest
+
+    indexes_list = list(indexes)
+    firsts = [indexes_list.index(r) for r in rows_to_search]
+    max = np.amax(firsts)
+    roi_index = [index+max for index, element in enumerate(indexes_list[max:]) if element == roi]  # roi index that need to be examined
+
+    def count_and_multiply(r):
+        ctr = Counter(indexes_list[:r])
+        ctr.pop(roi, 'None')
+        combo = np.prod(list(ctr.values()))
+        return combo
+
+    combos = [count_and_multiply(r) for r in roi_index]
+    combos_all_possible = np.sum(combos)
+
+    print(combos_all_possible/pow(n_cols, n_rows))
