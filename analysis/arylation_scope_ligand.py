@@ -32,8 +32,14 @@ pink_tint_hex = '#dbcbbc'
 pirate_black_hex = '#373838'
 monument_hex = '#84898c'
 jasmine_green_hex = '#7EC845'
-cornhusk_hex = '#f2d6ae'
+cornhusk_hex = '#F3D5AD'
 peach_quartz_hex = '#f5b895'
+stucco_hex = "#A58D7F"
+baby_blue_hex = "#B5C7D3"
+provence_hex = '#658DC6'
+
+la_gold = '#FDB927'
+la_purple = '#552583'
 
 
 # df = pd.read_csv('../data/arylation/scope_ligand.csv')
@@ -95,6 +101,90 @@ def plot_all_results():  # heatmap for all results, grouped by ligand
     return None
 
 
+# plot set 2 by products (64 products, 24 ligands)
+# split 8 nucleophiles and 8 electrophiles
+def plot_bar_box_substrates(exps, whichplot):  # TODO
+
+    yields = exps[['electrophile', 'electrophile_pci_name', 'nucleophile', 'nucleophile_pci_name', 'yield']].copy()
+
+    # create two dict for electrophiles and nucleophiles: letter/num->chemical name
+    elec = exps[['electrophile_pci_name', 'electrophile']]
+    elec = elec.drop_duplicates(ignore_index=True)
+    nuc = exps[['nucleophile_pci_name', 'nucleophile']]
+    nuc = nuc.drop_duplicates(ignore_index=True)
+    elec = dict(zip(elec['electrophile_pci_name'], elec['electrophile']))
+    nuc = dict(zip(nuc['nucleophile_pci_name'], nuc['nucleophile']))
+    yields.drop(['electrophile', 'nucleophile'], axis=1, inplace=True)  # elec labels, nuc labels, yield
+
+    if whichplot in {'electrophile', 'nucleophile'}:  # plot a box plot and a stacked bar chart
+
+        name = whichplot + '_pci_name'
+        yields = yields[[name, 'yield']]
+        # avg = yields.groupby([name]).mean()
+        # names = yields[name].drop_duplicates().to_list()  # CAREFUL! names will get sorted
+        # names = [str(name) for name in names]  # make sure labels are passed as string
+
+        # box plot
+        results = yields.groupby([name]).apply(lambda x: x.values[:, 1].tolist())
+        names = [str(name) for name in results.index]
+        _box_plot(list(results), names, whichplot)  # from mpl docs, list is more efficient than np array
+
+        # stacked bar
+        bins = [-1, 1, 20, 40, 60, 80, 200]  # 100%+ yield exist
+        categories = ['0%', '0-20%', '20%-40%', '40%-60%', '60%-80%', '80%-100%+']
+        binned = yields.groupby([name, pd.cut(yields['yield'], bins)]).size().unstack()  # groupby yield bins and ligand
+        names = [str(name) for name in binned.index]
+        count = binned.values  # for each ligand, count number of yields in each yield bin
+        _categorical_bar(names, count, categories)  # I split these early for generalizabiliy, make sure they have the same ligand sequence
+
+        plt.show()
+
+    elif whichplot == 'both':
+        groups = yields.groupby(['electrophile_pci_name', 'nucleophile_pci_name'])
+        avgs = groups.mean().unstack()
+        medians = groups.median().unstack()  # after unstacking row name is elec, col name is nuc
+        elec_names = list(medians.index.values)  # might be sorted, get names this way
+        nuc_names = list(list(zip(*medians.columns.values))[1])
+        _heatmap(nuc_names, elec_names, np.array(medians.values), 'Median yield')
+        _heatmap(nuc_names, elec_names, np.array(avgs.values), 'Average yield')
+        plt.show()
+
+    return None
+
+
+def plot_bar_box_ligand(whichplot):
+
+    fd = df.copy()
+    yields = fd[['ligand_name', 'yield']]
+    #avgs = fd.groupby(['ligand_name']).mean()
+
+    if whichplot == 'boxplot':  # box plot #TODO
+        yields = yields.groupby(['ligand_name']).apply(lambda x: x.values[:, 1].tolist())
+        names = [str(name) for name in yields.index]
+        _box_plot(list(yields), names, 'ligand_name')
+
+    # TODO: not very necessary
+    # elif whichplot == 'average':  # bar plot average yield
+    #     print(avgs)
+    #     plt.clf()
+    #     ys = np.linspace()
+    #     plt.barh(names, width=avgs.values)
+    #     plt.show()
+
+    elif whichplot == 'categories':  # 20% interval categories
+        # try to bin the yields
+        bins = [-1, 1, 20, 40, 60, 80, 200]  # 100%+ yield exist
+        categories = ['0%', '0-20%', '20%-40%', '40%-60%', '60%-80%', '80%-100%+']
+        binned = yields.groupby(['ligand_name', pd.cut(yields['yield'], bins)]).size().unstack()  # groupby yield bins and ligand
+        ligands = list(binned.index)  # list of ligand names
+        count = binned.values  # for each ligand, count number of yields in each yield bin
+        _categorical_bar(ligands, count, categories)  # I split these early for generalizabiliy, make sure they have the same ligand sequence
+
+    plt.rcParams['savefig.dpi'] = 300
+    plt.show()
+    return None
+
+
 def plot_one_ligand_result():  # heatmap for one ligand, with numerical yield
     l = []
 
@@ -144,12 +234,19 @@ def plot_best_ligand_with_diff_metric():  # 6 bar plots, each with top 5 ligands
     for li in [twentyfive, median, seventyfive, mean, overtwenty, overeighty]:
         all_top_ligands = all_top_ligands + list(li.index)
     all_top_ligands = list(set(all_top_ligands))
-    colors = {}
-    colormap = plt.cm.tab10.colors
-    for i in range(len(all_top_ligands)):
-        colors[all_top_ligands[i]] = colormap[i]
+    # colors = {}
+    # colormap = plt.cm.tab10.colors
+    # for i in range(len(all_top_ligands)):
+    #     colors[all_top_ligands[i]] = colormap[i]
 
-    def get_colors(ll):
+    color_list = [classic_blue_hex, cornhusk_hex, stucco_hex,  peach_quartz_hex, baby_blue_hex, monument_hex, provence_hex]
+    colors = {}
+    if len(all_top_ligands) > len(color_list):
+        raise RuntimeError('not enough colors for all top ligands. {0} colors, {1} ligands'.format(len(color_list), len(all_top_ligands)))
+    for i in range(len(all_top_ligands)):
+        colors[all_top_ligands[i]] = color_list[i]
+
+    def get_colors(ll):  # for a list of names, get their color from overall color dict
         out = []
         for l in ll:
             out.append(colors[l])
@@ -372,7 +469,7 @@ def _calculate_random_sampling_1():
     # print(np.sum(probs))
 
 
-def calculate_random_sampling_n(N=2):
+def calculate_random_sampling_n(N=3):
 
     # same as sampling 1
     # except need to construct a new array with the average of selections (select n from 64)
@@ -529,9 +626,126 @@ def cluster_substrates(draw_product=1):
     plt.show()
 
 
+# categorical heatmap
+def _heatmap(xs, ys, data, title):  # TODO: update heatmap
+    """
+        Parameters
+        ----------
+        xs : list
+            A list of names
+        ys : list
+            A list of names
+        data : ndarray
+            data
+        title: str
+            title of heatmap
+    """
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(data, cmap='RdPu')
+
+    # We want to show all ticks...
+    ax.set_xticks(np.arange(len(xs)))
+    ax.set_yticks(np.arange(len(ys)))
+    # ... and label them with the respective list entries
+    ax.set_xticklabels(xs)
+    ax.set_yticklabels(ys)
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+             rotation_mode="anchor")
+
+    # Loop over data dimensions and create text annotations.
+    for i in range(len(ys)):
+        for j in range(len(xs)):
+            text = ax.text(j, i, round(data[i, j], 2),
+                           ha="center", va="center", color="w")
+
+    ax.set_title(str(title))
+    fig.tight_layout()
+    return plt
+
+
+# draw a horizontal box plot
+def _box_plot(data, labels, name):
+    """
+        Parameters
+        ----------
+        labels : list
+            A list of names (individual reactions, ligands, chemicals...)
+        data : list of arrays
+            array of results for each label, grouped into a list
+        name : str
+            general name of the variable (electrophile, nucleophile, substrate...)
+    """
+
+    # colors
+    la_gold = '#FDB927'
+    la_purple = '#552583'
+
+    plt.subplots(figsize=(9.2, 5))
+    plt.boxplot(data,
+                notch=False,
+                labels=labels,
+                vert=False,
+                patch_artist=True,
+                boxprops=dict(facecolor=la_gold, color=la_gold),
+                capprops=dict(color=la_purple, linewidth=1.5),
+                whiskerprops=dict(color=la_purple, linewidth=1.5),
+                medianprops=dict(color=la_purple, linewidth=1.5),
+                flierprops=dict(markerfacecolor=la_purple, markeredgecolor=la_purple, marker='.'))
+    plt.grid(color=la_purple, axis='x', linestyle='-', linewidth=0.75, alpha=0.2)
+    plt.ylabel(name)
+    plt.xlabel('yield')
+    plt.title(str('Yield grouped by ' + name))
+    return plt
+
+
+# draw a horizontal bar chart for discrete categorical values
+def _categorical_bar(labels, data, category_names):
+    """
+        Parameters
+        ----------
+        labels : list
+            A list of entries (individual reactions, ligands, chemicals...)
+        data : numpy array
+            Data as numpy array; for each label count each category
+        category_names : list of str
+            The category labels
+    """
+    # labels = list(results.keys())
+    # data = np.array(list(results.values()))
+    data_cum = data.cumsum(axis=1)
+    category_colors = plt.get_cmap('Spectral')(
+        np.linspace(0.1, 0.9, data.shape[1]))
+
+    fig, ax = plt.subplots(figsize=(9.2, 5))
+    ax.invert_yaxis()
+    ax.xaxis.set_visible(False)
+    ax.set_xlim(0, np.sum(data, axis=1).max())
+
+    for i, (colname, color) in enumerate(zip(category_names, category_colors)):
+        widths = data[:, i]
+        starts = data_cum[:, i] - widths
+        ax.barh(labels, widths, left=starts, height=0.5,
+                label=colname, color=color)
+        xcenters = starts + widths / 2
+
+        r, g, b, _ = color
+        #text_color = 'white' if r * g * b < 0.5 else 'black'  # auto adjust text color based on color
+        text_color = 'black'
+        for y, (x, c) in enumerate(zip(xcenters, widths)):
+            if int(c) != 0:
+                ax.text(x, y, str(int(c)), ha='center', va='center', color=text_color)
+
+    ax.legend(ncol=len(category_names), bbox_to_anchor=(0, 1),
+              loc='lower left', fontsize='medium')
+
+    return fig, ax
+
 
 if __name__ == '__main__':
-    calculate_random_sampling_n()
+    plot_bar_box_ligand(whichplot='categories')
 
 
 def _calculate_random_sampling_deprecated():
