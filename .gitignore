@@ -12,6 +12,7 @@ ax_tutorials/
 /.ipynb_checkpoints/
 .DS_Store
 /__pycache__/
+/logs/
 
 # C extensions
 *.so
@@ -148,3 +149,4 @@ dmypy.json
 cython_debug/
 
 !/data/arylation/krakenID_lookup.csv
+/algorithm/logs/

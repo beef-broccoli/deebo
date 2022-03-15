@@ -24,27 +24,30 @@ def test_algorithm(algo, arms, num_sims, horizon):
             ar[sim*horizon+t, :] = [sim, t, chosen_arm, exploit, reward, cumulative_reward]  # logs info
 
     df = pd.DataFrame(ar, columns=cols)
-    df.to_csv('logs.csv')
 
     return df
 
 
 if __name__ == '__main__':
 
-    means = [0.1, 0.2, 0.3]
+    means = [0.1, 0.2, 0.3, 0.4, 0.9]
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
     print("Best arm is " + str(np.argmax(means)))
-    print(means)
 
-    algo = EpsilonGreedy(0.2, [], [])
-    algo.reset(n_arms)
-    results = test_algorithm(algo, arms, 1, 1000)
+    for eps in [0.1, 0.2, 0.3, 0.4, 0.5]:
+        algo = EpsilonGreedy(eps, [], [])
+        algo.reset(n_arms)
+        results = test_algorithm(algo, arms, 1000, 250)
+
+        filename = 'epsilon_' + str(eps)
+        fp = './logs/epsilon_greedy_test/' + filename
+        results.to_csv(fp)
     
-    # show average reward for each arm
-    for i in [0,1,2]:
-        print('Arm {0}, average reward: {1}'.format(i, round(np.average(results.loc[results['chosen_arm'] == i]['reward'].to_numpy()), 3)))
-
-    # check exploit percentage
-    print('Average explore percentage: {0}'.format(round(1-np.average(results['exploit'].to_numpy()), 5)))
+    # # show average reward for each arm
+    # for i in [0,1,2]:
+    #     print('Arm {0}, average reward: {1}'.format(i, round(np.average(results.loc[results['chosen_arm'] == i]['reward'].to_numpy()), 3)))
+    #
+    # # check exploit percentage
+    # print('Average explore percentage: {0}'.format(round(1-np.average(results['exploit'].to_numpy()), 5)))
