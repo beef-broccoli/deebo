@@ -532,6 +532,52 @@ def calculate_random_sampling_n(N=3):
     print(np.sum(probs))
 
 
+def plot_calculated_sampling_results():
+    # calcualted random sampling probablity for CyBippyPhos
+    # for each ligand from 64 reactions sample n
+    n_samples = [1, 2, 3]
+    probs = [0.09605319776941937,
+             0.11949538313442956,
+             0.13790994055621056]
+
+    # results for all ligands
+    names = ['A-caPhos', 'BrettPhos', 'CX-FBu', 'CX-PICy', 'Cy-DavePhos', 'Cy-vBRIDP', 'Kwong', 'MeO-KITPHOS',
+             'P(o-Anis)3', 'Et-PhenCar-Phos', 'JackiePhos', 'P(3,5-CF3-Ph)3', 'P(fur)3', 'Ph-PhenCar-Phos', 'PPh2Me',
+             'PPhtBu2', 'tBPh-CPhos', 'PPhMe2', 'Cy-BippyPhos', 'PCy3 HBF4', 'CgMe-PPh', 'PPh3', 'X-Phos', 'PnBu3 HBF4']
+    all_probs_sample_1 = [0.02235491355695742, 0.012889775708775555, 7.69627179056963e-05, 0.0417756749696991,
+                          0.039048385468827634, 0.04161961728746584, 0.025744260436573345, 0.029184853696674062,
+                          7.474721952528571e-06, 0.09093318053882313, 0.05868876608747421, 0.039463485950751956,
+                          0.053031149196008404, 0.0011331080147418521, 0.03471303570275247, 0.04656681946906384,
+                          0.10308541622876125, 0.043843141716261885, 0.09605319776941937, 0.009207834493359874,
+                          0.0920188142733526, 0.04741189696643618, 0.041802988426598, 0.029707348822057736]
+    all_probs_sample_2 = [0.014633092868738654, 0.0020509255588031486, 1.6411882399193023e-05, 0.04143143651725963,
+                          0.0547999354261401, 0.05628769652509228, 0.031787762902610706, 0.030707503764305664,
+                          3.4471558154505643e-07, 0.10309969108938917, 0.07786748470698612, 0.03508674590269098,
+                          0.03928706485136098, 0.0016859142447752493, 0.013663736468258083, 0.037730440082642966,
+                          0.10576717560365459, 0.028648936158248404, 0.11949538313442956, 0.008169847326890035,
+                          0.09568413870350644, 0.04059732312888409, 0.05113478725239504, 0.010523714288516273]
+    all_probs_sample_3 = [0.00960862456644954, 0.0007124769217796899, 1.3215942435787734e-07, 0.040798121574155764,
+                          0.05537203296386926, 0.057351145049020155, 0.028280809061158832, 0.02736811584272358,
+                          2.341633018533184e-08, 0.11483637851475693, 0.08447609292719994, 0.03130507451956868,
+                          0.03386758832855324, 0.0007010045603914646, 0.008300543205232724, 0.030930537648562902,
+                          0.11563449702770918, 0.021802964270785142, 0.13790994055621056, 0.004757889795311808,
+                          0.10450518674980756, 0.034899801119376954, 0.05065730597056208, 0.0060425728091676395]
+
+    X = np.arange(len(names))
+    fig, ax = plt.subplots()
+    ax.barh(X + 0.0, all_probs_sample_1, height=0.25, color=classic_blue_hex, zorder=10)
+    ax.barh(X + 0.25, all_probs_sample_2, height=0.25, color=peach_quartz_hex, zorder=11)
+    ax.barh(X + 0.5, all_probs_sample_3, height=0.25, color=monument_hex, zorder=12)
+    ax.set_yticks(X + 0.25, names)
+    ax.legend(labels=['sample 1 exp', 'sample 2 exp', 'sample 3 exp'])
+    ax.grid(axis='x', alpha=0.5)
+    ax.set_title('Calculated probability for random sampling')
+
+    plt.rcParams['savefig.dpi'] = 300
+    plt.show()
+
+
+
 def cluster_substrates(draw_product=1):
     df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv')
     df = df[['electrophile_id', 'electrophile_smiles', 'nucleophile_id', 'nucleophile_smiles', 'product_smiles']].drop_duplicates(ignore_index=True)
@@ -745,8 +791,7 @@ def _categorical_bar(labels, data, category_names):
 
 
 if __name__ == '__main__':
-    plot_bar_box_ligand(whichplot='categories')
-
+    plot_calculated_sampling_results()
 
 def _calculate_random_sampling_deprecated():
 
