@@ -18,9 +18,9 @@ class EpsilonGreedy:  # could implement decay epsilon
 
     def select_next_arm(self):
         if random.random() > self.epsilon:
-            return np.argmax(self.values), 1  # exploit == True
+            return np.argmax(self.values)
         else:
-            return random.randrange(len(self.values)), 0  # exploit == False aka explore
+            return random.randrange(len(self.values))
 
     def update(self, chosen_arm, reward):
         self.counts[chosen_arm] = self.counts[chosen_arm] + 1

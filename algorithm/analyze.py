@@ -3,16 +3,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def eps_greedy_probs_choosing_best_arm(show_annealing=True):
+def eps_greedy_probs_choosing_best_arm(fp='./logs/epsilon_greedy_test/', show_annealing=True):
 
     best_arm = 4
     # reward = [0.1, 0.2, 0.3, 0.4, 0.9]
     eps = [0.1, 0.2, 0.3, 0.4, 0.5]  # all epsilons tested
-    fps = ['./logs/epsilon_greedy_test/epsilon_' + str(e) + '.csv' for e in eps]
+    fps = [fp + 'epsilon_' + str(e) + '.csv' for e in eps]
 
     if show_annealing:
         eps.append('annealing')
-        fps.append('./logs/epsilon_greedy_test/annealing_epsilon_greedy.csv')
+        fps.append(fp + 'annealing_epsilon_greedy.csv')
 
     fig, ax = plt.subplots()
 
@@ -44,16 +44,16 @@ def eps_greedy_probs_choosing_best_arm(show_annealing=True):
     plt.show()
 
 
-def eps_greedy_average_reward(show_annealing=True):
+def eps_greedy_average_reward(fp='./logs/epsilon_greedy_test/', show_annealing=True):
 
     best_arm = 4
     # reward = [0.1, 0.2, 0.3, 0.4, 0.9]
     eps = [0.1, 0.2, 0.3, 0.4, 0.5]  # all epsilons tested
-    fps = ['./logs/epsilon_greedy_test/epsilon_' + str(e) + '.csv' for e in eps]
+    fps = [fp + 'epsilon_' + str(e) + '.csv' for e in eps]
 
     if show_annealing:
         eps.append('annealing')
-        fps.append('./logs/epsilon_greedy_test/annealing_epsilon_greedy.csv')
+        fps.append(fp + 'annealing_epsilon_greedy.csv')
 
     fig, ax = plt.subplots()
 
@@ -84,16 +84,16 @@ def eps_greedy_average_reward(show_annealing=True):
     plt.show()
 
 
-def eps_greedy_cumulative_reward(show_annealing=True):
+def eps_greedy_cumulative_reward(fp='./logs/epsilon_greedy_test/', show_annealing=True):
 
     best_arm = 4
     # reward = [0.1, 0.2, 0.3, 0.4, 0.9]
     eps = [0.1, 0.2, 0.3, 0.4, 0.5]  # all epsilons tested
-    fps = ['./logs/epsilon_greedy_test/epsilon_' + str(e) + '.csv' for e in eps]
+    fps = [fp + 'epsilon_' + str(e) + '.csv' for e in eps]
 
     if show_annealing:
         eps.append('annealing')
-        fps.append('./logs/epsilon_greedy_test/annealing_epsilon_greedy.csv')
+        fps.append(fp + 'annealing_epsilon_greedy.csv')
 
     fig, ax = plt.subplots()
 
@@ -131,4 +131,5 @@ def eps_greedy_cumulative_reward(show_annealing=True):
 
 if __name__ == '__main__':
     plt.rcParams['savefig.dpi'] = 300
-    eps_greedy_probs_choosing_best_arm()
+    eps_greedy_cumulative_reward(fp='./logs/epsilon_greedy_test_small_diff/')
+

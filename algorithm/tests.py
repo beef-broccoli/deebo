@@ -30,7 +30,7 @@ def test_algorithm(algo, arms, num_sims, horizon):
 
 if __name__ == '__main__':
 
-    means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    means = [0.1, 0.1, 0.1, 0.1, 0.2]
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
@@ -41,19 +41,18 @@ if __name__ == '__main__':
         algo = EpsilonGreedy(eps, [], [])
         algo.reset(n_arms)
         results = test_algorithm(algo, arms, 1000, 250)
-
         filename = 'epsilon_' + str(eps) + '.csv'
-        fp = './logs/epsilon_greedy_test/' + filename
+        fp = './logs/epsilon_greedy_test_small_diff/' + filename
         results.to_csv(fp)
 
-    # # test for epsilon greedy with annealing
-    # algo = AnnealingEpsilonGreedy([], [])
-    # algo.reset(n_arms)
-    # results = test_algorithm(algo, arms, 1000, 250)
-    #
-    # filename = 'annealing_epsilon_greedy.csv'
-    # fp = './logs/epsilon_greedy_test/' + filename
-    # results.to_csv(fp)
+    # test for epsilon greedy with annealing
+    algo = AnnealingEpsilonGreedy([], [])
+    algo.reset(n_arms)
+    results = test_algorithm(algo, arms, 1000, 250)
+
+    filename = 'annealing_epsilon_greedy.csv'
+    fp = './logs/epsilon_greedy_test_small_diff/' + filename
+    results.to_csv(fp)
 
     # # test for Boltzmann
     # for tau in [0.6, 0.7, 0.8, 0.9, 1.0]:
