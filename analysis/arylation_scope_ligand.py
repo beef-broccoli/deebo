@@ -565,9 +565,9 @@ def plot_calculated_sampling_results():
 
     X = np.arange(len(names))
     fig, ax = plt.subplots()
-    ax.barh(X + 0.0, all_probs_sample_1, height=0.25, color=classic_blue_hex, zorder=10)
+    ax.barh(X + 0.0, all_probs_sample_1, height=0.25, color=cornhusk_hex, zorder=10)
     ax.barh(X + 0.25, all_probs_sample_2, height=0.25, color=peach_quartz_hex, zorder=11)
-    ax.barh(X + 0.5, all_probs_sample_3, height=0.25, color=monument_hex, zorder=12)
+    ax.barh(X + 0.5, all_probs_sample_3, height=0.25, color=baby_blue_hex, zorder=12)
     ax.set_yticks(X + 0.25, names)
     ax.legend(labels=['sample 1 exp', 'sample 2 exp', 'sample 3 exp'])
     ax.grid(axis='x', alpha=0.5)

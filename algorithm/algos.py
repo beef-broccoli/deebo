@@ -89,8 +89,74 @@ class Boltzmann:  # aka softmax
 
 
 class AnnealingBoltzmann:
-    pass
+    def __init__(self, counts, values):
+        self.counts = counts
+        self.values = values  # reward value (average)
+        return
 
+    def reset(self, n_arms):
+        self.counts = [0 for col in range(n_arms)]
+        self.values = [0.0 for col in range(n_arms)]
+        return
+
+    def select_next_arm(self):
+        t = np.sum(self.counts) + 1
+        tau = 1/math.log(t + 1e-7)
+
+        z = sum([math.exp(v / tau) for v in self.values])
+        probs = [math.exp(v / tau) / z for v in self.values]
+        return random.choices(np.arange(len(self.values)), weights=probs, k=1)[0]
+
+    def update(self, chosen_arm, reward):
+        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
+        n = self.counts[chosen_arm]
+        value = self.values[chosen_arm]
+        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
+        self.values[chosen_arm] = new_value
+        return
+
+
+class Pursuit:
+
+    def __init__(self, lr, counts, values, probs):
+        self.lr = lr  # learning rate
+        self.counts = counts
+        self.values = values  # reward value (average)
+        self.probs = probs
+        return
+
+    def reset(self, n_arms):
+        self.counts = [0 for col in range(n_arms)]
+        self.values = [0.0 for col in range(n_arms)]
+        self.probs = [float(1/n_arms) for col in range(n_arms)]
+        return
+
+    def select_next_arm(self):
+        return random.choices(np.arange(len(self.values)), weights=self.probs, k=1)[0]
+
+    def update(self, chosen_arm, reward):
+
+        # update counts
+        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
+        n = self.counts[chosen_arm]
+
+        # update reward
+        value = self.values[chosen_arm]
+        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
+        self.values[chosen_arm] = new_value
+
+        # update probs
+        if np.sum(self.values) == 0:  # np.argmax returns the first arm when all reward values are 0, so make sure we don't update probs in that case
+            pass
+        else:
+            for ii in range(len(self.counts)):
+                current_prob = self.probs[ii]
+                if ii == np.argmax(self.values):
+                    self.probs[ii] = current_prob + self.lr*(1-current_prob)
+                else:
+                    self.probs[ii] = current_prob + self.lr*(0-current_prob)
+
+        return
 
 
 if __name__ == '__main__':

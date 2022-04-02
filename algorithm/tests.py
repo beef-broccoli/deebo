@@ -1,5 +1,5 @@
 from classic_arms import BernoulliArm
-from algos import EpsilonGreedy, Boltzmann, AnnealingEpsilonGreedy
+from algos import *
 
 import random
 import numpy as np
@@ -30,29 +30,29 @@ def test_algorithm(algo, arms, num_sims, horizon):
 
 if __name__ == '__main__':
 
-    means = [0.1, 0.1, 0.1, 0.1, 0.2]
+    means = [0.1, 0.2, 0.3, 0.4, 0.9]
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
     print("Best arm is " + str(np.argmax(means)))
 
     # test for epsilon greedy
-    for eps in [0.1, 0.2, 0.3, 0.4, 0.5]:
-        algo = EpsilonGreedy(eps, [], [])
-        algo.reset(n_arms)
-        results = test_algorithm(algo, arms, 1000, 250)
-        filename = 'epsilon_' + str(eps) + '.csv'
-        fp = './logs/epsilon_greedy_test_small_diff/' + filename
-        results.to_csv(fp)
+    # for eps in [0.1, 0.2, 0.3, 0.4, 0.5]:
+    #     algo = EpsilonGreedy(eps, [], [])
+    #     algo.reset(n_arms)
+    #     results = test_algorithm(algo, arms, 1000, 250)
+    #     filename = 'epsilon_' + str(eps) + '.csv'
+    #     fp = './logs/epsilon_greedy_test_small_diff/' + filename
+    #     results.to_csv(fp)
 
-    # test for epsilon greedy with annealing
-    algo = AnnealingEpsilonGreedy([], [])
-    algo.reset(n_arms)
-    results = test_algorithm(algo, arms, 1000, 250)
-
-    filename = 'annealing_epsilon_greedy.csv'
-    fp = './logs/epsilon_greedy_test_small_diff/' + filename
-    results.to_csv(fp)
+    # # test for epsilon greedy with annealing
+    # algo = AnnealingEpsilonGreedy([], [])
+    # algo.reset(n_arms)
+    # results = test_algorithm(algo, arms, 1000, 250)
+    #
+    # filename = 'annealing_epsilon_greedy.csv'
+    # fp = './logs/epsilon_greedy_test_small_diff/' + filename
+    # results.to_csv(fp)
 
     # # test for Boltzmann
     # for tau in [0.6, 0.7, 0.8, 0.9, 1.0]:
@@ -63,6 +63,20 @@ if __name__ == '__main__':
     #     filename = 'tau_' + str(tau) + '.csv'
     #     fp = './logs/Boltzmann_test/' + filename
     #     results.to_csv(fp)
+
+    # # test for Boltzmann with annealing
+    # algo = AnnealingBoltzmann([], [])
+    # algo.reset(n_arms)
+    # results = test_algorithm(algo, arms, 1000, 250)
+    #
+    # filename = 'annealing_boltzmann_test.csv'
+    # fp = './logs/Boltzmann_test/' + filename
+    # results.to_csv(fp)
+
+    algo = Pursuit(0.05, [], [], [])
+    algo.reset(n_arms)
+    results = test_algorithm(algo, arms, 1, 500)
+
 
     # tau = 0.1
     # algo = Boltzmann(tau, [], [])
