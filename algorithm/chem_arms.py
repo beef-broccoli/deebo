@@ -1,6 +1,7 @@
 import pandas as pd
 import random
-# TODO: after selecting data, it discards all other info and only keeps yield right now. May need to keep track of other info
+
+# note : after selecting data, it discards all other info and only keeps yield right now. May need to keep track of other info
 
 # arm one: C-H arylation with substrate scope and lignad
 
@@ -20,7 +21,6 @@ class ChemArm():
             if self.val not in df[self.name].unique():
                 raise ValueError('value does not exist: ' + str(self.val))
             df = df[[self.name, 'yield']]
-            self.data = df.loc[df[self.name] == self.val]['yield'].tolist()
         else:  # here name and val are passed in as tuple
             for i in range(len(self.name)):
                 n = self.name[i]
@@ -31,13 +31,19 @@ class ChemArm():
                     raise ValueError('value does not exist: ' + str(v))
             df[name] = df[list(name)].apply(tuple, axis=1)
             df = df[[name, 'yield']]
-            self.data = df.loc[df[name] == self.val]['yield'].tolist()
+
+        self.data = df.loc[df[self.name] == self.val]['yield'].tolist()
+        self.data_copy = self.data.copy()  # since i pop self.data, need a copy to reset between simulations
+
+        return
 
     def draw(self):  # shuffle the data and pop
         random.shuffle(self.data)
         self.num_draw = self.num_draw + 1
         return self.data.pop()
 
+    def reset(self):
+        self.data = self.data_copy.copy()
 
 
 if __name__ == '__main__':

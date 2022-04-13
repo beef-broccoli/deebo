@@ -3,6 +3,30 @@ import math
 import numpy as np
 
 
+class Random:  # random
+
+    def __init__(self, counts, emp_means):
+        self.counts = counts
+        self.emp_means = emp_means
+        return
+
+    def reset(self, n_arms):
+        self.counts = [0 for col in range(n_arms)]
+        self.emp_means = [0.0 for col in range(n_arms)]
+        return
+
+    def select_next_arm(self):
+        return random.randrange(len(self.emp_means))
+
+    def update(self, chosen_arm, reward):
+        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
+        n = self.counts[chosen_arm]
+        value = self.emp_means[chosen_arm]
+        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
+        self.emp_means[chosen_arm] = new_value
+        return
+
+
 class EpsilonGreedy:  # could implement decay epsilon
 
     def __init__(self, epsilon, counts, emp_means):
@@ -159,7 +183,7 @@ class Pursuit:
         return
 
 
-class ReinforcementComparison:  # TODO: need more test, doesn't seem to work
+class ReinforcementComparison:  # need more test, doesn't seem to work
     
     def __init__(self, alpha, beta, counts, emp_means, preferences, exp_rewards, probs):
         self.alpha = alpha  # learning rate for expected reward

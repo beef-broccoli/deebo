@@ -1,4 +1,4 @@
-from classic_arms import BernoulliArm
+from arms import BernoulliArm
 from algos import *
 
 import random
@@ -80,8 +80,6 @@ if __name__ == '__main__':
     algo = ReinforcementComparison(0.5, 0.5, [], [], [], [], [])
     algo.reset(n_arms)
     results = test_algorithm(algo, arms, 1, 50)
-
-
 
     # tau = 0.1
     # algo = Boltzmann(tau, [], [])
