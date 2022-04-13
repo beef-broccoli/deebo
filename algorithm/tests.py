@@ -73,9 +73,14 @@ if __name__ == '__main__':
     # fp = './logs/Boltzmann_test/' + filename
     # results.to_csv(fp)
 
-    algo = Pursuit(0.05, [], [], [])
+    # algo = Pursuit(0.05, [], [], [])
+    # algo.reset(n_arms)
+    # results = test_algorithm(algo, arms, 1, 500)
+
+    algo = ReinforcementComparison(0.5, 0.5, [], [], [], [], [])
     algo.reset(n_arms)
-    results = test_algorithm(algo, arms, 1, 500)
+    results = test_algorithm(algo, arms, 1, 50)
+
 
 
     # tau = 0.1
