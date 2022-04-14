@@ -33,6 +33,7 @@ def chem_test_algorithm(algo, arms, num_sims, horizon):
 
 def chem_test_1():
 
+    # build chem arms
     dataset_url = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-conditions.csv'
     names = ('base_smiles', 'solvent_smiles')  # same names with column name in df
     base = ['O=C([O-])C.[K+]', 'O=C([O-])C(C)(C)C.[K+]']
@@ -40,30 +41,51 @@ def chem_test_1():
     vals = list(itertools.product(base, solvent))  # sequence has to match what's in "names"
     arms = list(map(lambda x: ChemArm(x, names, dataset_url), vals))
 
-    # since we have data, can figure out which is best arm
+    # since we have data, can figure out which is best arm, and calculate average for all arms
     best_avg = 0
     best_arm = ''
-    for arm in arms:
+    best_index = 0
+    all_avg = {}
+    for idx, arm in enumerate(arms):
         avg = np.average(arm.data)
+        all_avg[idx] = round(avg, 2)
         if avg > best_avg:
             best_avg = avg
             best_arm = arm.val
-    print('best arm is {0} with average {1}'.format(best_arm, best_avg))
+            best_index = idx
 
-    # testing parameters
+    # parameters for testing
     algos = [Random([], []),
              EpsilonGreedy(0.1, [], []),
              EpsilonGreedy(0.5, [], []),
              AnnealingEpsilonGreedy([], [])]
     fp = './logs/chem_test_1/'
-    fn_list = ['random',
-               'eps_greedy_0.1',
-               'eps_greedy_0.5',
-               'annealing_eps_greedy']
-    fn_list = [fn + '.csv' for fn in fn_list] # for saving results
+    exp_list = ['random',
+                'eps_greedy_0.1',
+                'eps_greedy_0.5',
+                'annealing_eps_greedy']
+    fn_list = [exp + '.csv' for exp in exp_list] # for saving results
     num_sims = 10
     time_horizon = 10
 
+    # log testing params and other info
+    log_fp = fp + 'log.txt'
+    with open(log_fp, 'w+') as f:
+        f.write('ARM INFO\n'
+                f'dataset url: {dataset_url}\n'
+                f'component names: {names}\n'
+                f'component values: {vals}\n'
+                f'average for all arms {all_avg}\n'
+                f'best arm is arm {best_index} {best_arm} with average {round(best_avg, 2)}\n'
+                f'\n'
+                f'ALGORITHM EVALUATED:\n'
+                f'{exp_list}\n'
+                f'\n'
+                f'EXPERIMENT PARAMETERS:\n'
+                f'{num_sims} simulations\n'
+                f'time horizon: {time_horizon}\n')
+
+    # testing
     for i in range(len(algos)):
         algo = algos[i]
         algo.reset(len(arms))
