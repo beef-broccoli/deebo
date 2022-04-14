@@ -118,6 +118,10 @@ def plot_cumulative_reward(fn_list,
     plt.show()
 
 
+def plot_regret():
+    return
+
+
 if __name__ == '__main__':
     plt.rcParams['savefig.dpi'] = 300
 

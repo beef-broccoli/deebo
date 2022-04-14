@@ -1,9 +1,23 @@
+#!/usr/bin/env python
+
+"""
+implemented algorithms for bandit optimization
+
+- Random: random selection of arms
+- EpsilonGreedy: epsilon greedy algorithm
+- AnnealingEpsilonGreedy: epsilon greedy with annealing (decaying epsilon)
+- Boltzmann: softmax algorithm
+- AnnealingBoltzmann: softmax with annealing (decaying tau)
+- Pursuit
+- ReinforcementComparison
+"""
+
 import random
 import math
 import numpy as np
 
 
-class Random:  # random
+class Random:  # random selection of arms
 
     def __init__(self, counts, emp_means):
         self.counts = counts

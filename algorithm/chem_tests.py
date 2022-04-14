@@ -2,7 +2,7 @@ import itertools
 import pandas as pd
 import numpy as np
 
-from algos import Random
+from algos import Random, EpsilonGreedy, AnnealingEpsilonGreedy
 from chem_arms import ChemArm
 
 
@@ -31,7 +31,7 @@ def chem_test_algorithm(algo, arms, num_sims, horizon):
     return df
 
 
-def test_random():
+def chem_test_1():
 
     dataset_url = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-conditions.csv'
     names = ('base_smiles', 'solvent_smiles')  # same names with column name in df
@@ -40,7 +40,7 @@ def test_random():
     vals = list(itertools.product(base, solvent))  # sequence has to match what's in "names"
     arms = list(map(lambda x: ChemArm(x, names, dataset_url), vals))
 
-    # since we have data, figure out which is best arm
+    # since we have data, can figure out which is best arm
     best_avg = 0
     best_arm = ''
     for arm in arms:
@@ -50,15 +50,28 @@ def test_random():
             best_arm = arm.val
     print('best arm is {0} with average {1}'.format(best_arm, best_avg))
 
-    algo = Random([], [])
-    algo.reset(len(arms))
+    # testing parameters
+    algos = [Random([], []),
+             EpsilonGreedy(0.1, [], []),
+             EpsilonGreedy(0.5, [], []),
+             AnnealingEpsilonGreedy([], [])]
+    fp = './logs/chem_test_1/'
+    fn_list = ['random',
+               'eps_greedy_0.1',
+               'eps_greedy_0.5',
+               'annealing_eps_greedy']
+    fn_list = [fn + '.csv' for fn in fn_list] # for saving results
+    num_sims = 10
+    time_horizon = 10
 
-    test_result = chem_test_algorithm(algo, arms, 100, 10)
-
-    test_result.to_csv('./logs/tests/test.csv')
+    for i in range(len(algos)):
+        algo = algos[i]
+        algo.reset(len(arms))
+        result = chem_test_algorithm(algo, arms, num_sims, time_horizon)
+        result.to_csv(fp + fn_list[i])
 
     return
 
 
 if __name__ == '__main__':
-    test_random()
+    chem_test_1()
