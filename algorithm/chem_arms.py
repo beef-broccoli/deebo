@@ -33,6 +33,7 @@ class ChemArm:
             df = df[[name, 'yield']]
 
         self.data = df.loc[df[self.name] == self.val]['yield'].tolist()
+        self.data = [d/100 for d in self.data]  # scale yield
         self.data_copy = self.data.copy()  # since i pop self.data, need a copy to reset between simulations
 
         return

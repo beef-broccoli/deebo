@@ -3,12 +3,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+def calculate_baseline(*chemarms):
+    # TODO: take chem arms, calculate a baseline for probability in a traditional reaction optimziation way
+    return
+
+
 def plot_probs_choosing_best_arm(fn_list,
-                            legend_list,
-                            best_arm_index=0,
-                            fp='',
-                            title='',
-                            legend_title=''):
+                                 legend_list,
+                                 baseline=0,
+                                 best_arm_index=0,
+                                 fp='',
+                                 title='',
+                                 legend_title=''):
 
     assert len(fn_list) == len(legend_list)
 
@@ -16,6 +22,8 @@ def plot_probs_choosing_best_arm(fn_list,
 
     plt.rcParams['savefig.dpi'] = 300
     fig, ax = plt.subplots()
+
+    plt.axhline(y=baseline, xmin=0, xmax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
 
     for i in range(len(fps)):
         fp = fps[i]

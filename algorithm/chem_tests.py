@@ -4,7 +4,7 @@ import numpy as np
 from tqdm import tqdm
 
 from algos import Random, EpsilonGreedy, AnnealingEpsilonGreedy
-from analyze import plot_average_reward, plot_cumulative_reward, plot_probs_choosing_best_arm
+from analyze import plot_average_reward, plot_cumulative_reward, plot_probs_choosing_best_arm, calculate_baseline
 from chem_arms import ChemArm
 
 
@@ -51,13 +51,15 @@ def chem_test_1():
     n_datapoints = {}
     for idx, arm in enumerate(arms):
         avg = np.average(arm.data)
-        all_avg[idx] = round(avg, 2)
+        all_avg[idx] = round(avg, 3)
         n_datapoints[idx] = len(arm.data)
         if avg > best_avg:
             best_avg = avg
             best_arm = arm.val
             best_index = idx
 
+    # calculate baseline
+    baseline = calculate_baseline(arms)  # TODO: log baseline
 
     # parameters for testing
     algos = [Random([], []),
@@ -82,7 +84,7 @@ def chem_test_1():
                 f'component values: {vals}\n'
                 f'number of data points: {n_datapoints}\n'
                 f'average for all arms {all_avg}\n'
-                f'best arm is arm {best_index} {best_arm} with average {round(best_avg, 2)}\n'
+                f'best arm is arm {best_index} {best_arm} with average {round(best_avg, 3)}\n'
                 f'\n'
                 f'ALGORITHM EVALUATED:\n'
                 f'{exp_list}\n'
@@ -110,10 +112,10 @@ def chem_test_1_analyze():
 
     fn_list = [str(e) + '.csv' for e in exp_list]
     legend_list = ['random', 'eps greedy (0.1)', 'eps greedy (0.5)', 'eps greedy (annealing)']
-    plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=2, fp='./logs/chem_test_1/', title='', legend_title='algos')
-
+    plot_probs_choosing_best_arm(fn_list, legend_list, baseline=0.2, best_arm_index=2, fp='./logs/chem_test_1/', title='', legend_title='algos')
+    #plot_average_reward(fn_list, legend_list, fp='./logs/chem_test_1/', title='', legend_title='algos')
     return
 
 
 if __name__ == '__main__':
-    chem_test_1_analyze()
+    chem_test_1()
