@@ -1,8 +1,10 @@
 import itertools
 import pandas as pd
 import numpy as np
+from tqdm import tqdm
 
 from algos import Random, EpsilonGreedy, AnnealingEpsilonGreedy
+from analyze import plot_average_reward, plot_cumulative_reward, plot_probs_choosing_best_arm
 from chem_arms import ChemArm
 
 
@@ -11,7 +13,7 @@ def chem_test_algorithm(algo, arms, num_sims, horizon):
     cols = ['num_sims', 'horizon', 'chosen_arm', 'reward', 'cumulative_reward']
     ar = np.zeros((num_sims*horizon, len(cols)))
 
-    for sim in range(num_sims):
+    for sim in tqdm(range(num_sims), leave=False):
 
         for arm in arms:
             arm.reset()
@@ -46,13 +48,16 @@ def chem_test_1():
     best_arm = ''
     best_index = 0
     all_avg = {}
+    n_datapoints = {}
     for idx, arm in enumerate(arms):
         avg = np.average(arm.data)
         all_avg[idx] = round(avg, 2)
+        n_datapoints[idx] = len(arm.data)
         if avg > best_avg:
             best_avg = avg
             best_arm = arm.val
             best_index = idx
+
 
     # parameters for testing
     algos = [Random([], []),
@@ -64,17 +69,18 @@ def chem_test_1():
                 'eps_greedy_0.1',
                 'eps_greedy_0.5',
                 'annealing_eps_greedy']
-    fn_list = [exp + '.csv' for exp in exp_list] # for saving results
-    num_sims = 10
-    time_horizon = 10
+    fn_list = [exp + '.csv' for exp in exp_list]  # for saving results
+    num_sims = 1000
+    time_horizon = 50
 
     # log testing params and other info
     log_fp = fp + 'log.txt'
     with open(log_fp, 'w+') as f:
-        f.write('ARM INFO\n'
+        f.write('ARM INFO:\n'
                 f'dataset url: {dataset_url}\n'
                 f'component names: {names}\n'
                 f'component values: {vals}\n'
+                f'number of data points: {n_datapoints}\n'
                 f'average for all arms {all_avg}\n'
                 f'best arm is arm {best_index} {best_arm} with average {round(best_avg, 2)}\n'
                 f'\n'
@@ -86,7 +92,7 @@ def chem_test_1():
                 f'time horizon: {time_horizon}\n')
 
     # testing
-    for i in range(len(algos)):
+    for i in tqdm(range(len(algos))):
         algo = algos[i]
         algo.reset(len(arms))
         result = chem_test_algorithm(algo, arms, num_sims, time_horizon)
@@ -95,5 +101,19 @@ def chem_test_1():
     return
 
 
+def chem_test_1_analyze():
+
+    exp_list = ['random',
+                'eps_greedy_0.1',
+                'eps_greedy_0.5',
+                'annealing_eps_greedy']
+
+    fn_list = [str(e) + '.csv' for e in exp_list]
+    legend_list = ['random', 'eps greedy (0.1)', 'eps greedy (0.5)', 'eps greedy (annealing)']
+    plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=2, fp='./logs/chem_test_1/', title='', legend_title='algos')
+
+    return
+
+
 if __name__ == '__main__':
-    chem_test_1()
+    chem_test_1_analyze()

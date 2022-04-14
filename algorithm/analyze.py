@@ -14,6 +14,7 @@ def plot_probs_choosing_best_arm(fn_list,
 
     fps = [fp + fn for fn in fn_list]
 
+    plt.rcParams['savefig.dpi'] = 300
     fig, ax = plt.subplots()
 
     for i in range(len(fps)):
@@ -51,6 +52,7 @@ def plot_average_reward(fn_list,
 
     fps = [fp + fn for fn in fn_list]
 
+    plt.rcParams['savefig.dpi'] = 300
     fig, ax = plt.subplots()
 
     for i in range(len(fps)):
@@ -87,6 +89,7 @@ def plot_cumulative_reward(fn_list,
 
     fps = [fp + fn for fn in fn_list]
 
+    plt.rcParams['savefig.dpi'] = 300
     fig, ax = plt.subplots()
 
     for i in range(len(fps)):
@@ -123,6 +126,9 @@ def plot_regret():
 
 
 if __name__ == '__main__':
+
+    # example on how to use analyze functions
+
     plt.rcParams['savefig.dpi'] = 300
 
     eps = [0.1, 0.2, 0.3, 0.4, 0.5]
