@@ -6,7 +6,7 @@ from algos import Random
 from chem_arms import ChemArm
 
 
-def test_algorithm_chem(algo, arms, num_sims, horizon):
+def chem_test_algorithm(algo, arms, num_sims, horizon):
 
     cols = ['num_sims', 'horizon', 'chosen_arm', 'reward', 'cumulative_reward']
     ar = np.zeros((num_sims*horizon, len(cols)))
@@ -53,7 +53,7 @@ def test_random():
     algo = Random([], [])
     algo.reset(len(arms))
 
-    test_result = test_algorithm_chem(algo, arms, 100, 10)
+    test_result = chem_test_algorithm(algo, arms, 100, 10)
 
     test_result.to_csv('./logs/tests/test.csv')
 

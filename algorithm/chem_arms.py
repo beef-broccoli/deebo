@@ -6,7 +6,7 @@ import random
 # arm one: C-H arylation with substrate scope and lignad
 
 
-class ChemArm():
+class ChemArm:
 
     def __init__(self, val, name, url):
         self.val = val  # e.g. ('CC#N', 'CCC')
@@ -42,7 +42,7 @@ class ChemArm():
         self.num_draw = self.num_draw + 1
         return self.data.pop()
 
-    def reset(self):
+    def reset(self):  # reset data between simulations
         self.data = self.data_copy.copy()
 
 

@@ -27,7 +27,7 @@ class Random:  # random
         return
 
 
-class EpsilonGreedy:  # could implement decay epsilon
+class EpsilonGreedy:
 
     def __init__(self, epsilon, counts, emp_means):
         self.epsilon = epsilon
