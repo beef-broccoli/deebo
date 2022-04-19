@@ -104,6 +104,24 @@ def _test_reinforcement_comparison():
     return
 
 
+def _test_ucb1():
+
+    means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    n_arms = len(means)
+    arms = list(map(lambda x: BernoulliArm(x), means))
+
+    print("Best arm is " + str(np.argmax(means)))
+
+    algo = UCB1([], [], [])
+    algo.reset(n_arms)
+    results = test_algorithm(algo, arms, 1000, 250)
+    filename = 'ucb1_test.csv'
+    fp = './logs/ucb1/' + filename
+    results.to_csv(fp)
+
+    return
+
+
 if __name__ == '__main__':
 
-    pass
+    _test_ucb1()

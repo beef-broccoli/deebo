@@ -245,6 +245,44 @@ class ReinforcementComparison:  # need more test, doesn't seem to work
         #print(self.probs)
 
         return
+
+
+class UCB1:
+
+    def __init__(self, counts, emp_means, ucbs):
+        self.counts = counts
+        self.emp_means = emp_means
+        self.ucbs = ucbs  # ucb values calculated with means and counts
+        return
+
+    def reset(self, n_arms):
+        self.counts = [0 for col in range(n_arms)]
+        self.emp_means = [0.0 for col in range(n_arms)]
+        self.ucbs = [0.0 for col in range(n_arms)]
+        return
+
+    def _update_ucbs(self):
+        bonuses = [math.sqrt((2 * math.log(sum(self.counts))) / float(self.counts[arm] + 1e-7)) for arm in range(len(self.counts))]
+        self.ucbs = [e + b for e, b in zip(self.emp_means, bonuses)]
+        return
+
+    def select_next_arm(self):
+        if sum(self.counts) < len(self.counts):  # run a first pass through all arms
+            for arm in range(len(self.counts)):
+                if self.counts[arm] == 0:
+                    return arm
+        else:  # now select arm based on ucb value
+            return np.argmax(self.ucbs)
+
+    def update(self, chosen_arm, reward):
+        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
+        n = self.counts[chosen_arm]
+        value = self.emp_means[chosen_arm]
+        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
+        self.emp_means[chosen_arm] = new_value
+        self._update_ucbs()
+        return
+
     
 
 if __name__ == '__main__':

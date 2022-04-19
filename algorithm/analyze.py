@@ -180,4 +180,10 @@ def _test_cal_baseline():
 
 
 if __name__ == '__main__':
-    _test_cal_baseline()
+    # example on using plot function
+    plt.rcParams['savefig.dpi'] = 300
+
+    fn_list = ['ucb1_test.csv']
+    legend_list = ['ucb1']
+
+    plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/ucb1/', title='ss', legend_title='dd')
