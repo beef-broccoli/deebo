@@ -150,3 +150,5 @@ cython_debug/
 
 !/data/arylation/krakenID_lookup.csv
 /algorithm/logs/
+!/algorithm/logs/
+/algorithm/logs/

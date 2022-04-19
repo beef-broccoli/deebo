@@ -3,8 +3,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def calculate_baseline(*chemarms):
+def calculate_baseline(chemarms: list):
     # TODO: take chem arms, calculate a baseline for probability in a traditional reaction optimziation way
+    from chem_arms import ChemArm
+
+    # type check; check chem arms are from same dataset
+    url = chemarms[0].data_url
+    name = chemarms[0].name
+    for arm in chemarms:
+        assert isinstance(arm, ChemArm), "required argument: a list of ChemArm objects"
+        assert arm.name == name, "ChemArm objects should describe same reaction components"
+        assert arm.data_url == url, "ChemArm objects should come from the same dataset"
+
+    df = pd.read_csv(url)
+
+    temp = df[list(name)]
+
     return
 
 
@@ -23,7 +37,8 @@ def plot_probs_choosing_best_arm(fn_list,
     plt.rcParams['savefig.dpi'] = 300
     fig, ax = plt.subplots()
 
-    plt.axhline(y=baseline, xmin=0, xmax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
+    if baseline != 0:
+        plt.axhline(y=baseline, xmin=0, xmax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
 
     for i in range(len(fps)):
         fp = fps[i]
@@ -45,7 +60,7 @@ def plot_probs_choosing_best_arm(fn_list,
     ax.set_ylabel('probability of finding best arm')
     ax.set_title(title)
     ax.grid(visible=True, which='both', alpha=0.5)
-    ax.legend(title=legend_title, loc='lower right')
+    ax.legend(title=legend_title)
 
     plt.show()
 
@@ -133,10 +148,9 @@ def plot_regret():
     return
 
 
-if __name__ == '__main__':
+def _test_plot():
 
-    # example on how to use analyze functions
-
+    # example on using plot function
     plt.rcParams['savefig.dpi'] = 300
 
     eps = [0.1, 0.2, 0.3, 0.4, 0.5]
@@ -147,3 +161,23 @@ if __name__ == '__main__':
 
     plot_cumulative_reward(fn_list, legend_list, fp='./logs/epsilon_greedy_test/', title='ss', legend_title='dd')
 
+
+def _test_cal_baseline():
+
+    from chem_arms import ChemArm
+    import itertools
+
+    # build chem arms
+    dataset_url = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-conditions.csv'
+    names = ('base_smiles', 'solvent_smiles')  # same names with column name in df
+    base = ['O=C([O-])C.[K+]', 'O=C([O-])C(C)(C)C.[K+]']
+    solvent = ['CC(N(C)C)=O', 'CCCC#N']
+    vals = list(itertools.product(base, solvent))  # sequence has to match what's in "names"
+    arms = list(map(lambda x: ChemArm(x, names, dataset_url), vals))
+
+    # test basline
+    calculate_baseline(arms)
+
+
+if __name__ == '__main__':
+    _test_cal_baseline()

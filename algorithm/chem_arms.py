@@ -11,9 +11,10 @@ class ChemArm:
     def __init__(self, val, name, url):
         self.val = val  # e.g. ('CC#N', 'CCC')
         self.name = name  # e.g. ('electrophile_smiles', 'nucleophile_smiles')
-        self.num_draw = 0
+        self.data_url = url  # github url that contains raw data
+        self.num_draw = 0  # how many times has this arm been played
 
-        df = pd.read_csv(url)
+        df = pd.read_csv(self.data_url)
 
         if type(self.name) == str:  # single element "tuple" becomes str
             if self.name not in df.columns:
@@ -34,7 +35,7 @@ class ChemArm:
 
         self.data = df.loc[df[self.name] == self.val]['yield'].tolist()
         self.data = [d/100 for d in self.data]  # scale yield
-        self.data_copy = self.data.copy()  # since i pop self.data, need a copy to reset between simulations
+        self.data_copy = self.data.copy()  # since pop self.data, need a copy to reset for each simulation
 
         return
 

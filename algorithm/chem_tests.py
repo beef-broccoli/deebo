@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 
-from algos import Random, EpsilonGreedy, AnnealingEpsilonGreedy
+from algos import Random, EpsilonGreedy, AnnealingEpsilonGreedy, Boltzmann, AnnealingBoltzmann
 from analyze import plot_average_reward, plot_cumulative_reward, plot_probs_choosing_best_arm, calculate_baseline
 from chem_arms import ChemArm
 
@@ -64,16 +64,30 @@ def chem_test_1():
     # parameters for testing
     algos = [Random([], []),
              EpsilonGreedy(0.1, [], []),
+             EpsilonGreedy(0.25, [], []),
              EpsilonGreedy(0.5, [], []),
-             AnnealingEpsilonGreedy([], [])]
+             EpsilonGreedy(0.75, [], []),
+             AnnealingEpsilonGreedy([], []),
+             Boltzmann(0.1, [], []),
+             Boltzmann(0.5, [], []),
+             Boltzmann(1, [], []),
+             AnnealingBoltzmann([], []),
+             ]
     fp = './logs/chem_test_1/'
     exp_list = ['random',
                 'eps_greedy_0.1',
+                'eps_greedy_0.25',
                 'eps_greedy_0.5',
-                'annealing_eps_greedy']
+                'eps_greedy_0.75',
+                'annealing_eps_greedy',
+                'softmax_0.1',
+                'softmax_0.5',
+                'softmax_1',
+                'annealing_softmax']
+    assert len(algos) == len(exp_list), 'num of algos need to match num of exp names supplied'
     fn_list = [exp + '.csv' for exp in exp_list]  # for saving results
     num_sims = 1000
-    time_horizon = 50
+    time_horizon = 150
 
     # log testing params and other info
     log_fp = fp + 'log.txt'
@@ -106,16 +120,20 @@ def chem_test_1():
 def chem_test_1_analyze():
 
     exp_list = ['random',
-                'eps_greedy_0.1',
-                'eps_greedy_0.5',
+                'softmax_0.1',
                 'annealing_eps_greedy']
 
     fn_list = [str(e) + '.csv' for e in exp_list]
-    legend_list = ['random', 'eps greedy (0.1)', 'eps greedy (0.5)', 'eps greedy (annealing)']
-    plot_probs_choosing_best_arm(fn_list, legend_list, baseline=0.2, best_arm_index=2, fp='./logs/chem_test_1/', title='', legend_title='algos')
+    legend_list = ['random',
+                   'softmax (0.1)',
+                   'eps greedy (annealing)',
+                   ]
+    assert len(exp_list) == len(legend_list)
+    plot_probs_choosing_best_arm(fn_list, legend_list, baseline=0, best_arm_index=2, fp='./logs/chem_test_1/', title='', legend_title='algos')
     #plot_average_reward(fn_list, legend_list, fp='./logs/chem_test_1/', title='', legend_title='algos')
     return
 
 
 if __name__ == '__main__':
-    chem_test_1()
+    #chem_test_1()
+    chem_test_1_analyze()
