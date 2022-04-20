@@ -183,7 +183,7 @@ if __name__ == '__main__':
     # example on using plot function
     plt.rcParams['savefig.dpi'] = 300
 
-    fn_list = ['ucb1_test.csv']
-    legend_list = ['ucb1']
+    fn_list = ['ucb1_test.csv', 'ucb1_tuned_test.csv']
+    legend_list = ['ucb1', 'ucb1 tuned']
 
-    plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/ucb1/', title='ss', legend_title='dd')
+    plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/ucb1/', title='ucb1', legend_title='algos')

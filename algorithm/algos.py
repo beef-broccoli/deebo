@@ -262,7 +262,7 @@ class UCB1:
         return
 
     def _update_ucbs(self):
-        bonuses = [math.sqrt((2 * math.log(sum(self.counts))) / float(self.counts[arm] + 1e-7)) for arm in range(len(self.counts))]
+        bonuses = [math.sqrt((2 * math.log(sum(self.counts) + 1)) / float(self.counts[arm] + 1e-7)) for arm in range(len(self.counts))]
         self.ucbs = [e + b for e, b in zip(self.emp_means, bonuses)]
         return
 
@@ -283,7 +283,52 @@ class UCB1:
         self._update_ucbs()
         return
 
-    
+
+class UCB1Tuned:  #TODO: seems like V value are a lot bigger than 1/4
+
+    def __init__(self, counts, emp_means, M2, ucbs):
+        self.counts = counts
+        self.emp_means = emp_means
+        self.M2 = M2  # M2(n) = var(n) * n, used to update variance (a more stable Welford's algo)
+        self.ucbs = ucbs  # ucb values calculated with means and counts
+        return
+
+    def reset(self, n_arms):
+        self.counts = [0 for col in range(n_arms)]
+        self.emp_means = [0.0 for col in range(n_arms)]
+        self.M2 = [0.0 for col in range(n_arms)]
+        self.ucbs = [0.0 for col in range(n_arms)]
+        return
+
+    def _update_ucbs(self):
+        Vs = [self.M2[arm] / (self.counts[arm]+1e-7) + math.sqrt(2 * math.log(sum(self.counts)+1) / float(self.counts[arm] + 1e-7)) for arm in range(len(self.counts))]
+        mins = [min(1/4, v) for v in Vs]
+        bonuses = [math.sqrt((math.log(sum(self.counts)+1)) / float(self.counts[arm] + 1e-7) * mins[arm]) for arm in range(len(self.counts))]
+        self.ucbs = [e + b for e, b in zip(self.emp_means, bonuses)]
+        return
+
+    def select_next_arm(self):
+        if sum(self.counts) < len(self.counts):  # run a first pass through all arms
+            for arm in range(len(self.counts)):
+                if self.counts[arm] == 0:
+                    return arm
+        else:  # now select arm based on ucb value
+            return np.argmax(self.ucbs)
+
+    def update(self, chosen_arm, reward):
+        # update counts
+        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
+        n = self.counts[chosen_arm]
+        # update emp. means
+        old_mean = self.emp_means[chosen_arm]
+        new_mean = ((n - 1) / float(n)) * old_mean + (1 / float(n)) * reward
+        self.emp_means[chosen_arm] = new_mean
+        # update M2 values (n*variance)
+        self.M2[chosen_arm] = self.M2[chosen_arm] + (reward - old_mean) * (reward - new_mean)
+        # update UCB value
+        self._update_ucbs()
+        return
+
 
 if __name__ == '__main__':
     a = EpsilonGreedy(epsilon=0, counts=[], emp_means=[])

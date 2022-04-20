@@ -122,6 +122,24 @@ def _test_ucb1():
     return
 
 
+def _test_ucb1_tuned():
+
+    means = [0.1, 0.2, 0.3, 0.4, 0.5]
+    n_arms = len(means)
+    arms = list(map(lambda x: BernoulliArm(x), means))
+
+    print("Best arm is " + str(np.argmax(means)))
+
+    algo = UCB1Tuned([], [], [], [])
+    algo.reset(n_arms)
+    results = test_algorithm(algo, arms, 1, 200)
+    filename = 'ucb1_tuned_test.csv'
+    fp = './logs/ucb1/' + filename
+    results.to_csv(fp)
+
+    return
+
+
 if __name__ == '__main__':
 
-    _test_ucb1()
+    _test_ucb1_tuned()
