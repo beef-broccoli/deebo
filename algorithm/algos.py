@@ -284,7 +284,7 @@ class UCB1:
         return
 
 
-class UCB1Tuned:  #TODO: seems like V value are a lot bigger than 1/4
+class UCB1Tuned:  # seems like V value are a lot bigger than 1/4, but should be normal behavior with small t
 
     def __init__(self, counts, emp_means, M2, ucbs):
         self.counts = counts
