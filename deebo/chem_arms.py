@@ -48,11 +48,22 @@ class ChemArm:
         self.data = self.data_copy.copy()
 
 
+class ChemArmBinary(ChemArm):
+
+    def __init__(self, val, name, url, cutoff):
+        super().__init__(val, name, url)
+        self.cutoff = cutoff
+        self.data_binary = [int(d > cutoff) for d in self.data]
+
+
+
+
 if __name__ == '__main__':
 
     val = ('Cy-BippyPhos')
     name = ('ligand_name')
     url = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv'
 
-    a1 = ChemArm(val, name, url)
-    print(sum(a1.data)/len(a1.data))
+    c = ChemArmBinary(val, name, url, 0.2)
+    print(c.data)
+    print(c.data_binary)

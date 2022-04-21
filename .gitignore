@@ -152,3 +152,4 @@ cython_debug/
 /algorithm/logs/
 !/algorithm/logs/
 /algorithm/logs/
+/algorithm/ideas.txt
