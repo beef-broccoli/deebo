@@ -33,7 +33,7 @@ def chem_test_algorithm(algo, arms, num_sims, horizon):
     return df
 
 
-def chem_test_1():
+def _chem_test_1():
 
     # build chem arms
     dataset_url = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-conditions.csv'
@@ -117,7 +117,7 @@ def chem_test_1():
     return
 
 
-def chem_test_1_analyze():
+def _chem_test_1_analyze():
 
     exp_list = ['random',
                 'softmax_0.1',
@@ -134,6 +134,12 @@ def chem_test_1_analyze():
     return
 
 
+def _test_binary():
+    pass
+
+
+
+
 if __name__ == '__main__':
-    #chem_test_1()
-    chem_test_1_analyze()
+    #_chem_test_1()
+    _chem_test_1_analyze()
