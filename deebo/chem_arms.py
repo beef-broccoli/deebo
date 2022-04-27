@@ -3,10 +3,9 @@ import random
 
 # note : after selecting data, it discards all other info and only keeps yield right now. May need to keep track of other info
 
-# arm one: C-H arylation with substrate scope and lignad
 
-
-class ChemArm:
+# ChemArmSim: chem arms for simulation. Data is fetched from github url and processed based on user selection
+class ChemArmSim:
 
     def __init__(self, val, name, url):
         self.val = val  # e.g. ('CC#N', 'CCC')
@@ -48,7 +47,8 @@ class ChemArm:
         self.data = self.data_copy.copy()
 
 
-class ChemArmBinary(ChemArm):
+# binary version of ChemArmSim. Yield is converted based on cutoff
+class ChemArmSimBinary(ChemArmSim):
 
     def __init__(self, val, name, url, cutoff):
         super().__init__(val, name, url)
@@ -56,14 +56,28 @@ class ChemArmBinary(ChemArm):
         self.data_binary = [int(d > cutoff) for d in self.data]
 
 
+# most simple and flexible case of ChemArm
+class ChemArmSimple:
+
+    def __init__(self, name):
+        self.name = name
+
+
+def _init_chemarmsim():
+
+    # val = ('Cy-BippyPhos')
+    # name = ('ligand_name')
+    # url = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv'
+    # c = ChemArmSimBinary(val, name, url, 0.2)
+
+    import itertools
+    dataset_url = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-conditions.csv'
+    names = ('base_smiles', 'solvent_smiles')  # same names with column name in df
+    base = ['O=C([O-])C.[K+]', 'O=C([O-])C(C)(C)C.[K+]']
+    solvent = ['CC(N(C)C)=O', 'CCCC#N']
+    vals = list(itertools.product(base, solvent))  # sequence has to match what's in "names"
+    arms = list(map(lambda x: ChemArmSim(x, names, dataset_url), vals))
 
 
 if __name__ == '__main__':
-
-    val = ('Cy-BippyPhos')
-    name = ('ligand_name')
-    url = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv'
-
-    c = ChemArmBinary(val, name, url, 0.2)
-    print(c.data)
-    print(c.data_binary)
+    pass

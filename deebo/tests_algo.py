@@ -140,6 +140,22 @@ def _test_ucb1_tuned():
     return
 
 
+def _test_ETC():
+
+    means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    n_arms = len(means)
+    arms = list(map(lambda x: BernoulliArm(x), means))
+
+    print("Best arm is " + str(np.argmax(means)))
+
+    algo = ETC([], [], 5)
+    algo.reset(n_arms)
+    results = test_algorithm(algo, arms, 1, 100)
+    filename = 'etc_test.csv'
+    fp = './logs/ETC/' + filename
+    results.to_csv(fp)
+
+
 if __name__ == '__main__':
 
-    _test_ucb1_tuned()
+    _test_ETC()

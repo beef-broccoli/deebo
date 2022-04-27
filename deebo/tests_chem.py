@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from algos import Random, EpsilonGreedy, AnnealingEpsilonGreedy, Boltzmann, AnnealingBoltzmann
 from analyze import plot_average_reward, plot_cumulative_reward, plot_probs_choosing_best_arm, calculate_baseline
-from chem_arms import ChemArm
+from chem_arms import ChemArmSim
 
 
 def chem_test_algorithm(algo, arms, num_sims, horizon):
@@ -41,7 +41,7 @@ def _chem_test_1():
     base = ['O=C([O-])C.[K+]', 'O=C([O-])C(C)(C)C.[K+]']
     solvent = ['CC(N(C)C)=O', 'CCCC#N']
     vals = list(itertools.product(base, solvent))  # sequence has to match what's in "names"
-    arms = list(map(lambda x: ChemArm(x, names, dataset_url), vals))
+    arms = list(map(lambda x: ChemArmSim(x, names, dataset_url), vals))
 
     # since we have data, can figure out which is best arm, and calculate average for all arms
     best_avg = 0

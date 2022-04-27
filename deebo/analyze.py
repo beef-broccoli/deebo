@@ -5,15 +5,15 @@ import matplotlib.pyplot as plt
 
 def calculate_baseline(chemarms: list):
     # TODO: take chem arms, calculate a baseline for probability in a traditional reaction optimziation way
-    from chem_arms import ChemArm
+    from chem_arms import ChemArmSim
 
     # type check; check chem arms are from same dataset
     url = chemarms[0].data_url
     name = chemarms[0].name
     for arm in chemarms:
-        assert isinstance(arm, ChemArm), "required argument: a list of ChemArm objects"
-        assert arm.name == name, "ChemArm objects should describe same reaction components"
-        assert arm.data_url == url, "ChemArm objects should come from the same dataset"
+        assert isinstance(arm, ChemArmSim), "required argument: a list of ChemArm objects"
+        assert arm.name == name, "ChemArmSim objects should describe same reaction components"
+        assert arm.data_url == url, "ChemArmSim objects should come from the same dataset"
 
     df = pd.read_csv(url)
 
@@ -164,7 +164,7 @@ def _test_plot():
 
 def _test_cal_baseline():
 
-    from chem_arms import ChemArm
+    from chem_arms import ChemArmSim
     import itertools
 
     # build chem arms
@@ -173,7 +173,7 @@ def _test_cal_baseline():
     base = ['O=C([O-])C.[K+]', 'O=C([O-])C(C)(C)C.[K+]']
     solvent = ['CC(N(C)C)=O', 'CCCC#N']
     vals = list(itertools.product(base, solvent))  # sequence has to match what's in "names"
-    arms = list(map(lambda x: ChemArm(x, names, dataset_url), vals))
+    arms = list(map(lambda x: ChemArmSim(x, names, dataset_url), vals))
 
     # test basline
     calculate_baseline(arms)

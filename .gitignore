@@ -148,5 +148,6 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-/algorithm/logs/
+/deebo/logs/
 /deebo/ideas.txt
+/log.txt
