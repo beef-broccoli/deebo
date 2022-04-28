@@ -13,6 +13,7 @@ ax_tutorials/
 .DS_Store
 /__pycache__/
 /logs/
+/deebo-legacy/
 
 # C extensions
 *.so
