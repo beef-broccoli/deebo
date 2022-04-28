@@ -7,6 +7,7 @@ import pandas as pd
 from tqdm import tqdm
 import itertools
 
+
 def test_algorithm(algo, arms, num_sims, horizon):
 
     cols = ['num_sims', 'horizon', 'chosen_arm', 'reward', 'cumulative_reward']
@@ -30,7 +31,7 @@ def test_algorithm(algo, arms, num_sims, horizon):
 
 
 def _test_epsilon_greedy():
-    means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    means = [0.1, 0.1, 0.1, 0.1, 0.2]
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
@@ -42,7 +43,7 @@ def _test_epsilon_greedy():
         algo.reset(n_arms)
         results = test_algorithm(algo, arms, 1000, 250)
         filename = 'epsilon_' + str(eps) + '.csv'
-        fp = './logs/epsilon_greedy_test_small_diff/' + filename
+        fp = './logs/scenario2/eps_greedy/' + filename
         results.to_csv(fp)
 
     # test for epsilon greedy with annealing
@@ -50,8 +51,8 @@ def _test_epsilon_greedy():
     algo.reset(n_arms)
     results = test_algorithm(algo, arms, 1000, 250)
 
-    filename = 'annealing_epsilon_greedy.csv'
-    fp = './logs/epsilon_greedy_test_small_diff/' + filename
+    filename = 'annealing.csv'
+    fp = './logs/scenario2/eps_greedy/' + filename
     results.to_csv(fp)
 
     return
@@ -59,20 +60,20 @@ def _test_epsilon_greedy():
 
 def _test_softmax():
 
-    means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    means = [0.1, 0.1, 0.1, 0.1, 0.2]
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
     print("Best arm is " + str(np.argmax(means)))
 
     # test for Boltzmann
-    for tau in [0.05]:
+    for tau in tqdm([0.025, 0.01]):
         algo = Boltzmann(tau, [], [])
         algo.reset(n_arms)
         results = test_algorithm(algo, arms, 1000, 250)
 
         filename = 'tau_' + str(tau) + '.csv'
-        fp = './logs/Boltzmann_test/' + filename
+        fp = './logs/scenario2/softmax/' + filename
         results.to_csv(fp)
 
     # # test for Boltzmann with annealing
@@ -80,8 +81,8 @@ def _test_softmax():
     # algo.reset(n_arms)
     # results = test_algorithm(algo, arms, 1000, 250)
     #
-    # filename = 'annealing_boltzmann_test.csv'
-    # fp = './logs/Boltzmann_test/' + filename
+    # filename = 'annealing.csv'
+    # fp = './logs/scenario2/softmax/' + filename
     # results.to_csv(fp)
 
     return
@@ -89,20 +90,20 @@ def _test_softmax():
 
 def _test_pursuit():
 
-    means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    means = [0.1, 0.1, 0.1, 0.1, 0.2]
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
     print("Best arm is " + str(np.argmax(means)))
 
-    lrs = [0.05, 0.005]
+    lrs = [0.025]
 
-    for l in lrs:
+    for l in tqdm(lrs):
         algo = Pursuit(l, [], [], [])
         algo.reset(n_arms)
         results = test_algorithm(algo, arms, 1000, 250)
-        filename = 'pursuit_lr_' + str(l) + '.csv'
-        fp = './logs/Pursuit/' + filename
+        filename = 'lr_' + str(l) + '.csv'
+        fp = './logs/scenario2/pursuit/' + filename
         results.to_csv(fp)
 
     return
@@ -110,21 +111,21 @@ def _test_pursuit():
 
 def _test_reinforcement_comparison():
 
-    means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    means = [0.1, 0.1, 0.1, 0.1, 0.2]
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
     print("Best arm is " + str(np.argmax(means)))
 
-    alphas = [0.01, 0.025, 0.05]
-    betas = [0.2, 0.3, 0.4]
+    alphas = [0.05, 0.1, 0.2]
+    betas = [0.05, 0.1, 0.2]
 
     for a, b in tqdm(itertools.product(alphas, betas)):
             algo = ReinforcementComparison(a, b, [], [], [], [], [])
             algo.reset(n_arms)
             results = test_algorithm(algo, arms, 1000, 250)
             filename = 'rc_alpha_' + str(a) + '_beta_'+ str(b) + '.csv'
-            fp = './logs/reinforcement_comparison/' + filename
+            fp = './logs/scenario2/rc/' + filename
             results.to_csv(fp)
 
     return
@@ -132,7 +133,7 @@ def _test_reinforcement_comparison():
 
 def _test_ucb1():
 
-    means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    means = [0.1, 0.1, 0.1, 0.1, 0.2]
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
@@ -141,8 +142,8 @@ def _test_ucb1():
     algo = UCB1([], [], [])
     algo.reset(n_arms)
     results = test_algorithm(algo, arms, 1000, 250)
-    filename = 'ucb1_test.csv'
-    fp = './logs/ucb1/' + filename
+    filename = 'ucb1.csv'
+    fp = './logs/scenario2/optim/' + filename
     results.to_csv(fp)
 
     return
@@ -150,7 +151,7 @@ def _test_ucb1():
 
 def _test_ucb1_tuned():
 
-    means = [0.1, 0.2, 0.3, 0.4, 0.5]
+    means = [0.1, 0.1, 0.1, 0.1, 0.2]
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
@@ -159,8 +160,8 @@ def _test_ucb1_tuned():
     algo = UCB1Tuned([], [], [], [])
     algo.reset(n_arms)
     results = test_algorithm(algo, arms, 1000, 250)
-    filename = 'ucb1_tuned_test.csv'
-    fp = './logs/ucb1/' + filename
+    filename = 'ucb1_tuned.csv'
+    fp = './logs/scenario2/optim/' + filename
     results.to_csv(fp)
 
     return
@@ -186,7 +187,7 @@ def _test_etc():
 
 
 def _test_ts_beta():
-    means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    means = [0.1, 0.1, 0.1, 0.1, 0.2]
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
@@ -195,11 +196,12 @@ def _test_ts_beta():
     algo = ThompsonSampling([], [], [], [])
     algo.reset(n_arms)
     results = test_algorithm(algo, arms, 1000, 250)
-    filename = 'TS_test.csv'
-    fp = './logs/TS/' + filename
+    filename = 'TS.csv'
+    fp = './logs/scenario2/optim/' + filename
     results.to_csv(fp)
 
 
 if __name__ == '__main__':
-
+    _test_ucb1()
     _test_ucb1_tuned()
+    _test_ts_beta()

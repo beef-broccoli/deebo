@@ -199,24 +199,39 @@ def _plot_boltzmann():
 
 if __name__ == '__main__':
     plt.rcParams['savefig.dpi'] = 300
+    import itertools
 
-    names = ['ucb1', 'ucb1_tuned', 'TS']
-    fn_list = ['epsilon_greedy_test/annealing_epsilon_greedy.csv',
-               'epsilon_greedy_test/epsilon_0.1.csv',
-               'Boltzmann_test/tau_0.1.csv',
-               'Boltzmann_test/tau_0.2.csv',
-               'Pursuit/pursuit_lr_0.05.csv',
-               'reinforcement_comparison/rc_alpha_0.05_beta_0.4.csv',
-               'TS/TS_test.csv',
-               ]
-    legend_list = ['eps-greedy (annealing)',
-                   'eps-greedy (0.1)',
-                   'softmax (0.1)',
-                   'softmax (0.2)',
-                   'pursuit (0.05)',
-                   'RC (0.05, 0.4)',
-                   'TS (beta prior)',
-                   ]
+    # # names = ['ucb1', 'ucb1_tuned', 'TS']
+    # fn_list = [
+    #     'ucb1/TS_test.csv',
+    #     'ucb1/ucb1_tuned_test.csv',
+    #     'eps_greedy/annealing_epsilon_greedy.csv',
+    #     'eps_greedy/epsilon_0.1.csv',
+    #     'softmax/tau_0.1.csv',
+    #     'softmax/tau_0.2.csv',
+    #     'pursuit/pursuit_lr_0.05.csv',
+    #     'reinforcement_comparison/rc_alpha_0.05_beta_0.4.csv',
+    # ]
+    # legend_list = [
+    #     'TS (beta prior)',
+    #     'UCB1-Tuned',
+    #     'eps-greedy (annealing)',
+    #     'eps-greedy (0.1)',
+    #     'softmax (0.1)',
+    #     'softmax (0.2)',
+    #     'pursuit (0.05)',
+    #     'RC (0.05, 0.4)',
+    # ]
+    #
+    # plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/scenario1/',
+    #                              title='Comparison of accuracy for different algorithms', legend_title='algorithms', long_legend=True)
 
-    plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/',
-                                 title='Comparison of accuracy for different algorithms', legend_title='algorithm', long_legend=True)
+
+    fn_list = ['ucb1.csv',
+               'ucb1_tuned.csv',
+               'TS.csv']
+    #fn_list.append('annealing.csv')
+    legend_list = ['UCB1', 'UCB1-Tuned', 'TS (beta prior)']
+    #legend_list.append('annealing')
+    plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/scenario2/optim/',
+                                 title='Accuracy of optimism algorithms', legend_title='algorithm', long_legend=False)
