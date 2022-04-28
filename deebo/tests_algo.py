@@ -1,17 +1,18 @@
 from arms import BernoulliArm
-from algos import *
+from algos_stochastic import *
 
 import random
 import numpy as np
 import pandas as pd
-
+from tqdm import tqdm
+import itertools
 
 def test_algorithm(algo, arms, num_sims, horizon):
 
     cols = ['num_sims', 'horizon', 'chosen_arm', 'reward', 'cumulative_reward']
     ar = np.zeros((num_sims*horizon, len(cols)))
 
-    for sim in range(num_sims):
+    for sim in tqdm(range(num_sims), leave=False):
 
         algo.reset(len(arms))
         cumulative_reward = 0
@@ -65,7 +66,7 @@ def _test_softmax():
     print("Best arm is " + str(np.argmax(means)))
 
     # test for Boltzmann
-    for tau in [0.6, 0.7, 0.8, 0.9, 1.0]:
+    for tau in [0.05]:
         algo = Boltzmann(tau, [], [])
         algo.reset(n_arms)
         results = test_algorithm(algo, arms, 1000, 250)
@@ -74,32 +75,57 @@ def _test_softmax():
         fp = './logs/Boltzmann_test/' + filename
         results.to_csv(fp)
 
-    # test for Boltzmann with annealing
-    algo = AnnealingBoltzmann([], [])
-    algo.reset(n_arms)
-    results = test_algorithm(algo, arms, 1000, 250)
-
-    filename = 'annealing_boltzmann_test.csv'
-    fp = './logs/Boltzmann_test/' + filename
-    results.to_csv(fp)
+    # # test for Boltzmann with annealing
+    # algo = AnnealingBoltzmann([], [])
+    # algo.reset(n_arms)
+    # results = test_algorithm(algo, arms, 1000, 250)
+    #
+    # filename = 'annealing_boltzmann_test.csv'
+    # fp = './logs/Boltzmann_test/' + filename
+    # results.to_csv(fp)
 
     return
 
 
 def _test_pursuit():
 
-    # algo = Pursuit(0.05, [], [], [])
-    # algo.reset(n_arms)
-    # results = test_algorithm(algo, arms, 1, 500)
+    means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    n_arms = len(means)
+    arms = list(map(lambda x: BernoulliArm(x), means))
+
+    print("Best arm is " + str(np.argmax(means)))
+
+    lrs = [0.05, 0.005]
+
+    for l in lrs:
+        algo = Pursuit(l, [], [], [])
+        algo.reset(n_arms)
+        results = test_algorithm(algo, arms, 1000, 250)
+        filename = 'pursuit_lr_' + str(l) + '.csv'
+        fp = './logs/Pursuit/' + filename
+        results.to_csv(fp)
 
     return
 
 
 def _test_reinforcement_comparison():
 
-    # algo = ReinforcementComparison(0.5, 0.5, [], [], [], [], [])
-    # algo.reset(n_arms)
-    # results = test_algorithm(algo, arms, 1, 50)
+    means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    n_arms = len(means)
+    arms = list(map(lambda x: BernoulliArm(x), means))
+
+    print("Best arm is " + str(np.argmax(means)))
+
+    alphas = [0.01, 0.025, 0.05]
+    betas = [0.2, 0.3, 0.4]
+
+    for a, b in tqdm(itertools.product(alphas, betas)):
+            algo = ReinforcementComparison(a, b, [], [], [], [], [])
+            algo.reset(n_arms)
+            results = test_algorithm(algo, arms, 1000, 250)
+            filename = 'rc_alpha_' + str(a) + '_beta_'+ str(b) + '.csv'
+            fp = './logs/reinforcement_comparison/' + filename
+            results.to_csv(fp)
 
     return
 
@@ -132,7 +158,7 @@ def _test_ucb1_tuned():
 
     algo = UCB1Tuned([], [], [], [])
     algo.reset(n_arms)
-    results = test_algorithm(algo, arms, 1, 200)
+    results = test_algorithm(algo, arms, 1000, 250)
     filename = 'ucb1_tuned_test.csv'
     fp = './logs/ucb1/' + filename
     results.to_csv(fp)
@@ -140,7 +166,7 @@ def _test_ucb1_tuned():
     return
 
 
-def _test_ETC():
+def _test_etc():
 
     means = [0.1, 0.2, 0.3, 0.4, 0.9]
     n_arms = len(means)
@@ -148,14 +174,32 @@ def _test_ETC():
 
     print("Best arm is " + str(np.argmax(means)))
 
-    algo = ETC([], [], 5)
+    exp_len = [1,5,10,25,40]
+
+    for e in exp_len:
+        algo = ETC([], [], e)
+        algo.reset(n_arms)
+        results = test_algorithm(algo, arms, 1000, 250)
+        filename = 'etc_' + str(e) + '.csv'
+        fp = './logs/ETC/' + filename
+        results.to_csv(fp)
+
+
+def _test_ts_beta():
+    means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    n_arms = len(means)
+    arms = list(map(lambda x: BernoulliArm(x), means))
+
+    print("Best arm is " + str(np.argmax(means)))
+
+    algo = ThompsonSampling([], [], [], [])
     algo.reset(n_arms)
-    results = test_algorithm(algo, arms, 1, 100)
-    filename = 'etc_test.csv'
-    fp = './logs/ETC/' + filename
+    results = test_algorithm(algo, arms, 1000, 250)
+    filename = 'TS_test.csv'
+    fp = './logs/TS/' + filename
     results.to_csv(fp)
 
 
 if __name__ == '__main__':
 
-    _test_ETC()
+    _test_ucb1_tuned()

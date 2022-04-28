@@ -56,13 +56,6 @@ class ChemArmSimBinary(ChemArmSim):
         self.data_binary = [int(d > cutoff) for d in self.data]
 
 
-# most simple and flexible case of ChemArm
-class ChemArmSimple:
-
-    def __init__(self, name):
-        self.name = name
-
-
 def _init_chemarmsim():
 
     # val = ('Cy-BippyPhos')

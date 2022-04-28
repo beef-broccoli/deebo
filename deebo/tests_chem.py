@@ -3,9 +3,9 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 
-from algos import Random, EpsilonGreedy, AnnealingEpsilonGreedy, Boltzmann, AnnealingBoltzmann
+from algos_stochastic import Random, EpsilonGreedy, AnnealingEpsilonGreedy, Boltzmann, AnnealingBoltzmann
 from analyze import plot_average_reward, plot_cumulative_reward, plot_probs_choosing_best_arm, calculate_baseline
-from chem_arms import ChemArmSim
+from arms_chem import ChemArmSim
 
 
 def chem_test_algorithm(algo, arms, num_sims, horizon):

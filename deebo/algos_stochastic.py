@@ -3,6 +3,7 @@
 """
 implemented algorithms for bandit optimization
 
+- ETC: explore-then-commit
 - Random: random selection of arms
 - EpsilonGreedy: epsilon greedy algorithm
 - AnnealingEpsilonGreedy: epsilon greedy with annealing (decaying epsilon)
@@ -10,6 +11,8 @@ implemented algorithms for bandit optimization
 - AnnealingBoltzmann: softmax with annealing (decaying tau)
 - Pursuit
 - ReinforcementComparison
+
+Could write a parent class to incorporate common methods, but this flatter version is probably easier to understand
 """
 
 import random
@@ -29,6 +32,7 @@ class ETC:  # explore then commit
     def reset(self, n_arms):
         self.counts = [0 for col in range(n_arms)]
         self.emp_means = [0.0 for col in range(n_arms)]
+        self.best_arm = -1
         return
 
     def select_next_arm(self):
@@ -264,7 +268,6 @@ class ReinforcementComparison:  # need more test, doesn't seem to work
 
         # update preference
         self.preferences[chosen_arm] = self.preferences[chosen_arm] + self.beta * (reward - self.exp_rewards[chosen_arm])
-        print(self.preferences)
 
         # update expected reward
         self.exp_rewards[chosen_arm] = (1-self.alpha) * self.exp_rewards[chosen_arm] + self.alpha * reward
@@ -360,6 +363,41 @@ class UCB1Tuned:  # seems like V value are a lot bigger than 1/4, but should be 
         # update UCB value
         self._update_ucbs()
         return
+
+
+class ThompsonSampling:  # TS for bernoulli arms, beta distribution as conjugate priors
+
+    def __init__(self, counts, emp_means, alphas, betas):
+        self.counts = counts
+        self.emp_means = emp_means
+        self.alphas = alphas
+        self.betas = betas
+        return
+
+    def reset(self, n_arms):
+        self.counts = [0 for col in range(n_arms)]
+        self.emp_means = [0.0 for col in range(n_arms)]
+        self.alphas = [1.0 for col in range(n_arms)]
+        self.betas = [1.0 for col in range(n_arms)]
+        return
+
+    def select_next_arm(self):
+        rng = np.random.default_rng()
+        probs = rng.beta(self.alphas, self.betas)
+        return np.argmax(probs)
+
+    def update(self, chosen_arm, reward):
+        # update emp means
+        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
+        n = self.counts[chosen_arm]
+        value = self.emp_means[chosen_arm]
+        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
+        self.emp_means[chosen_arm] = new_value
+        # update for beta distribution
+        self.alphas[chosen_arm] = self.alphas[chosen_arm] + reward
+        self.betas[chosen_arm] = self.betas[chosen_arm] + (1-reward)
+        return
+
 
 
 if __name__ == '__main__':

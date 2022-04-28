@@ -1,7 +1,7 @@
 import random
 
 
-class BernoulliArm():
+class BernoulliArm:
     def __init__(self, p):
         self.p = p
 

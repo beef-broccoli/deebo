@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 def calculate_baseline(chemarms: list):
     # TODO: take chem arms, calculate a baseline for probability in a traditional reaction optimziation way
-    from chem_arms import ChemArmSim
+    from arms_chem import ChemArmSim
 
     # type check; check chem arms are from same dataset
     url = chemarms[0].data_url
@@ -28,7 +28,8 @@ def plot_probs_choosing_best_arm(fn_list,
                                  best_arm_index=0,
                                  fp='',
                                  title='',
-                                 legend_title=''):
+                                 legend_title='',
+                                 long_legend=False):
 
     assert len(fn_list) == len(legend_list)
 
@@ -60,7 +61,11 @@ def plot_probs_choosing_best_arm(fn_list,
     ax.set_ylabel('probability of finding best arm')
     ax.set_title(title)
     ax.grid(visible=True, which='both', alpha=0.5)
-    ax.legend(title=legend_title)
+    if long_legend:
+        ax.legend(title=legend_title, bbox_to_anchor=(1.02, 1), loc="upper left")
+        plt.tight_layout()
+    else:
+        ax.legend(title=legend_title)
 
     plt.show()
 
@@ -164,7 +169,7 @@ def _test_plot():
 
 def _test_cal_baseline():
 
-    from chem_arms import ChemArmSim
+    from arms_chem import ChemArmSim
     import itertools
 
     # build chem arms
@@ -179,11 +184,39 @@ def _test_cal_baseline():
     calculate_baseline(arms)
 
 
-if __name__ == '__main__':
+def _plot_boltzmann():
     # example on using plot function
     plt.rcParams['savefig.dpi'] = 300
 
-    fn_list = ['ucb1_test.csv', 'ucb1_tuned_test.csv']
-    legend_list = ['ucb1', 'ucb1 tuned']
+    taus = [0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
+    fn_list = ['tau_' + str(t) + '.csv' for t in taus]
+    fn_list.append('annealing_boltzmann_test.csv')
+    legend_list = [str(t) for t in taus]
+    legend_list.append('annealing')
 
-    plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/ucb1/', title='ucb1', legend_title='algos')
+    plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/Boltzmann_test/', title='accuracy of softmax', legend_title='tau')
+
+
+if __name__ == '__main__':
+    plt.rcParams['savefig.dpi'] = 300
+
+    names = ['ucb1', 'ucb1_tuned', 'TS']
+    fn_list = ['epsilon_greedy_test/annealing_epsilon_greedy.csv',
+               'epsilon_greedy_test/epsilon_0.1.csv',
+               'Boltzmann_test/tau_0.1.csv',
+               'Boltzmann_test/tau_0.2.csv',
+               'Pursuit/pursuit_lr_0.05.csv',
+               'reinforcement_comparison/rc_alpha_0.05_beta_0.4.csv',
+               'TS/TS_test.csv',
+               ]
+    legend_list = ['eps-greedy (annealing)',
+                   'eps-greedy (0.1)',
+                   'softmax (0.1)',
+                   'softmax (0.2)',
+                   'pursuit (0.05)',
+                   'RC (0.05, 0.4)',
+                   'TS (beta prior)',
+                   ]
+
+    plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/',
+                                 title='Comparison of accuracy for different algorithms', legend_title='algorithm', long_legend=True)
