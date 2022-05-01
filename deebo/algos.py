@@ -365,6 +365,62 @@ class UCB1Tuned:  # seems like V value are a lot bigger than 1/4, but should be 
         return
 
 
+class UCBV:
+
+    def __init__(self, counts, emp_means, sum_reward_squared, ucbs, vars, amplitude=1.0):
+        self.counts = counts
+        self.emp_means = emp_means
+        self.sum_reward_squared = sum_reward_squared  # sum of reward^2, used to calculate variance
+        self.vars = vars
+        self.ucbs = ucbs
+        self.amplitude = amplitude
+        return
+
+    def reset(self, n_arms, amplitude=1.0):
+        self.counts = [0 for col in range(n_arms)]
+        self.emp_means = [0.0 for col in range(n_arms)]
+        self.sum_reward_squared = [0.0 for col in range(n_arms)]
+        self.vars = [0.0 for col in range(n_arms)]
+        self.ucbs = [-1.0 for col in range(n_arms)]
+        self.amplitude = amplitude
+        return
+
+    def _update_ucbs(self):
+        def exploration(t):
+            return 1.2*math.log(t)  # exploration function proposed in the paper
+        t = sum(self.counts) + 1
+        b1s = [math.sqrt(2 * exploration(t) * self.vars[arm] / float(self.counts[arm] + 1e-7)) for arm in range(len(self.counts))]
+        b2s = [3 * self.amplitude * exploration(t) / float(self.counts[arm] + 1e-7) for arm in range(len(self.counts))]
+        print(b2s)
+        self.ucbs = [e + b1 + b2 for e, b1, b2 in zip(self.emp_means, b1s, b2s)]
+        return
+
+    def select_next_arm(self):
+        if sum(self.counts) < len(self.counts):  # run a first pass through all arms
+            for arm in range(len(self.counts)):
+                if self.counts[arm] == 0:
+                    return arm
+        else:  # now select arm based on ucb value
+            return np.argmax(self.ucbs)
+
+    def update(self, chosen_arm, reward):
+        # update counts
+        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
+        n = self.counts[chosen_arm]
+        # update emp. means
+        old_mean = self.emp_means[chosen_arm]
+        new_mean = ((n - 1) / float(n)) * old_mean + (1 / float(n)) * reward
+        self.emp_means[chosen_arm] = new_mean
+        # update sum of reward^2
+        self.sum_reward_squared[chosen_arm] += reward * reward
+        # update vars
+        self.vars = [self.sum_reward_squared[arm] / float(self.counts[arm] + 1e-7) - pow(self.emp_means[arm], 2) for arm in range(len(self.counts))]
+        self.vars = [0 if v < 0 else v for v in self.vars]
+        # update ucbs
+        self._update_ucbs()
+        return
+
+
 class ThompsonSampling:  # TS for bernoulli arms, beta distribution as conjugate priors
 
     def __init__(self, counts, emp_means, alphas, betas):
@@ -399,7 +455,5 @@ class ThompsonSampling:  # TS for bernoulli arms, beta distribution as conjugate
         return
 
 
-
 if __name__ == '__main__':
-    a = EpsilonGreedy(epsilon=0, counts=[], emp_means=[])
-    a.reset(5)
+    pass

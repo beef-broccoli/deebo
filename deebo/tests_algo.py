@@ -1,5 +1,5 @@
 from arms import BernoulliArm
-from algos_stochastic import *
+from algos import *
 
 import random
 import numpy as np
@@ -201,7 +201,20 @@ def _test_ts_beta():
     results.to_csv(fp)
 
 
+def _test_ucbv():
+    means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    n_arms = len(means)
+    arms = list(map(lambda x: BernoulliArm(x), means))
+
+    print("Best arm is " + str(np.argmax(means)))
+
+    algo = UCBV([], [], [], [], [])
+    algo.reset(n_arms)
+    results = test_algorithm(algo, arms, 1, 250)
+    filename = 'ucbv.csv'
+    fp = './logs/scenario1/optim/' + filename
+    #results.to_csv(fp)
+
+
 if __name__ == '__main__':
-    _test_ucb1()
-    _test_ucb1_tuned()
-    _test_ts_beta()
+    _test_ucbv()

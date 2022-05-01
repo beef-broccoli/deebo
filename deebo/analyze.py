@@ -229,9 +229,10 @@ if __name__ == '__main__':
 
     fn_list = ['ucb1.csv',
                'ucb1_tuned.csv',
+               'ucbv.csv',
                'TS.csv']
     #fn_list.append('annealing.csv')
-    legend_list = ['UCB1', 'UCB1-Tuned', 'TS (beta prior)']
+    legend_list = ['UCB1', 'UCB1-Tuned', 'UCBV', 'TS (beta prior)']
     #legend_list.append('annealing')
-    plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/scenario2/optim/',
+    plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/scenario1/optim/',
                                  title='Accuracy of optimism algorithms', legend_title='algorithm', long_legend=False)
