@@ -226,13 +226,10 @@ if __name__ == '__main__':
     # plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/scenario1/',
     #                              title='Comparison of accuracy for different algorithms', legend_title='algorithms', long_legend=True)
 
-
-    fn_list = ['ucb1.csv',
-               'ucb1_tuned.csv',
-               'ucbv.csv',
-               'TS.csv']
+    alphas = [0.1, 0.2, 0.3, 0.4, 0.5]
+    fn_list = ['ucb2_'+str(a)+'.csv' for a in alphas]
     #fn_list.append('annealing.csv')
-    legend_list = ['UCB1', 'UCB1-Tuned', 'UCBV', 'TS (beta prior)']
+    legend_list = alphas
     #legend_list.append('annealing')
-    plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/scenario1/optim/',
-                                 title='Accuracy of optimism algorithms', legend_title='algorithm', long_legend=False)
+    plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/scenario3/optim/',
+                                 title='Accuracy of UCB2 algorithm', legend_title='alpha', long_legend=False)

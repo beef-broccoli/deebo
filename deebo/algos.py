@@ -296,7 +296,7 @@ class UCB1:
         self.ucbs = [0.0 for col in range(n_arms)]
         return
 
-    def _update_ucbs(self):
+    def __update_ucbs(self):
         bonuses = [math.sqrt((2 * math.log(sum(self.counts) + 1)) / float(self.counts[arm] + 1e-7)) for arm in range(len(self.counts))]
         self.ucbs = [e + b for e, b in zip(self.emp_means, bonuses)]
         return
@@ -315,7 +315,7 @@ class UCB1:
         value = self.emp_means[chosen_arm]
         new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
         self.emp_means[chosen_arm] = new_value
-        self._update_ucbs()
+        self.__update_ucbs()
         return
 
 
@@ -335,7 +335,7 @@ class UCB1Tuned:  # seems like V value are a lot bigger than 1/4, but should be 
         self.ucbs = [0.0 for col in range(n_arms)]
         return
 
-    def _update_ucbs(self):
+    def __update_ucbs(self):
         Vs = [self.M2[arm] / (self.counts[arm]+1e-7) + math.sqrt(2 * math.log(sum(self.counts)+1) / float(self.counts[arm] + 1e-7)) for arm in range(len(self.counts))]
         mins = [min(1/4, v) for v in Vs]
         bonuses = [math.sqrt((math.log(sum(self.counts)+1)) / float(self.counts[arm] + 1e-7) * mins[arm]) for arm in range(len(self.counts))]
@@ -361,7 +361,7 @@ class UCB1Tuned:  # seems like V value are a lot bigger than 1/4, but should be 
         # update M2 values (n*variance)
         self.M2[chosen_arm] = self.M2[chosen_arm] + (reward - old_mean) * (reward - new_mean)
         # update UCB value
-        self._update_ucbs()
+        self.__update_ucbs()
         return
 
 
@@ -385,13 +385,12 @@ class UCBV:
         self.amplitude = amplitude
         return
 
-    def _update_ucbs(self):
+    def __update_ucbs(self):
         def exploration(t):
             return 1.2*math.log(t)  # exploration function proposed in the paper
         t = sum(self.counts) + 1
         b1s = [math.sqrt(2 * exploration(t) * self.vars[arm] / float(self.counts[arm] + 1e-7)) for arm in range(len(self.counts))]
         b2s = [3 * self.amplitude * exploration(t) / float(self.counts[arm] + 1e-7) for arm in range(len(self.counts))]
-        print(b2s)
         self.ucbs = [e + b1 + b2 for e, b1, b2 in zip(self.emp_means, b1s, b2s)]
         return
 
@@ -407,7 +406,7 @@ class UCBV:
         # update counts
         self.counts[chosen_arm] = self.counts[chosen_arm] + 1
         n = self.counts[chosen_arm]
-        # update emp. means
+        # update empirical means
         old_mean = self.emp_means[chosen_arm]
         new_mean = ((n - 1) / float(n)) * old_mean + (1 / float(n)) * reward
         self.emp_means[chosen_arm] = new_mean
@@ -417,7 +416,69 @@ class UCBV:
         self.vars = [self.sum_reward_squared[arm] / float(self.counts[arm] + 1e-7) - pow(self.emp_means[arm], 2) for arm in range(len(self.counts))]
         self.vars = [0 if v < 0 else v for v in self.vars]
         # update ucbs
-        self._update_ucbs()
+        self.__update_ucbs()
+        return
+
+
+class UCB2:
+
+    def __init__(self, counts, emp_means, ucbs, rs, alpha=0.5, current_arm=-1, play_time=0):
+        self.counts = counts
+        self.emp_means = emp_means
+        self.ucbs = ucbs  # ucb values calculated with means and counts
+        self.rs = rs  # r values as proposed in paper
+        self.alpha = alpha  # parameter alpha as proposed in paper
+        self.current_arm = current_arm  # current arm that needs to be played
+        self.play_time = play_time  # from algo: need to play best arm tau(r+1)-tau(r) times
+        return
+
+    def reset(self, n_arms):
+        self.counts = [0 for col in range(n_arms)]
+        self.emp_means = [0.0 for col in range(n_arms)]
+        self.ucbs = [0.0 for col in range(n_arms)]
+        self.rs = [0.0 for col in range(n_arms)]
+        self.current_arm = -1
+        self.play_time = 0
+        return
+
+    def __tau(self, r):
+        return math.ceil((1+self.alpha)**r)
+
+    def __bonus(self, r):
+        tau = self.__tau(r)
+        n = sum(self.counts)  # total number of plays
+        bonus = math.sqrt((1 + self.alpha) * math.log(math.e * n / tau) / (2 * tau))
+        return bonus
+
+    def __update_ucbs(self):
+        bonuses = [self.__bonus(r) for r in self.rs]
+        self.ucbs = [e + b for e, b in zip(self.emp_means, bonuses)]
+        return
+
+    def select_next_arm(self):
+        if sum(self.counts) < len(self.counts):  # run a first pass through all arms
+            for arm in range(len(self.counts)):
+                if self.counts[arm] == 0:
+                    return arm
+        elif self.play_time > 0:  # still playing the best arm determined
+            self.play_time -= 1
+            return self.current_arm
+        else:  # need to select a new arm
+            self.rs[self.current_arm] += 1  # finished playing best arm, increment r
+            self.current_arm = np.argmax(self.ucbs)  # set a new best arm
+            self.play_time = self.__tau(self.rs[self.current_arm]+1) - self.__tau(self.rs[self.current_arm]) - 1
+            return self.current_arm
+
+    def update(self, chosen_arm, reward):
+        # update counts
+        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
+        # update emp. means
+        n = self.counts[chosen_arm]
+        value = self.emp_means[chosen_arm]
+        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
+        self.emp_means[chosen_arm] = new_value
+        # update UCB value (actually not necessary at every t)
+        self.__update_ucbs()
         return
 
 
