@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from scipy import stats
 import matplotlib.pyplot as plt
 
 
@@ -29,7 +30,25 @@ def plot_probs_choosing_best_arm(fn_list,
                                  fp='',
                                  title='',
                                  legend_title='',
-                                 long_legend=False):
+                                 long_legend=False,):
+    """
+
+    Parameters
+    ----------
+    fn_list: list of data file names
+    legend_list: list of legend names
+    baseline: a horizontal baseline
+    best_arm_index: the index for best arm (needed for calculation)
+    fp: directory for where the data files are stored
+    title: title for the plot
+    legend_title: title for the legend
+    long_legend: if true, legend will be plotted outside the plot; if false mpl finds the best position within plot
+
+    Returns
+    -------
+    matplotlib.pyplot plt object
+
+    """
 
     assert len(fn_list) == len(legend_list)
 
@@ -72,9 +91,12 @@ def plot_probs_choosing_best_arm(fn_list,
 
 def plot_average_reward(fn_list,
                         legend_list,
+                        baseline=0,
+                        show_se=False,
                         fp='',
                         title='',
-                        legend_title=''):
+                        legend_title='',
+                        long_legend=False):
 
     assert len(fn_list) == len(legend_list)
 
@@ -82,6 +104,9 @@ def plot_average_reward(fn_list,
 
     plt.rcParams['savefig.dpi'] = 300
     fig, ax = plt.subplots()
+
+    if baseline != 0:
+        plt.axhline(y=baseline, xmin=0, xmax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
 
     for i in range(len(fps)):
         fp = fps[i]
@@ -96,13 +121,23 @@ def plot_average_reward(fn_list,
             all_rewards[ii, :] = list(df.loc[df['num_sims'] == ii]['reward'])
 
         avg_reward = np.average(all_rewards, axis=0)  # average across simulations. shape: (1, time_horizon)
-        ax.plot(np.arange(time_horizon), avg_reward, label=str(legend_list[i]))
+        interval = stats.sem(all_rewards, axis=0)  # standard error
+        lower_bound = avg_reward - interval
+        upper_bound = avg_reward + interval
+        xs = np.arange(time_horizon)
+        ax.plot(xs, avg_reward, label=str(legend_list[i]))
+        if show_se:  # makes me dizzy; se too small
+            ax.fill_between(xs, lower_bound, upper_bound, alpha=0.3)
 
     ax.set_xlabel('time horizon')
     ax.set_ylabel('average reward')
     ax.set_title(title)
     ax.grid(visible=True, which='both', alpha=0.5)
-    ax.legend(title=legend_title, loc='lower right')
+    if long_legend:
+        ax.legend(title=legend_title, bbox_to_anchor=(1.02, 1), loc="upper left")
+        plt.tight_layout()
+    else:
+        ax.legend(title=legend_title)
 
     plt.show()
 
@@ -226,10 +261,10 @@ if __name__ == '__main__':
     # plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/scenario1/',
     #                              title='Comparison of accuracy for different algorithms', legend_title='algorithms', long_legend=True)
 
-    alphas = [0.1, 0.2, 0.3, 0.4, 0.5]
+    alphas = [0.1, 0.5]
     fn_list = ['ucb2_'+str(a)+'.csv' for a in alphas]
     #fn_list.append('annealing.csv')
     legend_list = alphas
     #legend_list.append('annealing')
-    plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/scenario3/optim/',
+    plot_average_reward(fn_list, legend_list, fp='./logs/scenario3/optim/',
                                  title='Accuracy of UCB2 algorithm', legend_title='alpha', long_legend=False)
