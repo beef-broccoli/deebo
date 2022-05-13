@@ -516,5 +516,41 @@ class ThompsonSampling:  # TS for bernoulli arms, beta distribution as conjugate
         return
 
 
+class EXP3:
+
+    def __init__(self, gamma=0.5):
+        self.counts = []
+        self.emp_means = []
+        self.weights = []
+        self.probs = []
+        self.gamma = gamma
+        return
+
+    def reset(self, n_arms):
+        self.counts = [0 for col in range(n_arms)]
+        self.emp_means = [0.0 for col in range(n_arms)]
+        self.weights = [1.0] * int(n_arms)
+        self.probs = [1.0/int(n_arms)] * int(n_arms)
+        return
+
+    def select_next_arm(self):  # self.probs updated here
+        sum_weight = sum(self.weights)
+        self.probs = [(1-self.gamma)*weight/sum_weight + self.gamma/len(self.counts) for weight in self.weights]
+        return random.choices(np.arange(len(self.counts)), weights=self.probs, k=1)[0]
+
+    def update(self, chosen_arm, reward):
+        self.counts[chosen_arm] = self.counts[chosen_arm] + 1  # update counts
+        # update empirical means
+        n = self.counts[chosen_arm]
+        value = self.emp_means[chosen_arm]
+        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
+        self.emp_means[chosen_arm] = new_value
+        # update weights
+        xs = [0.0 for n in range(len(self.counts))]
+        xs[chosen_arm] = reward/self.probs[chosen_arm]
+        self.weights = [weight * math.exp(self.gamma * x / len(self.counts)) for weight, x in zip(self.weights, xs)]
+        return
+
+
 if __name__ == '__main__':
     pass

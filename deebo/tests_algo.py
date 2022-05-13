@@ -232,7 +232,7 @@ def _test_ucb2(scenario=1):
 
     print("Best arm is " + str(np.argmax(means)))
 
-    for a in [0.5]:
+    for a in [0.1, 0.2, 0.3, 0.4, 0.5]:
         algo = UCB2([], [], [], [], alpha=a)
         algo.reset(n_arms)
         results = test_algorithm(algo, arms, 1, 250)
@@ -241,5 +241,29 @@ def _test_ucb2(scenario=1):
         #results.to_csv(fp)
 
 
+def _test_exp3(scenario=3):
+    if scenario == 1:
+        means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    elif scenario == 2:
+        means = [0.1, 0.1, 0.1, 0.1, 0.2]
+    elif scenario == 3:
+        means = [0.1, 0.25, 0.5, 0.75, 0.9]
+    else:
+        exit(1)
+
+    n_arms = len(means)
+    arms = list(map(lambda x: BernoulliArm(x), means))
+
+    print("Best arm is " + str(np.argmax(means)))
+
+    for g in [0.1, 0.2, 0.3, 0.4, 0.5]:
+        algo = EXP3(gamma=g)
+        algo.reset(n_arms)
+        results = test_algorithm(algo, arms, 1000, 250)
+        filename = f'gamma_{g}.csv'
+        fp = f'./logs/scenario{scenario}/exp3/' + filename
+        results.to_csv(fp)
+
+
 if __name__ == '__main__':
-    _test_ucb2(3)
+    _test_exp3()
