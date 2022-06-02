@@ -167,22 +167,30 @@ def _test_ucb1_tuned():
     return
 
 
-def _test_etc():
+def _test_etc(scenario=1):
 
-    means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    if scenario == 1:
+        means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    elif scenario == 2:
+        means = [0.1, 0.1, 0.1, 0.1, 0.2]
+    elif scenario == 3:
+        means = [0.1, 0.25, 0.5, 0.75, 0.9]
+    else:
+        exit(1)
+
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
     print("Best arm is " + str(np.argmax(means)))
 
-    exp_len = [1,5,10,25,40]
+    exp_len = [2,3,4,6,7,8,9]
 
     for e in exp_len:
         algo = ETC([], [], e)
         algo.reset(n_arms)
         results = test_algorithm(algo, arms, 1000, 250)
         filename = 'etc_' + str(e) + '.csv'
-        fp = './logs/ETC/' + filename
+        fp = f'./logs/scenario{scenario}/ETC/' + filename
         results.to_csv(fp)
 
 
@@ -266,4 +274,4 @@ def _test_exp3(scenario=3):
 
 
 if __name__ == '__main__':
-    _test_exp3()
+    _test_etc()

@@ -25,7 +25,9 @@ def calculate_baseline(chemarms: list):
 
 def plot_probs_choosing_best_arm(fn_list,
                                  legend_list,
-                                 baseline=0,
+                                 manual_baseline=0,
+                                 etc_baseline=True,
+                                 etc_fp='',
                                  best_arm_index=0,
                                  fp='',
                                  title='',
@@ -57,8 +59,12 @@ def plot_probs_choosing_best_arm(fn_list,
     plt.rcParams['savefig.dpi'] = 300
     fig, ax = plt.subplots()
 
-    if baseline != 0:
-        plt.axhline(y=baseline, xmin=0, xmax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
+    if manual_baseline != 0:
+        plt.axhline(y=manual_baseline, xmin=0, xmax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
+
+    if etc_baseline:
+        base = np.load(etc_fp)
+        plt.plot(np.arange(len(base)), base, color='black', label='etc baseline', lw=2)
 
     for i in range(len(fps)):
         fp = fps[i]
@@ -188,6 +194,68 @@ def plot_regret():
     return
 
 
+def plot_etc_baseline(explore_times,
+                      fn_list,
+                      legend_list,
+                      best_arm_index=0,
+                      fp='',
+                      title='',
+                      legend_title='',
+                      long_legend=False,
+                      ):
+
+    # file name needs to be in a sequence where small # is first
+
+    assert len(fn_list) == len(legend_list)
+
+    fps = [fp + fn for fn in fn_list]
+
+    plt.rcParams['savefig.dpi'] = 300
+    fig, ax = plt.subplots()
+
+    last_counts = np.array([])
+    n_simulations = 0
+    time_horizon = 0
+    for i in range(len(fps)):
+        df = pd.read_csv(fps[i])
+        df = df[['num_sims', 'horizon', 'chosen_arm', 'reward']]
+        n_simulations = int(np.max(df['num_sims'])) + 1
+        time_horizon = int(np.max(df['horizon'])) + 1
+        all_arms = np.zeros((n_simulations, time_horizon))
+        for ii in range(int(n_simulations)):
+            all_arms[ii, :] = list(df.loc[df['num_sims'] == ii]['chosen_arm'])
+        counts = np.count_nonzero(all_arms == best_arm_index, axis=0)  # average across simulations. shape: (1, time_horizon)
+
+        # set counts from the exploration counts to 0
+        counts[:explore_times[i]] = 0
+
+        # combine counts with
+        if i != 0:
+            last_counts[counts.astype('bool')] = 0
+            last_counts = last_counts + counts
+        else:
+            last_counts = counts
+
+    probs = last_counts / n_simulations
+    ax.plot(np.arange(time_horizon), probs)
+    np.save(fp+'baseline.npy', probs)
+
+    ax.set_xlabel('time horizon')
+    ax.set_ylabel('probability of finding best arm')
+    ax.set_title(title)
+    ax.grid(visible=True, which='both', alpha=0.5)
+    if long_legend:
+        ax.legend(title=legend_title, bbox_to_anchor=(1.02, 1), loc="upper left")
+        plt.tight_layout()
+    else:
+        ax.legend(title=legend_title)
+
+    plt.show()
+
+
+    return
+
+
 def _test_plot():
 
     # example on using plot function
@@ -237,34 +305,41 @@ if __name__ == '__main__':
     import itertools
 
     # # names = ['ucb1', 'ucb1_tuned', 'TS']
-    # fn_list = [
-    #     'ucb1/TS_test.csv',
-    #     'ucb1/ucb1_tuned_test.csv',
-    #     'eps_greedy/annealing_epsilon_greedy.csv',
-    #     'eps_greedy/epsilon_0.1.csv',
-    #     'softmax/tau_0.1.csv',
-    #     'softmax/tau_0.2.csv',
-    #     'pursuit/pursuit_lr_0.05.csv',
-    #     'reinforcement_comparison/rc_alpha_0.05_beta_0.4.csv',
-    # ]
-    # legend_list = [
-    #     'TS (beta prior)',
-    #     'UCB1-Tuned',
-    #     'eps-greedy (annealing)',
-    #     'eps-greedy (0.1)',
-    #     'softmax (0.1)',
-    #     'softmax (0.2)',
-    #     'pursuit (0.05)',
-    #     'RC (0.05, 0.4)',
-    # ]
-    #
-    # plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/scenario1/',
-    #                              title='Comparison of accuracy for different algorithms', legend_title='algorithms', long_legend=True)
+    fn_list = [
+        'optim/TS.csv',
+        'optim/ucb1_tuned.csv',
+        'eps_greedy/annealing_epsilon_greedy.csv',
+        'eps_greedy/epsilon_0.1.csv',
+        'softmax/tau_0.1.csv',
+        'softmax/tau_0.2.csv',
+        'pursuit/pursuit_lr_0.05.csv',
+        'reinforcement_comparison/rc_alpha_0.05_beta_0.4.csv',
+    ]
+    legend_list = [
+        'TS (beta prior)',
+        'UCB1-Tuned',
+        'eps-greedy (annealing)',
+        'eps-greedy (0.1)',
+        'softmax (0.1)',
+        'softmax (0.2)',
+        'pursuit (0.05)',
+        'RC (0.05, 0.4)',
+    ]
 
-    gammas = [0.1, 0.2, 0.3, 0.4, 0.5]
-    fn_list = ['gamma_'+str(a)+'.csv' for a in gammas]
-    #fn_list.append('annealing.csv')
-    legend_list = gammas
-    #legend_list.append('annealing')
-    plot_probs_choosing_best_arm(fn_list, legend_list, fp='./logs/scenario3/exp3/', best_arm_index=4,
-                                 title='Accuracy of EXP3 algorithm', legend_title='gamma', long_legend=False)
+    plot_probs_choosing_best_arm(fn_list, legend_list, etc_fp='./logs/scenario1/ETC/baseline.npy', best_arm_index=4, fp='./logs/scenario1/',
+                                 title='Comparison of accuracy for different algorithms', legend_title='algorithms', long_legend=True)
+
+    # gammas = [0.1, 0.2, 0.3, 0.4, 0.5]
+    # fn_list = ['ucb2_'+str(a)+'.csv' for a in gammas]
+    # #fn_list.append('annealing.csv')
+    # legend_list = gammas
+    # #legend_list.append('annealing')
+    # plot_probs_choosing_best_arm(fn_list, legend_list, fp='./logs/scenario1/optim/', best_arm_index=4,
+    #                              title='Accuracy of UCB2 algorithm', legend_title='alpha', long_legend=False)
+
+    # es = np.arange(10)
+    # es = es+1
+    # fn_list = [f'etc_{e}.csv' for e in es]
+    # legend_list = [str(e) for e in es]
+    # plot_etc_baseline([e*5 for e in es], fn_list, legend_list, fp='./logs/scenario1/ETC/', best_arm_index=4, title='', legend_title='')
+    #

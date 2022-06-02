@@ -69,7 +69,7 @@ nuc_names = list(df['nucleophile_id'].unique())
 elec_names = list(df['electrophile_id'].unique())
 
 
-def plot_all_results():  # heatmap for all results, grouped by ligand
+def plot_all_results(binary=1, cutoff=80):  # heatmap for all results, grouped by ligand
     l = []
 
     for ligand in ligands:
@@ -85,9 +85,17 @@ def plot_all_results():  # heatmap for all results, grouped by ligand
     a4 = np.hstack(l[18:24])
     a = np.vstack([a1, a2, a3, a4])
 
+    if binary:
+        a = a>cutoff
+
     fig, ax = plt.subplots()
     im = ax.imshow(a, cmap='inferno')
-    text_kwargs = dict(ha='center', va='center', fontsize=12, color='white')
+    if binary:
+        im = ax.imshow(a, cmap='inferno', vmin=0, vmax=2)
+    if not binary:
+        text_kwargs = dict(ha='center', va='center', fontsize=12, color='white')
+    else:
+        text_kwargs = dict(ha='center', va='center', fontsize=10, color='white')
     ii = 0
     for i in range(4):
         for j in range(6):
@@ -95,8 +103,10 @@ def plot_all_results():  # heatmap for all results, grouped by ligand
             plt.text(8*j+3.5, 8*i+3.5, ligand_names[ii], **text_kwargs)
             ii = ii+1
     plt.axis('off')
-    cbar = plt.colorbar(im)
-    cbar.ax.set_ylabel('yield (%)', rotation=270)
+    if not binary:
+        cbar = plt.colorbar(im)
+        cbar.ax.set_ylabel('yield (%)', rotation=270)
+    plt.rcParams['savefig.dpi'] = 300
     plt.show()
     return None
 
@@ -791,7 +801,7 @@ def _categorical_bar(labels, data, category_names):
 
 
 if __name__ == '__main__':
-    plot_calculated_sampling_results()
+    plot_all_results()
 
 def _calculate_random_sampling_deprecated():
 
