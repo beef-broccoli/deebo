@@ -22,9 +22,9 @@ import numpy as np
 
 class ETC:  # explore then commit
 
-    def __init__(self, counts, emp_means, explore_limit=1):
-        self.counts = counts
-        self.emp_means = emp_means
+    def __init__(self, n_arms, counts=None, emp_means=None, explore_limit=1):
+        self.counts = counts if counts else [0 for col in range(n_arms)]
+        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
         self.limit = explore_limit  # how many rounds per arm
         self.best_arm = -1
         return
@@ -55,7 +55,7 @@ class ETC:  # explore then commit
 
 class Random:  # random selection of arms
 
-    def __init__(self, counts, emp_means):
+    def __init__(self, counts=[], emp_means=[]):
         self.counts = counts
         self.emp_means = emp_means
         return
@@ -79,7 +79,7 @@ class Random:  # random selection of arms
 
 class EpsilonGreedy:
 
-    def __init__(self, epsilon, counts, emp_means):
+    def __init__(self, epsilon, counts=[], emp_means=[]):
         self.epsilon = epsilon
         self.counts = counts
         self.emp_means = emp_means  # empirical means of rewards
@@ -107,7 +107,7 @@ class EpsilonGreedy:
 
 class AnnealingEpsilonGreedy:
 
-    def __init__(self, counts, emp_means):
+    def __init__(self, counts=[], emp_means=[]):
         self.counts = counts
         self.emp_means = emp_means  # reward value (as average)
         return
@@ -137,7 +137,7 @@ class AnnealingEpsilonGreedy:
 
 class Boltzmann:  # aka softmax
 
-    def __init__(self, tau, counts, emp_means):
+    def __init__(self, tau, counts=[], emp_means=[]):
         self.tau = tau
         self.counts = counts
         self.emp_means = emp_means  # reward value (average)
@@ -163,7 +163,7 @@ class Boltzmann:  # aka softmax
 
 
 class AnnealingBoltzmann:
-    def __init__(self, counts, emp_means):
+    def __init__(self, counts=[], emp_means=[]):
         self.counts = counts
         self.emp_means = emp_means  # reward value (average)
         return
@@ -192,7 +192,7 @@ class AnnealingBoltzmann:
 
 class Pursuit:
 
-    def __init__(self, lr, counts, emp_means, probs):
+    def __init__(self, lr, counts=[], emp_means=[], probs=[]):
         self.lr = lr  # learning rate
         self.counts = counts
         self.emp_means = emp_means  # reward value (average)
@@ -235,7 +235,7 @@ class Pursuit:
 
 class ReinforcementComparison:  # need more test, doesn't seem to work
     
-    def __init__(self, alpha, beta, counts, emp_means, preferences, exp_rewards, probs):
+    def __init__(self, alpha, beta, counts=[], emp_means=[], preferences=[], exp_rewards=[], probs=[]):
         self.alpha = alpha  # learning rate for expected reward
         self.beta = beta  # learning rate for preference 
         self.counts = counts  # num data points for each arm
@@ -284,7 +284,7 @@ class ReinforcementComparison:  # need more test, doesn't seem to work
 
 class UCB1:
 
-    def __init__(self, counts, emp_means, ucbs):
+    def __init__(self, counts=[], emp_means=[], ucbs=[]):
         self.counts = counts
         self.emp_means = emp_means
         self.ucbs = ucbs  # ucb values calculated with means and counts
@@ -296,11 +296,6 @@ class UCB1:
         self.ucbs = [0.0 for col in range(n_arms)]
         return
 
-    def __update_ucbs(self):
-        bonuses = [math.sqrt((2 * math.log(sum(self.counts) + 1)) / float(self.counts[arm] + 1e-7)) for arm in range(len(self.counts))]
-        self.ucbs = [e + b for e, b in zip(self.emp_means, bonuses)]
-        return
-
     def select_next_arm(self):
         if sum(self.counts) < len(self.counts):  # run a first pass through all arms
             for arm in range(len(self.counts)):
@@ -310,18 +305,22 @@ class UCB1:
             return np.argmax(self.ucbs)
 
     def update(self, chosen_arm, reward):
+        # update counts
         self.counts[chosen_arm] = self.counts[chosen_arm] + 1
+        # update emp means
         n = self.counts[chosen_arm]
         value = self.emp_means[chosen_arm]
         new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
         self.emp_means[chosen_arm] = new_value
-        self.__update_ucbs()
+        # update ucb values
+        bonuses = [math.sqrt((2 * math.log(sum(self.counts) + 1)) / float(self.counts[arm] + 1e-7)) for arm in range(len(self.counts))]
+        self.ucbs = [e + b for e, b in zip(self.emp_means, bonuses)]
         return
 
 
 class UCB1Tuned:  # seems like V value are a lot bigger than 1/4, but should be normal behavior with small t
 
-    def __init__(self, counts, emp_means, M2, ucbs):
+    def __init__(self, counts=[], emp_means=[], M2=[], ucbs=[]):
         self.counts = counts
         self.emp_means = emp_means
         self.M2 = M2  # M2(n) = var(n) * n, used to update variance (a more stable Welford's algo)
@@ -365,9 +364,28 @@ class UCB1Tuned:  # seems like V value are a lot bigger than 1/4, but should be 
         return
 
 
+class MOSS(UCB1):
+
+    def update(self, chosen_arm, reward):  # override
+        # update counts
+        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
+        # update emp means
+        n = self.counts[chosen_arm]
+        value = self.emp_means[chosen_arm]
+        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
+        self.emp_means[chosen_arm] = new_value
+        # update ucb values
+        bonuses = [math.sqrt(
+            max(0.0, math.log((sum(self.counts)+1) / (len(self.counts)*(self.counts[arm]+1e-7))))
+            /float(self.counts[arm]+1e-7)
+        ) for arm in range(len(self.counts))]
+        self.ucbs = [e + b for e, b in zip(self.emp_means, bonuses)]
+        return
+
+
 class UCBV:
 
-    def __init__(self, counts, emp_means, sum_reward_squared, ucbs, vars, amplitude=1.0):
+    def __init__(self, counts=[], emp_means=[], sum_reward_squared=[], ucbs=[], vars=[], amplitude=1.0):
         self.counts = counts
         self.emp_means = emp_means
         self.sum_reward_squared = sum_reward_squared  # sum of reward^2, used to calculate variance
@@ -422,7 +440,7 @@ class UCBV:
 
 class UCB2:
 
-    def __init__(self, counts, emp_means, ucbs, rs, alpha=0.5, current_arm=-1, play_time=0):
+    def __init__(self, counts=[], emp_means=[], ucbs=[], rs=[], alpha=0.5, current_arm=-1, play_time=0):
         self.counts = counts
         self.emp_means = emp_means
         self.ucbs = ucbs  # ucb values calculated with means and counts
@@ -484,7 +502,7 @@ class UCB2:
 
 class ThompsonSampling:  # TS for bernoulli arms, beta distribution as conjugate priors
 
-    def __init__(self, counts, emp_means, alphas, betas):
+    def __init__(self, counts=[], emp_means=[], alphas=[], betas=[]):
         self.counts = counts
         self.emp_means = emp_means
         self.alphas = alphas
@@ -518,11 +536,11 @@ class ThompsonSampling:  # TS for bernoulli arms, beta distribution as conjugate
 
 class EXP3:
 
-    def __init__(self, gamma=0.5):
-        self.counts = []
-        self.emp_means = []
-        self.weights = []
-        self.probs = []
+    def __init__(self, counts=[], emp_means=[], weights=[], probs=[], gamma=0.5):
+        self.counts = counts
+        self.emp_means = emp_means
+        self.weights = weights
+        self.probs = probs
         self.gamma = gamma
         return
 
