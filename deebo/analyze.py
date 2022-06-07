@@ -26,7 +26,7 @@ def calculate_baseline(chemarms: list):
 def plot_probs_choosing_best_arm(fn_list,
                                  legend_list,
                                  manual_baseline=0,
-                                 etc_baseline=True,
+                                 etc_baseline=False,
                                  etc_fp='',
                                  best_arm_index=0,
                                  fp='',
@@ -337,9 +337,14 @@ if __name__ == '__main__':
     # plot_probs_choosing_best_arm(fn_list, legend_list, fp='./logs/scenario1/optim/', best_arm_index=4,
     #                              title='Accuracy of UCB2 algorithm', legend_title='alpha', long_legend=False)
 
-    es = np.arange(15)
-    es = es+1
-    fn_list = [f'etc_{e}.csv' for e in es]
-    legend_list = [str(e) for e in es]
-    plot_etc_baseline([e*5 for e in es], fn_list, legend_list, fp='./logs/scenario3/ETC/', best_arm_index=4, title='', legend_title='')
+    # es = np.arange(15)
+    # es = es+1
+    # fn_list = [f'etc_{e}.csv' for e in es]
+    # legend_list = [str(e) for e in es]
+    # plot_etc_baseline([e*5 for e in es], fn_list, legend_list, fp='./logs/scenario3/ETC/', best_arm_index=4, title='', legend_title='')
+
+    plot_probs_choosing_best_arm(['dmed.csv', 'dmed_modified.csv', 'optim/ucb1_tuned.csv', 'optim/ucb1.csv'],
+                                 ['dmed', 'dmed mod', 'ucb1 tuned', 'ucb1'],
+                                 best_arm_index=4,
+                                 fp='./logs/scenario1/')
 

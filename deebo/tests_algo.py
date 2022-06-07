@@ -186,7 +186,7 @@ def _test_moss(scenario=1):
 
     algo = MOSS()
     algo.reset(n_arms)
-    results = test_algorithm(algo, arms, 1, 250)
+    results = test_algorithm(algo, arms, 1000, 250)
     filename = f'moss.csv'
     fp = f'./logs/scenario{scenario}/optim/' + filename
     if input('save result (might overwrite)? : ') == 'y':
@@ -299,5 +299,28 @@ def _test_exp3(scenario=3):
         results.to_csv(fp)
 
 
+def _test_dmed(scenario=1):
+
+    if scenario == 1:
+        means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    elif scenario == 2:
+        means = [0.1, 0.1, 0.1, 0.1, 0.2]
+    elif scenario == 3:
+        means = [0.1, 0.25, 0.5, 0.75, 0.9]
+    else:
+        exit(1)
+
+    n_arms = len(means)
+    arms = list(map(lambda x: BernoulliArm(x), means))
+
+    print("Best arm is " + str(np.argmax(means)))
+
+    algo = DMED(n_arms, modified=True)
+    results = test_algorithm(algo, arms, 1000, 250)
+    filename = f'dmed_modified.csv'
+    fp = f'./logs/scenario{scenario}/' + filename
+    if input('save result (might overwrite)? : ') == 'y':
+        results.to_csv(fp)
+
 if __name__ == '__main__':
-    _test_moss()
+    _test_dmed()

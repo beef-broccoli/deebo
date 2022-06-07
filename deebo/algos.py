@@ -366,7 +366,8 @@ class UCB1Tuned:  # seems like V value are a lot bigger than 1/4, but should be 
 
 class MOSS(UCB1):
 
-    def update(self, chosen_arm, reward):  # override
+    # override
+    def update(self, chosen_arm, reward):
         # update counts
         self.counts[chosen_arm] = self.counts[chosen_arm] + 1
         # update emp means
@@ -531,6 +532,58 @@ class ThompsonSampling:  # TS for bernoulli arms, beta distribution as conjugate
         # update for beta distribution
         self.alphas[chosen_arm] = self.alphas[chosen_arm] + reward
         self.betas[chosen_arm] = self.betas[chosen_arm] + (1-reward)
+        return
+
+
+class DMED:
+
+    def __init__(self, n_arms, counts=None, emp_means=None, action_list=None, modified=False):
+        self.counts = counts if counts else [0 for col in range(n_arms)]
+        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
+        self.action_list = action_list if action_list else []
+        self.modified = modified  # if true, generate new list with less aggressive pruning. else follow original paper
+        return
+
+    def __kl(self, ps, qs):
+        ps = [p+1e-7 if p == 0.0 else p for p in ps]
+        ps = [p-1e-7 if p == 1.0 else p for p in ps]
+        qs = [q+1e-7 if q == 0.0 else q for q in qs]
+        qs = [q-1e-7 if q == 1.0 else q for q in qs]
+        ys = [p*math.log(p/q) + (1-p)*math.log((1-p)/(1-q)) for p, q in zip(ps, qs)]
+        return ys
+
+    def reset(self, n_arms):
+        self.counts = [0 for col in range(n_arms)]
+        self.emp_means = [0.0 for col in range(n_arms)]
+        self.action_list = []
+        return
+
+    def select_next_arm(self):
+        if sum(self.counts) < len(self.counts):  # run a first pass through all arms
+            for arm in range(len(self.counts)):
+                if self.counts[arm] == 0:
+                    return arm
+        else:
+            if not self.action_list:  # action list empty. Current loop ended. Construct new action list
+                current_best = np.argmax(self.emp_means)
+                ys = np.array(self.__kl(self.emp_means, [self.emp_means[current_best]]*len(self.emp_means)))
+                # print(f'new list KL calc {ys}')
+                # ass = sum(self.counts)/np.array(self.counts)
+                # print(f'compare {ass}')
+                if self.modified:
+                    args = np.array(self.counts) * ys < math.log(sum(self.counts))
+                else:
+                    args = np.array(self.counts) * ys < np.log(sum(self.counts)/np.array(self.counts))
+                self.action_list = list(np.arange(len(self.emp_means))[args])
+            # print(self.action_list)
+            return self.action_list.pop()
+
+    def update(self, chosen_arm, reward):
+        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
+        n = self.counts[chosen_arm]
+        value = self.emp_means[chosen_arm]
+        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
+        self.emp_means[chosen_arm] = new_value
         return
 
 
