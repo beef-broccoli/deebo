@@ -1,5 +1,6 @@
 from arms import BernoulliArm
 from algos_regret import *
+from algos_arm import *
 from algos_testfunc import test_algorithm
 
 import random
@@ -302,5 +303,29 @@ def _test_dmed(scenario=1):
         results.to_csv(fp)
 
 
+def _test_successive_elimination(scenario=1):
+
+    if scenario == 1:
+        means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    elif scenario == 2:
+        means = [0.1, 0.1, 0.1, 0.1, 0.2]
+    elif scenario == 3:
+        means = [0.1, 0.25, 0.5, 0.75, 0.9]
+    else:
+        exit(1)
+
+    n_arms = len(means)
+    arms = list(map(lambda x: BernoulliArm(x), means))
+
+    print("Best arm is " + str(np.argmax(means)))
+
+    algo = SuccessiveElimination(n_arms, delta=0.2)
+    results = test_algorithm(algo, arms, 1, 250)
+    filename = f'successive_elim.csv'
+    fp = f'./logs/tests/' + filename
+    if input('save result (might overwrite)? : ') == 'y':
+        results.to_csv(fp)
+
+
 if __name__ == '__main__':
-    _test_dmed()
+    _test_successive_elimination()

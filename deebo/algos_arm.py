@@ -10,27 +10,58 @@ import numpy as np
 
 class SuccessiveElimination:  # successive elimination
 
-    def __init__(self, n_arms, counts=None, emp_means=None, explore_limit=1):
+    def __init__(self, n_arms, counts=None, emp_means=None, current_set=None, delta=0.1):
         self.counts = counts if counts else [0 for col in range(n_arms)]
         self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
-        self.limit = explore_limit  # how many rounds per arm
+        self.current_set = current_set if current_set else list(np.arange(n_arms))  # set of arms to be played
+        self.to_play = list(self.current_set)  # arms to be played. Used to keep track of what's left
+        self.delta = delta  # (0,1), parameter for any time confidence interval
         self.best_arm = -1
         return
 
     def reset(self, n_arms):
         self.counts = [0 for col in range(n_arms)]
         self.emp_means = [0.0 for col in range(n_arms)]
+        self.current_set = np.arange(n_arms)
+        self.to_play = list(self.current_set)
         self.best_arm = -1
         return
 
-    def select_next_arm(self):
-        if sum(self.counts) == self.limit*len(self.counts):  # exploration just complete, pick the best arm
-            self.best_arm = np.argmax(self.emp_means)
+    def _confidence_interval(self, option=1):
+        t = sum(self.counts)
+        if option == 1:
+            u = math.sqrt(
+                math.log(4.0*pow(t,2)/self.delta)
+                / (2*t)
+            )
+        elif option == 2:
+            u = math.sqrt(
+                (2*math.log(1/self.delta) + 6*math.log(math.log(1/self.delta)) + 3*math.log(math.log(math.e*t)))
+                / t
+            )
+        else:
+            u = -1
+            exit()
+        return u
 
-        if self.best_arm == -1:  # no best arm set, still in the exploration phase
-            return np.argmin(self.counts)  # plays the arm with lowest count until exploration ends
-        else:  # commit
-            return self.best_arm
+    def select_next_arm(self):
+
+        if not self.to_play:  # to_play empty, played all arms in current set. Need to evaluate
+            # eliminate bad arms
+            u = self._confidence_interval()
+            print(u)
+            emp_means_current_set = np.array([self.emp_means[idx] for idx in self.current_set])
+            lower_bound = np.max(emp_means_current_set) - u
+            plus_interval = emp_means_current_set + u
+            idxs = plus_interval > lower_bound  # boolean array; what to keep for current set of arms
+            self.current_set = self.current_set[idxs]
+            self.to_play = list(self.current_set)
+            print(self.current_set)
+
+            if len(self.current_set == 1):
+                self.best_arm = self.current_set[0]
+
+        return self.to_play.pop()
 
     def update(self, chosen_arm, reward):
         self.counts[chosen_arm] = self.counts[chosen_arm] + 1
