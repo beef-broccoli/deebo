@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 
-from algos import *
+from algos_regret import *
 from analyze import plot_average_reward, plot_cumulative_reward, plot_probs_choosing_best_arm, calculate_baseline
 from arms_chem import ChemArmSim, ChemArmSimBinary
 

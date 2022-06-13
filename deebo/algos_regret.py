@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-implemented algorithms for bandit optimization
+implemented algorithms for regret minimization in a multi armed bandit problem
 
 - ETC: explore-then-commit
 - Random: random selection of arms
@@ -11,13 +11,16 @@ implemented algorithms for bandit optimization
 - AnnealingBoltzmann: softmax with annealing (decaying tau)
 - Pursuit
 - ReinforcementComparison
+- UCB1, UCB1-Tuned, MOSS, KL-UCB, UCB-V, UCB2, DMED
+- Thompson Sampling
+- EXP3
 
-Could write a parent class to incorporate common methods, but this flatter version is probably easier to understand
 """
 
 import random
 import math
 import numpy as np
+from utils import zero_nor_one
 
 
 class ETC:  # explore then commit
@@ -55,9 +58,9 @@ class ETC:  # explore then commit
 
 class Random:  # random selection of arms
 
-    def __init__(self, counts=[], emp_means=[]):
-        self.counts = counts
-        self.emp_means = emp_means
+    def __init__(self, n_arms, counts=None, emp_means=None):
+        self.counts = counts if counts else [0 for col in range(n_arms)]
+        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
         return
 
     def reset(self, n_arms):
@@ -79,10 +82,10 @@ class Random:  # random selection of arms
 
 class EpsilonGreedy:
 
-    def __init__(self, epsilon, counts=[], emp_means=[]):
+    def __init__(self, n_arms, epsilon, counts=None, emp_means=None):
         self.epsilon = epsilon
-        self.counts = counts
-        self.emp_means = emp_means  # empirical means of rewards
+        self.counts = counts if counts else [0 for col in range(n_arms)]
+        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
         return
 
     def reset(self, n_arms):
@@ -107,9 +110,9 @@ class EpsilonGreedy:
 
 class AnnealingEpsilonGreedy:
 
-    def __init__(self, counts=[], emp_means=[]):
-        self.counts = counts
-        self.emp_means = emp_means  # reward value (as average)
+    def __init__(self, n_arms, counts=None, emp_means=None):
+        self.counts = counts if counts else [0 for col in range(n_arms)]
+        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
         return
 
     def reset(self, n_arms):
@@ -137,10 +140,10 @@ class AnnealingEpsilonGreedy:
 
 class Boltzmann:  # aka softmax
 
-    def __init__(self, tau, counts=[], emp_means=[]):
+    def __init__(self, n_arms, tau, counts=None, emp_means=None):
         self.tau = tau
-        self.counts = counts
-        self.emp_means = emp_means  # reward value (average)
+        self.counts = counts if counts else [0 for col in range(n_arms)]
+        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
         return
 
     def reset(self, n_arms):
@@ -163,9 +166,9 @@ class Boltzmann:  # aka softmax
 
 
 class AnnealingBoltzmann:
-    def __init__(self, counts=[], emp_means=[]):
-        self.counts = counts
-        self.emp_means = emp_means  # reward value (average)
+    def __init__(self, n_arms, counts=None, emp_means=None):
+        self.counts = counts if counts else [0 for col in range(n_arms)]
+        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
         return
 
     def reset(self, n_arms):
@@ -192,11 +195,11 @@ class AnnealingBoltzmann:
 
 class Pursuit:
 
-    def __init__(self, lr, counts=[], emp_means=[], probs=[]):
+    def __init__(self, n_arms, lr, counts=None, emp_means=None, probs=None):
         self.lr = lr  # learning rate
-        self.counts = counts
-        self.emp_means = emp_means  # reward value (average)
-        self.probs = probs
+        self.counts = counts if counts else [0 for col in range(n_arms)]
+        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
+        self.probs = probs if probs else [float(1/n_arms) for col in range(n_arms)]
         return
 
     def reset(self, n_arms):
@@ -235,14 +238,14 @@ class Pursuit:
 
 class ReinforcementComparison:  # need more test, doesn't seem to work
     
-    def __init__(self, alpha, beta, counts=[], emp_means=[], preferences=[], exp_rewards=[], probs=[]):
+    def __init__(self, n_arms, alpha, beta, counts=None, emp_means=None, preferences=None, exp_rewards=None, probs=None):
         self.alpha = alpha  # learning rate for expected reward
         self.beta = beta  # learning rate for preference 
-        self.counts = counts  # num data points for each arm
-        self.emp_means = emp_means  # empirical means of rewards for each arm
-        self.preferences = preferences
-        self.exp_rewards = exp_rewards
-        self.probs = probs
+        self.counts = counts if counts else [0 for col in range(n_arms)]
+        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
+        self.preferences = preferences if preferences else [0.0 for col in range(n_arms)]
+        self.exp_rewards = exp_rewards if exp_rewards else [0.0 for col in range(n_arms)]
+        self.probs = probs if probs else [float(1/n_arms) for col in range(n_arms)]
         return
 
     def reset(self, n_arms):
@@ -284,10 +287,10 @@ class ReinforcementComparison:  # need more test, doesn't seem to work
 
 class UCB1:
 
-    def __init__(self, counts=[], emp_means=[], ucbs=[]):
-        self.counts = counts
-        self.emp_means = emp_means
-        self.ucbs = ucbs  # ucb values calculated with means and counts
+    def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None):
+        self.counts = counts if counts else [0 for col in range(n_arms)]
+        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
+        self.ucbs = ucbs if ucbs else [0.0 for col in range(n_arms)] # ucb values calculated with means and counts
         return
 
     def reset(self, n_arms):
@@ -320,22 +323,22 @@ class UCB1:
 
 class UCB1Tuned:  # seems like V value are a lot bigger than 1/4, but should be normal behavior with small t
 
-    def __init__(self, counts=[], emp_means=[], M2=[], ucbs=[]):
-        self.counts = counts
-        self.emp_means = emp_means
-        self.M2 = M2  # M2(n) = var(n) * n, used to update variance (a more stable Welford's algo)
-        self.ucbs = ucbs  # ucb values calculated with means and counts
+    def __init__(self, n_arms, counts=None, emp_means=None, m2=None, ucbs=None):
+        self.counts = counts if counts else [0 for col in range(n_arms)]
+        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
+        self.m2 = m2 if m2 else [0.0 for col in range(n_arms)]  # M2(n) = var(n) * n, used to update variance (a more stable Welford's algo)
+        self.ucbs = ucbs if ucbs else [0.0 for col in range(n_arms)]  # ucb values calculated with means and counts
         return
 
     def reset(self, n_arms):
         self.counts = [0 for col in range(n_arms)]
         self.emp_means = [0.0 for col in range(n_arms)]
-        self.M2 = [0.0 for col in range(n_arms)]
+        self.m2 = [0.0 for col in range(n_arms)]
         self.ucbs = [0.0 for col in range(n_arms)]
         return
 
     def __update_ucbs(self):
-        Vs = [self.M2[arm] / (self.counts[arm]+1e-7) + math.sqrt(2 * math.log(sum(self.counts)+1) / float(self.counts[arm] + 1e-7)) for arm in range(len(self.counts))]
+        Vs = [self.m2[arm] / (self.counts[arm]+1e-7) + math.sqrt(2 * math.log(sum(self.counts)+1) / float(self.counts[arm] + 1e-7)) for arm in range(len(self.counts))]
         mins = [min(1/4, v) for v in Vs]
         bonuses = [math.sqrt((math.log(sum(self.counts)+1)) / float(self.counts[arm] + 1e-7) * mins[arm]) for arm in range(len(self.counts))]
         self.ucbs = [e + b for e, b in zip(self.emp_means, bonuses)]
@@ -357,8 +360,8 @@ class UCB1Tuned:  # seems like V value are a lot bigger than 1/4, but should be 
         old_mean = self.emp_means[chosen_arm]
         new_mean = ((n - 1) / float(n)) * old_mean + (1 / float(n)) * reward
         self.emp_means[chosen_arm] = new_mean
-        # update M2 values (n*variance)
-        self.M2[chosen_arm] = self.M2[chosen_arm] + (reward - old_mean) * (reward - new_mean)
+        # update m2 values (n*variance)
+        self.m2[chosen_arm] = self.m2[chosen_arm] + (reward - old_mean) * (reward - new_mean)
         # update UCB value
         self.__update_ucbs()
         return
@@ -384,14 +387,33 @@ class MOSS(UCB1):
         return
 
 
+class KLUCB(UCB1):
+
+    # override
+    def update(self, chosen_arm, reward):
+
+        # update counts
+        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
+
+        # update emp means
+        n = self.counts[chosen_arm]
+        value = self.emp_means[chosen_arm]
+        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
+        self.emp_means[chosen_arm] = new_value
+
+        # update UCB values
+
+        return
+
+
 class UCBV:
 
-    def __init__(self, counts=[], emp_means=[], sum_reward_squared=[], ucbs=[], vars=[], amplitude=1.0):
-        self.counts = counts
-        self.emp_means = emp_means
-        self.sum_reward_squared = sum_reward_squared  # sum of reward^2, used to calculate variance
-        self.vars = vars
-        self.ucbs = ucbs
+    def __init__(self, n_arms, counts=None, emp_means=None, sum_reward_squared=None, ucbs=None, vars=None, amplitude=1.0):
+        self.counts = counts if counts else [0 for col in range(n_arms)]
+        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
+        self.sum_reward_squared = sum_reward_squared if sum_reward_squared else [0.0 for col in range(n_arms)]  # sum of reward^2, used to calculate variance
+        self.vars = vars if vars else [0.0 for col in range(n_arms)]
+        self.ucbs = ucbs if ucbs else [-1.0 for col in range(n_arms)]
         self.amplitude = amplitude
         return
 
@@ -441,11 +463,11 @@ class UCBV:
 
 class UCB2:
 
-    def __init__(self, counts=[], emp_means=[], ucbs=[], rs=[], alpha=0.5, current_arm=-1, play_time=0):
-        self.counts = counts
-        self.emp_means = emp_means
-        self.ucbs = ucbs  # ucb values calculated with means and counts
-        self.rs = rs  # r values as proposed in paper
+    def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None, rs=None, alpha=0.5, current_arm=-1, play_time=0):
+        self.counts = counts if counts else [0 for col in range(n_arms)]
+        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
+        self.ucbs = ucbs if ucbs else [0.0 for col in range(n_arms)]  # ucb values calculated with means and counts
+        self.rs = rs if rs else [0.0 for col in range(n_arms)]  # r values as proposed in paper
         self.alpha = alpha  # parameter alpha as proposed in paper
         self.current_arm = current_arm  # current arm that needs to be played
         self.play_time = play_time  # from algo: need to play best arm tau(r+1)-tau(r) times
@@ -503,11 +525,11 @@ class UCB2:
 
 class ThompsonSampling:  # TS for bernoulli arms, beta distribution as conjugate priors
 
-    def __init__(self, counts=[], emp_means=[], alphas=[], betas=[]):
-        self.counts = counts
-        self.emp_means = emp_means
-        self.alphas = alphas
-        self.betas = betas
+    def __init__(self, n_arms, counts=None, emp_means=None, alphas=None, betas=None):
+        self.counts = counts if counts else [0 for col in range(n_arms)]
+        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
+        self.alphas = alphas if alphas else [1.0 for col in range(n_arms)]
+        self.betas = betas if betas else [1.0 for col in range(n_arms)]
         return
 
     def reset(self, n_arms):
@@ -589,11 +611,11 @@ class DMED:
 
 class EXP3:
 
-    def __init__(self, counts=[], emp_means=[], weights=[], probs=[], gamma=0.5):
-        self.counts = counts
-        self.emp_means = emp_means
-        self.weights = weights
-        self.probs = probs
+    def __init__(self, n_arms, counts=None, emp_means=None, weights=None, probs=None, gamma=0.5):
+        self.counts = counts if counts else [0 for col in range(n_arms)]
+        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
+        self.weights = weights if weights else [1.0] * int(n_arms)
+        self.probs = probs if probs else [1.0/int(n_arms)] * int(n_arms)
         self.gamma = gamma
         return
 
