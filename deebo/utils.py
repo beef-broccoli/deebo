@@ -6,5 +6,12 @@ def zero_nor_one(num):
     else:
         return min(max(float(num), 1e-7), 1-1e-7)
 
+
+def fill_list(li, desired_len, to_fill):
+    if li is None:
+        return [to_fill]*desired_len
+    else:
+        return li + [to_fill]*(desired_len-len(li))
+
 if __name__ == '__main__':
-    print(zero_nor_one(0.9))
+    print(fill_list(None, 6, 9))

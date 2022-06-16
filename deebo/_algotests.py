@@ -1,7 +1,7 @@
 from arms import BernoulliArm
 from algos_regret import *
 from algos_arm import *
-from algos_testfunc import test_algorithm
+from algos_testfunc import *
 
 import random
 import numpy as np
@@ -319,12 +319,14 @@ def _test_successive_elimination(scenario=1):
 
     print("Best arm is " + str(np.argmax(means)))
 
-    algo = SuccessiveElimination(n_arms, delta=0.2)
-    results = test_algorithm(algo, arms, 1, 250)
-    filename = f'successive_elim.csv'
-    fp = f'./logs/tests/' + filename
+    algo = SuccessiveElimination(n_arms, delta=0.1)
+    results, bests = test_algo_arm(algo, arms, 100, 500)
+    results_fn = f'successive_elim.csv'
+    bests_fn = f'successive_elim_best.csv'
+    fp = f'./logs/tests/'
     if input('save result (might overwrite)? : ') == 'y':
-        results.to_csv(fp)
+        results.to_csv(fp+results_fn)
+        bests.to_csv(fp+bests_fn)
 
 
 if __name__ == '__main__':

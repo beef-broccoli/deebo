@@ -8,15 +8,21 @@ import math
 import numpy as np
 
 
+# NOTE: with low t, the confidence interval might be too big and cannot distinguish between arms that are close
 class SuccessiveElimination:  # successive elimination
 
-    def __init__(self, n_arms, counts=None, emp_means=None, current_set=None, delta=0.1):
+    def __init__(self, n_arms, counts=None, emp_means=None, current_set=None, delta=0.1, n_candidates=1):
         self.counts = counts if counts else [0 for col in range(n_arms)]
         self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
         self.current_set = current_set if current_set else list(np.arange(n_arms))  # set of arms to be played
         self.to_play = list(self.current_set)  # arms to be played. Used to keep track of what's left
         self.delta = delta  # (0,1), parameter for any time confidence interval
-        self.best_arm = -1
+        self.n_candidates = n_candidates  # algo terminates when desired number of candidates is reached
+        self.best_arms = None
+
+        if n_candidates >= n_arms:
+            raise ValueError('Requested # of candidates is bigger than # of possible arms')
+
         return
 
     def reset(self, n_arms):
@@ -24,7 +30,7 @@ class SuccessiveElimination:  # successive elimination
         self.emp_means = [0.0 for col in range(n_arms)]
         self.current_set = np.arange(n_arms)
         self.to_play = list(self.current_set)
-        self.best_arm = -1
+        self.best_arms = None
         return
 
     def _confidence_interval(self, option=1):
@@ -46,22 +52,23 @@ class SuccessiveElimination:  # successive elimination
 
     def select_next_arm(self):
 
-        if not self.to_play:  # to_play empty, played all arms in current set. Need to evaluate
-            # eliminate bad arms
-            u = self._confidence_interval()
-            print(u)
-            emp_means_current_set = np.array([self.emp_means[idx] for idx in self.current_set])
-            lower_bound = np.max(emp_means_current_set) - u
-            plus_interval = emp_means_current_set + u
-            idxs = plus_interval > lower_bound  # boolean array; what to keep for current set of arms
-            self.current_set = self.current_set[idxs]
-            self.to_play = list(self.current_set)
-            print(self.current_set)
-
-            if len(self.current_set == 1):
-                self.best_arm = self.current_set[0]
-
-        return self.to_play.pop()
+        if self.best_arms is not None:  # best_arms has been previously identified
+            return None  # do not return next arm
+        else:
+            if not self.to_play:  # to_play empty, played all arms in current set. Need to evaluate
+                # eliminate bad arms
+                u = self._confidence_interval()
+                emp_means_current_set = np.array([self.emp_means[idx] for idx in self.current_set])
+                lower_bound = np.max(emp_means_current_set) - u
+                plus_interval = emp_means_current_set + u
+                idxs = plus_interval > lower_bound  # boolean array; what to keep for current set of arms
+                self.current_set = self.current_set[idxs]
+                self.to_play = list(self.current_set)
+                # required number of best arms found
+                if len(self.to_play) == self.n_candidates:
+                    self.best_arms = self.to_play.copy()
+                    return None
+            return self.to_play.pop()
 
     def update(self, chosen_arm, reward):
         self.counts[chosen_arm] = self.counts[chosen_arm] + 1
