@@ -81,8 +81,6 @@ class Random:  # random selection of arms
 
 
 class EpsilonGreedy:
-    # initialization?
-    # np.argmax will keep outputting the first arm if all averages are zero, this is bad when
 
     def __init__(self, n_arms, epsilon, counts=None, emp_means=None):
         self.epsilon = epsilon
@@ -168,6 +166,7 @@ class Boltzmann:  # aka softmax
         return
 
 
+# TODO: better annealing function
 class AnnealingBoltzmann:
     def __init__(self, n_arms, counts=None, emp_means=None):
         self.counts = counts if counts else [0 for col in range(n_arms)]

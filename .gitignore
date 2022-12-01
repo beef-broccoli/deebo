@@ -14,6 +14,7 @@ ax_tutorials/
 /__pycache__/
 /logs/
 legacy/
+/tests/
 
 # C extensions
 *.so
@@ -153,3 +154,4 @@ cython_debug/
 /deebo/ideas.txt
 /log.txt
 /deebo/devnotes.txt
+/deebo/tests/
