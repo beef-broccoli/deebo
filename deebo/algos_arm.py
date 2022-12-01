@@ -1,11 +1,20 @@
 """
 Implemented algorithms for best arm identification in multi-armed bandit problem
 
+Successive Elimination
+Exponential-gap elimination: requires repeated sampling of one arm, way too many experiments needed
+
 """
 
 import random
 import math
 import numpy as np
+
+
+class Elimination:
+
+    def __init__(self):
+        pass
 
 
 # NOTE: with low t, the confidence interval might be too big and cannot distinguish between arms that are close

@@ -11,7 +11,7 @@ implemented algorithms for regret minimization in a multi armed bandit problem
 - AnnealingBoltzmann: softmax with annealing (decaying tau)
 - Pursuit
 - ReinforcementComparison
-- UCB1, UCB1-Tuned, MOSS, KL-UCB, UCB-V, UCB2, DMED
+- UCB1, UCB1-Tuned, MOSS, UCB-V, UCB2, DMED
 - Thompson Sampling
 - EXP3
 
@@ -81,6 +81,8 @@ class Random:  # random selection of arms
 
 
 class EpsilonGreedy:
+    # initialization?
+    # np.argmax will keep outputting the first arm if all averages are zero, this is bad when
 
     def __init__(self, n_arms, epsilon, counts=None, emp_means=None):
         self.epsilon = epsilon
@@ -95,7 +97,8 @@ class EpsilonGreedy:
 
     def select_next_arm(self):
         if random.random() > self.epsilon:
-            return np.argmax(self.emp_means)
+            return np.random.choice(np.flatnonzero(np.array(self.emp_means) == max(self.emp_means)))
+            # return np.argmax(self.emp_means)  # argmax cannot break ties, bad for initial
         else:
             return random.randrange(len(self.emp_means))
 
@@ -387,23 +390,23 @@ class MOSS(UCB1):
         return
 
 
-class KLUCB(UCB1):
-
-    # override
-    def update(self, chosen_arm, reward):
-
-        # update counts
-        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
-
-        # update emp means
-        n = self.counts[chosen_arm]
-        value = self.emp_means[chosen_arm]
-        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
-        self.emp_means[chosen_arm] = new_value
-
-        # update UCB values
-
-        return
+# class KLUCB(UCB1):
+#
+#     # override
+#     def update(self, chosen_arm, reward):
+#
+#         # update counts
+#         self.counts[chosen_arm] = self.counts[chosen_arm] + 1
+#
+#         # update emp means
+#         n = self.counts[chosen_arm]
+#         value = self.emp_means[chosen_arm]
+#         new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
+#         self.emp_means[chosen_arm] = new_value
+#
+#         # update UCB values
+#
+#         return
 
 
 class UCBV:

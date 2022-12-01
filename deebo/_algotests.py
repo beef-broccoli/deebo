@@ -8,67 +8,117 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import itertools
+import sys
+from pathlib import Path
 
 
-def _test_epsilon_greedy():
-    means = [0.1, 0.1, 0.1, 0.1, 0.2]
+def _means_from_scenario(scenario=0):
+    """
+
+    Parameters
+    ----------
+    scenario: test scenarios with preset means
+
+    Returns
+    -------
+    mean reward for each arm
+
+    """
+    if scenario == 1:
+        means = [0.1, 0.2, 0.3, 0.4, 0.9]
+    elif scenario == 2:
+        means = [0.1, 0.1, 0.1, 0.1, 0.2]
+    elif scenario == 3:
+        means = [0.1, 0.25, 0.5, 0.75, 0.9]
+    else:
+        means = None
+        sys.exit('invalid test scenario number')
+    return means
+
+
+def _make_dir(dir):
+    p = Path(dir)
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+# test all algorithms with defined scenarios
+def test_all(scenario=0, algos=None, n_sims=1000, n_horizon=250):
+
+    if not algos:
+        # ignorin
+        algos = [epsilon_greedy,
+                 softmax,
+                 pursuit,
+                 ucb1,
+                 ucb1_tuned,
+                 moss,
+                 ts_beta,
+                 ucbv,
+                 ucb2,
+                 exp3,
+                 dmed,
+                 ]
+
+    for algo in tqdm(algos):
+        algo(scenario=scenario, n_sims=n_sims, n_horizon=n_horizon)
+
+    return
+
+
+def epsilon_greedy(scenario, n_sims, n_horizon):
+
+    fp_prefix = f'./tests/scenario{scenario}/eps_greedy'
+    output_dir = _make_dir(fp_prefix)
+
+    means = _means_from_scenario(scenario)
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
-    print("Best arm is " + str(np.argmax(means)))
-
     # test for epsilon greedy
     for eps in [0.1, 0.2, 0.3, 0.4, 0.5]:
-        algo = EpsilonGreedy(eps, [], [])
+        algo = EpsilonGreedy(n_arms, eps, [], [])
         algo.reset(n_arms)
-        results = test_algorithm(algo, arms, 1000, 250)
+        results = test_algorithm(algo, arms, n_sims, n_horizon)
         filename = 'epsilon_' + str(eps) + '.csv'
-        fp = './logs/scenario2/eps_greedy/' + filename
-        results.to_csv(fp)
+        results.to_csv(output_dir / filename)
 
     # test for epsilon greedy with annealing
-    algo = AnnealingEpsilonGreedy([], [])
+    algo = AnnealingEpsilonGreedy(n_arms, [], [])
+    algo.reset(n_arms)
+    results = test_algorithm(algo, arms, n_sims, n_horizon)
+    results.to_csv(output_dir / 'annealing.csv')
+
+    return
+
+
+def softmax(scenario, n_arms, arms):
+
+    fp_prefix = f'./logs/scenario{scenario}/softmax/'
+
+    # test for Boltzmann
+    for tau in []:
+        algo = Boltzmann(n_arms, tau, [], [])
+        algo.reset(n_arms)
+        results = test_algorithm(algo, arms, 1000, 250)
+
+        filename = 'tau_' + str(tau) + '.csv'
+        fp = fp_prefix + filename
+        results.to_csv(fp)
+
+    # test for Boltzmann with annealing
+    algo = AnnealingBoltzmann(n_arms, [], [])
     algo.reset(n_arms)
     results = test_algorithm(algo, arms, 1000, 250)
 
     filename = 'annealing.csv'
-    fp = './logs/scenario2/eps_greedy/' + filename
+    fp = './logs/scenario2/softmax/' + filename
     results.to_csv(fp)
 
     return
 
 
-def _test_softmax():
-
-    means = [0.1, 0.1, 0.1, 0.1, 0.2]
-    n_arms = len(means)
-    arms = list(map(lambda x: BernoulliArm(x), means))
-
-    print("Best arm is " + str(np.argmax(means)))
-
-    # test for Boltzmann
-    for tau in tqdm([0.025, 0.01]):
-        algo = Boltzmann(tau, [], [])
-        algo.reset(n_arms)
-        results = test_algorithm(algo, arms, 1000, 250)
-
-        filename = 'tau_' + str(tau) + '.csv'
-        fp = './logs/scenario2/softmax/' + filename
-        results.to_csv(fp)
-
-    # # test for Boltzmann with annealing
-    # algo = AnnealingBoltzmann([], [])
-    # algo.reset(n_arms)
-    # results = test_algorithm(algo, arms, 1000, 250)
-    #
-    # filename = 'annealing.csv'
-    # fp = './logs/scenario2/softmax/' + filename
-    # results.to_csv(fp)
-
-    return
-
-
-def _test_pursuit():
+def pursuit():
 
     means = [0.1, 0.1, 0.1, 0.1, 0.2]
     n_arms = len(means)
@@ -89,7 +139,7 @@ def _test_pursuit():
     return
 
 
-def _test_reinforcement_comparison():
+def reinforcement_comparison():
 
     means = [0.1, 0.1, 0.1, 0.1, 0.2]
     n_arms = len(means)
@@ -111,7 +161,7 @@ def _test_reinforcement_comparison():
     return
 
 
-def _test_ucb1():
+def ucb1():
 
     means = [0.1, 0.1, 0.1, 0.1, 0.2]
     n_arms = len(means)
@@ -130,7 +180,7 @@ def _test_ucb1():
     return
 
 
-def _test_ucb1_tuned():
+def ucb1_tuned():
 
     means = [0.1, 0.1, 0.1, 0.1, 0.2]
     n_arms = len(means)
@@ -148,7 +198,7 @@ def _test_ucb1_tuned():
     return
 
 
-def _test_moss(scenario=1):
+def moss(scenario=1):
 
     if scenario == 1:
         means = [0.1, 0.2, 0.3, 0.4, 0.9]
@@ -173,7 +223,7 @@ def _test_moss(scenario=1):
         results.to_csv(fp)
 
 
-def _test_etc(scenario=1):
+def etc(scenario=1):
 
     if scenario == 1:
         means = [0.1, 0.2, 0.3, 0.4, 0.9]
@@ -200,7 +250,7 @@ def _test_etc(scenario=1):
         results.to_csv(fp)
 
 
-def _test_ts_beta():
+def ts_beta():
     means = [0.1, 0.1, 0.1, 0.1, 0.2]
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
@@ -215,7 +265,7 @@ def _test_ts_beta():
     results.to_csv(fp)
 
 
-def _test_ucbv():
+def ucbv():
     means = [0.1, 0.1, 0.1, 0.1, 0.2]
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
@@ -230,7 +280,7 @@ def _test_ucbv():
     results.to_csv(fp)
 
 
-def _test_ucb2(scenario=1):
+def ucb2(scenario=1):
 
     if scenario == 1:
         means = [0.1, 0.2, 0.3, 0.4, 0.9]
@@ -255,7 +305,7 @@ def _test_ucb2(scenario=1):
         #results.to_csv(fp)
 
 
-def _test_exp3(scenario=3):
+def exp3(scenario=3):
     if scenario == 1:
         means = [0.1, 0.2, 0.3, 0.4, 0.9]
     elif scenario == 2:
@@ -279,7 +329,7 @@ def _test_exp3(scenario=3):
         results.to_csv(fp)
 
 
-def _test_dmed(scenario=1):
+def dmed(scenario=1):
 
     if scenario == 1:
         means = [0.1, 0.2, 0.3, 0.4, 0.9]
@@ -320,7 +370,7 @@ def _test_successive_elimination(scenario=1):
     print("Best arm is " + str(np.argmax(means)))
 
     algo = SuccessiveElimination(n_arms, delta=0.1)
-    results, bests = test_algo_arm(algo, arms, 100, 500)
+    results, bests = test_algo_arm(algo, arms, 1000, 250)
     results_fn = f'successive_elim.csv'
     bests_fn = f'successive_elim_best.csv'
     fp = f'./logs/tests/'
@@ -330,4 +380,4 @@ def _test_successive_elimination(scenario=1):
 
 
 if __name__ == '__main__':
-    _test_successive_elimination()
+    test_all(scenario=1, algos=[epsilon_greedy])

@@ -304,38 +304,62 @@ if __name__ == '__main__':
     plt.rcParams['savefig.dpi'] = 300
     import itertools
 
-    # # names = ['ucb1', 'ucb1_tuned', 'TS']
-    # fn_list = [
-    #     'optim/TS.csv',
-    #     'optim/ucb1_tuned.csv',
-    #     'eps_greedy/annealing_epsilon_greedy.csv',
-    #     'eps_greedy/epsilon_0.1.csv',
-    #     'softmax/tau_0.1.csv',
-    #     'softmax/tau_0.2.csv',
-    #     'pursuit/pursuit_lr_0.05.csv',
-    #     'reinforcement_comparison/rc_alpha_0.05_beta_0.4.csv',
-    # ]
-    # legend_list = [
-    #     'TS (beta prior)',
-    #     'UCB1-Tuned',
-    #     'eps-greedy (annealing)',
-    #     'eps-greedy (0.1)',
-    #     'softmax (0.1)',
-    #     'softmax (0.2)',
-    #     'pursuit (0.05)',
-    #     'RC (0.05, 0.4)',
-    # ]
-    #
-    # plot_probs_choosing_best_arm(fn_list, legend_list, etc_fp='./logs/scenario2/ETC/baseline.npy', best_arm_index=4, fp='./logs/scenario1/',
-    #                              title='Comparison of accuracy for different algorithms', legend_title='algorithms', long_legend=True)
+    # names = ['ucb1', 'ucb1_tuned', 'TS']
+
+    fn_list = [
+        'TS',
+        'ucb1',
+        'ucb1_tuned',
+        'ucbv',
+        'moss',
+        'ucb2_0.5'
+    ]
+    fn_list = [f+'.csv' for f in fn_list]
+    legend_list = [
+        'TS',
+        'UCB1',
+        'UCB1-tuned',
+        'UCB-V',
+        'MOSS',
+        'UCB2 (alpha=0.5)'
+    ]
+
+    fn_list = ['dmed.csv', 'dmed_modified.csv']
+    legend_list = ['DMED', 'DMED (modified)']
+
+    fn_list = [
+        'optim/TS.csv',
+        'optim/ucb1_tuned.csv',
+        'eps_greedy/annealing_epsilon_greedy.csv',
+        'eps_greedy/epsilon_0.1.csv',
+        'softmax/tau_0.1.csv',
+        'softmax/tau_0.2.csv',
+        'pursuit/pursuit_lr_0.05.csv',
+        'reinforcement_comparison/rc_alpha_0.05_beta_0.4.csv',
+        'dmed.csv'
+    ]
+    legend_list = [
+        'TS (beta prior)',
+        'UCB1-Tuned',
+        'eps-greedy (annealing)',
+        'eps-greedy (0.1)',
+        'softmax (0.1)',
+        'softmax (0.2)',
+        'pursuit (0.05)',
+        'RC (0.05, 0.4)',
+        'DMED'
+    ]
+
+    plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/scenario1/',
+                                 title='Accuracy of best algorithms in scenario 1', legend_title='algorithms', long_legend=True)
 
     # gammas = [0.1, 0.2, 0.3, 0.4, 0.5]
     # fn_list = ['ucb2_'+str(a)+'.csv' for a in gammas]
     # #fn_list.append('annealing.csv')
     # legend_list = gammas
     # #legend_list.append('annealing')
-    # plot_probs_choosing_best_arm(fn_list, legend_list, fp='./logs/scenario1/optim/', best_arm_index=4,
-    #                              title='Accuracy of UCB2 algorithm', legend_title='alpha', long_legend=False)
+    # plot_cumulative_reward(fn_list, legend_list, fp='./logs/scenario1/optim/',
+    #                              title='Cumulative reward of UCB2 algorithm', legend_title='alpha')
 
     # es = np.arange(15)
     # es = es+1
@@ -343,8 +367,8 @@ if __name__ == '__main__':
     # legend_list = [str(e) for e in es]
     # plot_etc_baseline([e*5 for e in es], fn_list, legend_list, fp='./logs/scenario3/ETC/', best_arm_index=4, title='', legend_title='')
 
-    plot_probs_choosing_best_arm(['dmed.csv', 'dmed_modified.csv', 'optim/ucb1_tuned.csv', 'optim/ucb1.csv'],
-                                 ['dmed', 'dmed mod', 'ucb1 tuned', 'ucb1'],
-                                 best_arm_index=4,
-                                 fp='./logs/scenario1/')
+    # plot_probs_choosing_best_arm(['dmed.csv', 'dmed_modified.csv', 'optim/ucb1_tuned.csv', 'optim/ucb1.csv'],
+    #                              ['dmed', 'dmed mod', 'ucb1 tuned', 'ucb1'],
+    #                              best_arm_index=4,
+    #                              fp='./logs/scenario1/')
 
