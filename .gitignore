@@ -155,3 +155,4 @@ cython_debug/
 /log.txt
 /deebo/devnotes.txt
 /deebo/tests/
+/deebo/new_logs/

@@ -36,10 +36,34 @@ def means_from_scenario(scenario=0):
         means = [0.1, 0.1, 0.1, 0.1, 0.2]
     elif scenario == 3:
         means = [0.1, 0.25, 0.5, 0.75, 0.9]
+    elif scenario == 4:
+        means = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    elif scenario == 5:
+        means = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5,
+                 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
     else:
         means = None
         sys.exit('invalid test scenario number')
     return means
+
+
+def plot_info_file_path_match(fp):
+    if 'eps_greedy' in fp:
+        return 'epsilon greedy algorithm', 'epsilon'
+    elif 'softmax' in fp:
+        return 'softmax algorithm', 'tau'
+    elif 'optim' in fp:
+        return 'optimism algorithm', 'algorithms'
+    elif 'pursuit' in fp:
+        return 'pursuit algorithm', 'learning rate'
+    elif 'ucb2' in fp:
+        return 'ucb2 algorithm', 'alpha'
+    elif 'exp3' in fp:
+        return 'exp3 algorithm', 'gamma'
+    else:
+        return 'title', 'parameter'
+
+
 
 
 def make_dir(dir):

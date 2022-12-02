@@ -14,7 +14,10 @@ from pathlib import Path
 
 
 # test all algorithms with defined scenarios
-def test_all(scenario=0, algos=None, n_sims=1000, n_horizon=250, folder_name='./tests'):
+def test_all(scenario=1, algos=None, n_sims=1000, n_horizon=250, folder_name=None):
+
+    if not folder_name:
+        sys.exit('Supply folder name for saving result')
 
     if not algos:
         # skipping reinforcement comparison, too difficult to tune
@@ -32,6 +35,17 @@ def test_all(scenario=0, algos=None, n_sims=1000, n_horizon=250, folder_name='./
                  ]
 
     for algo in tqdm(algos):
+        algo(scenario=scenario,
+             n_sims=n_sims,
+             n_horizon=n_horizon,
+             folder_name=folder_name)
+
+    return None
+
+
+def test_algo_for_all_scenarios(algo, scenarios, n_sims=1000, n_horizon=250, folder_name=None):
+
+    for scenario in scenarios:
         algo(scenario=scenario,
              n_sims=n_sims,
              n_horizon=n_horizon,
@@ -113,6 +127,7 @@ def pursuit(scenario, n_sims, n_horizon, folder_name):
     return None
 
 
+# mod needed for testing
 def reinforcement_comparison(scenario, n_sims, n_horizon, folder_name):
 
     fp = folder_name + f'/scenario{scenario}/rc'
@@ -189,32 +204,24 @@ def moss(scenario, n_sims, n_horizon, folder_name):
     return None
 
 
-def etc(scenario=1):  #TODO: ETC needs better testing
+def etc(scenario, n_sims, n_horizon, folder_name):
 
-    if scenario == 1:
-        means = [0.1, 0.2, 0.3, 0.4, 0.9]
-    elif scenario == 2:
-        means = [0.1, 0.1, 0.1, 0.1, 0.2]
-    elif scenario == 3:
-        means = [0.1, 0.25, 0.5, 0.75, 0.9]
-    else:
-        exit(1)
+    fp = folder_name + f'/scenario{scenario}/etc'
+    output_dir = make_dir(fp)
 
+    means = means_from_scenario(scenario)
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
-    print("Best arm is " + str(np.argmax(means)))
-
-    exp_len = np.arange(15)+1
+    exploration_limit = n_horizon // n_arms
+    exp_len = np.arange(exploration_limit)+1
 
     for e in exp_len:
-        algo = ETC([], [], e)
+        algo = ETC(n_arms, explore_limit=e)
         algo.reset(n_arms)
-        results = test_algorithm(algo, arms, 1000, 250)
-        filename = 'etc_' + str(e) + '.csv'
-        fp = f'./logs/scenario{scenario}/ETC/' + filename
-        results.to_csv(fp)
-
+        results = test_algorithm(algo, arms, n_sims, n_horizon)
+        filename = f'{e}_exp_per_arm.csv'
+        results.to_csv(output_dir / filename)
     return None
 
 
@@ -230,7 +237,7 @@ def ts_beta(scenario, n_sims, n_horizon, folder_name):
     algo = ThompsonSampling(n_arms)
     algo.reset(n_arms)
     results = test_algorithm(algo, arms, n_sims, n_horizon)
-    filename = 'TS.csv'
+    filename = 'TS_beta.csv'
     results.to_csv(output_dir / filename)
 
     return None
@@ -334,4 +341,5 @@ def _test_successive_elimination(scenario=1):  # TODO: migrate this
 
 
 if __name__ == '__main__':
-    test_all(scenario=1, n_sims=5, n_horizon=100, folder_name='./tests')
+    #test_all(scenario=4, n_sims=1000, n_horizon=500, folder_name='./logs')
+    test_algo_for_all_scenarios(etc, [1,2,3], folder_name='./new_logs')
