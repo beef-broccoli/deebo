@@ -2,6 +2,7 @@ from arms import BernoulliArm
 from algos_regret import *
 from algos_arm import *
 from algos_testfunc import *
+from utils import means_from_scenario, make_dir
 
 import random
 import numpy as np
@@ -10,36 +11,6 @@ from tqdm import tqdm
 import itertools
 import sys
 from pathlib import Path
-
-
-def _means_from_scenario(scenario=0):
-    """
-
-    Parameters
-    ----------
-    scenario: test scenarios with preset means
-
-    Returns
-    -------
-    mean reward for each arm
-
-    """
-    if scenario == 1:
-        means = [0.1, 0.2, 0.3, 0.4, 0.9]
-    elif scenario == 2:
-        means = [0.1, 0.1, 0.1, 0.1, 0.2]
-    elif scenario == 3:
-        means = [0.1, 0.25, 0.5, 0.75, 0.9]
-    else:
-        means = None
-        sys.exit('invalid test scenario number')
-    return means
-
-
-def _make_dir(dir):
-    p = Path(dir)
-    p.mkdir(parents=True, exist_ok=True)
-    return p
 
 
 # test all algorithms with defined scenarios
@@ -72,9 +43,9 @@ def test_all(scenario=0, algos=None, n_sims=1000, n_horizon=250, folder_name='./
 def epsilon_greedy(scenario, n_sims, n_horizon, folder_name):
 
     fp = folder_name + f'/scenario{scenario}/eps_greedy'
-    output_dir = _make_dir(fp)
+    output_dir = make_dir(fp)
 
-    means = _means_from_scenario(scenario)
+    means = means_from_scenario(scenario)
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
@@ -98,9 +69,9 @@ def epsilon_greedy(scenario, n_sims, n_horizon, folder_name):
 def softmax(scenario, n_sims, n_horizon, folder_name):
 
     fp = folder_name + f'/scenario{scenario}/softmax'
-    output_dir = _make_dir(fp)
+    output_dir = make_dir(fp)
 
-    means = _means_from_scenario(scenario)
+    means = means_from_scenario(scenario)
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
@@ -124,9 +95,9 @@ def softmax(scenario, n_sims, n_horizon, folder_name):
 def pursuit(scenario, n_sims, n_horizon, folder_name):
 
     fp = folder_name + f'/scenario{scenario}/pursuit'
-    output_dir = _make_dir(fp)
+    output_dir = make_dir(fp)
 
-    means = _means_from_scenario(scenario)
+    means = means_from_scenario(scenario)
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
@@ -145,9 +116,9 @@ def pursuit(scenario, n_sims, n_horizon, folder_name):
 def reinforcement_comparison(scenario, n_sims, n_horizon, folder_name):
 
     fp = folder_name + f'/scenario{scenario}/rc'
-    output_dir = _make_dir(fp)
+    output_dir = make_dir(fp)
 
-    means = _means_from_scenario(scenario)
+    means = means_from_scenario(scenario)
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
@@ -167,9 +138,9 @@ def reinforcement_comparison(scenario, n_sims, n_horizon, folder_name):
 def ucb1(scenario, n_sims, n_horizon, folder_name):
 
     fp = folder_name + f'/scenario{scenario}/optim'
-    output_dir = _make_dir(fp)
+    output_dir = make_dir(fp)
 
-    means = _means_from_scenario(scenario)
+    means = means_from_scenario(scenario)
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
@@ -185,9 +156,9 @@ def ucb1(scenario, n_sims, n_horizon, folder_name):
 def ucb1_tuned(scenario, n_sims, n_horizon, folder_name):
 
     fp = folder_name + f'/scenario{scenario}/optim'
-    output_dir = _make_dir(fp)
+    output_dir = make_dir(fp)
 
-    means = _means_from_scenario(scenario)
+    means = means_from_scenario(scenario)
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
@@ -203,9 +174,9 @@ def ucb1_tuned(scenario, n_sims, n_horizon, folder_name):
 def moss(scenario, n_sims, n_horizon, folder_name):
 
     fp = folder_name + f'/scenario{scenario}/optim'
-    output_dir = _make_dir(fp)
+    output_dir = make_dir(fp)
 
-    means = _means_from_scenario(scenario)
+    means = means_from_scenario(scenario)
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
@@ -250,9 +221,9 @@ def etc(scenario=1):  #TODO: ETC needs better testing
 def ts_beta(scenario, n_sims, n_horizon, folder_name):
 
     fp = folder_name + f'/scenario{scenario}/optim'
-    output_dir = _make_dir(fp)
+    output_dir = make_dir(fp)
 
-    means = _means_from_scenario(scenario)
+    means = means_from_scenario(scenario)
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
@@ -267,9 +238,9 @@ def ts_beta(scenario, n_sims, n_horizon, folder_name):
 
 def ucbv(scenario, n_sims, n_horizon, folder_name):
     fp = folder_name + f'/scenario{scenario}/optim'
-    output_dir = _make_dir(fp)
+    output_dir = make_dir(fp)
 
-    means = _means_from_scenario(scenario)
+    means = means_from_scenario(scenario)
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
@@ -284,10 +255,10 @@ def ucbv(scenario, n_sims, n_horizon, folder_name):
 
 def ucb2(scenario, n_sims, n_horizon, folder_name):
 
-    fp = folder_name + f'/scenario{scenario}/optim'
-    output_dir = _make_dir(fp)
+    fp = folder_name + f'/scenario{scenario}/ucb2'
+    output_dir = make_dir(fp)
 
-    means = _means_from_scenario(scenario)
+    means = means_from_scenario(scenario)
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
@@ -303,10 +274,10 @@ def ucb2(scenario, n_sims, n_horizon, folder_name):
 
 def exp3(scenario, n_sims, n_horizon, folder_name):
 
-    fp = folder_name + f'/scenario{scenario}/optim'
-    output_dir = _make_dir(fp)
+    fp = folder_name + f'/scenario{scenario}/exp3'
+    output_dir = make_dir(fp)
 
-    means = _means_from_scenario(scenario)
+    means = means_from_scenario(scenario)
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
@@ -321,17 +292,19 @@ def exp3(scenario, n_sims, n_horizon, folder_name):
 def dmed(scenario, n_sims, n_horizon, folder_name):
 
     fp = folder_name + f'/scenario{scenario}/optim'
-    output_dir = _make_dir(fp)
+    output_dir = make_dir(fp)
 
-    means = _means_from_scenario(scenario)
+    means = means_from_scenario(scenario)
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
     algo = DMED(n_arms, modified=True)
     results = test_algorithm(algo, arms, n_sims, n_horizon)
-    filename = f'dmed_modified.csv'
+    if algo.modified:
+        filename = f'dmed_modified.csv'
+    else:
+        filename = f'dmed.csv'
     results.to_csv(output_dir / filename)
-
 
 
 def _test_successive_elimination(scenario=1):  # TODO: migrate this
