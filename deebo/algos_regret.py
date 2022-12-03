@@ -96,7 +96,7 @@ class EpsilonGreedy:
     def select_next_arm(self):
         if random.random() > self.epsilon:
             return np.random.choice(np.flatnonzero(np.array(self.emp_means) == max(self.emp_means)))
-            # return np.argmax(self.emp_means)  # argmax cannot break ties, bad for initial
+            # return np.argmax(self.emp_means)  # argmax cannot break ties, bad for initial rounds
         else:
             return random.randrange(len(self.emp_means))
 
