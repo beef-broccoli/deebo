@@ -342,4 +342,4 @@ def _test_successive_elimination(scenario=1):  # TODO: migrate this
 
 if __name__ == '__main__':
     #test_all(scenario=4, n_sims=1000, n_horizon=500, folder_name='./logs')
-    test_algo_for_all_scenarios(etc, [1,2,3], folder_name='./new_logs')
+    test_algo_for_all_scenarios(etc, [4], folder_name='./baseline_logs')

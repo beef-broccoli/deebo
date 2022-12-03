@@ -156,3 +156,5 @@ cython_debug/
 /deebo/devnotes.txt
 /deebo/tests/
 /deebo/new_logs/
+/deebo/baselines/
+/deebo/baseline_logs/

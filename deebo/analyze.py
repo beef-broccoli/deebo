@@ -34,6 +34,7 @@ def plot_probs_choosing_best_arm_all(folder_path=None):
     Parameters
     ----------
     folder_path
+    best_arm
 
     Returns
     -------
@@ -52,11 +53,13 @@ def plot_probs_choosing_best_arm_all(folder_path=None):
 
     plot_probs_choosing_best_arm(fn_list,
                                  legend_list,
-                                 best_arm_index=4,
+                                 best_arm_index=best_arm_index,
                                  fp='./',
                                  title=f'Accuracy of {title}',
                                  legend_title=f'{legend_title}',
                                  long_legend=True)
+
+    return
 
 
 
@@ -240,6 +243,23 @@ def plot_etc_baseline(explore_times,
                       legend_title='',
                       long_legend=False,
                       ):
+    """
+
+    Parameters
+    ----------
+    explore_times: a list of total number of exploration rounds
+    fn_list
+    legend_list
+    best_arm_index
+    fp
+    title
+    legend_title
+    long_legend
+
+    Returns
+    -------
+
+    """
 
     # file name needs to be in a sequence where small # is first
 
@@ -341,7 +361,12 @@ if __name__ == '__main__':
     plt.rcParams['savefig.dpi'] = 300
     import itertools
 
-    plot_probs_choosing_best_arm_all(folder_path='logs/scenario1/pursuit/')
+    #plot_probs_choosing_best_arm_all(folder_path='logs/scenario4/optim/')
+
+    ns = list(np.arange(27)+1)
+    fn_list = [f'{n}_exp_per_arm.csv' for n in ns]
+    plot_etc_baseline(explore_times=[n*9 for n in ns], fn_list=fn_list, legend_list=ns,
+                      best_arm_index=8, fp='./baseline_logs/scenario4/etc/', long_legend=True)
 
     # names = ['ucb1', 'ucb1_tuned', 'TS']
 

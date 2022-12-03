@@ -48,22 +48,28 @@ def means_from_scenario(scenario=0):
 
 
 def plot_info_file_path_match(fp):
+
+    if any(s in fp for s in ['scenario1', 'scenario2', 'scenario3']):
+        best_arm_index = 4
+    elif 'scenario4' in fp:
+        best_arm_index = 8
+    elif 'scenario5' in fp:
+        best_arm_index = 18
+
     if 'eps_greedy' in fp:
-        return 'epsilon greedy algorithm', 'epsilon'
+        return 'epsilon greedy algorithm', 'epsilon', best_arm_index
     elif 'softmax' in fp:
-        return 'softmax algorithm', 'tau'
+        return 'softmax algorithm', 'tau', best_arm_index
     elif 'optim' in fp:
-        return 'optimism algorithm', 'algorithms'
+        return 'optimism algorithm', 'algorithms', best_arm_index
     elif 'pursuit' in fp:
-        return 'pursuit algorithm', 'learning rate'
+        return 'pursuit algorithm', 'learning rate', best_arm_index
     elif 'ucb2' in fp:
-        return 'ucb2 algorithm', 'alpha'
+        return 'ucb2 algorithm', 'alpha', best_arm_index
     elif 'exp3' in fp:
-        return 'exp3 algorithm', 'gamma'
+        return 'exp3 algorithm', 'gamma', best_arm_index
     else:
-        return 'title', 'parameter'
-
-
+        return 'title', 'parameter', best_arm_index
 
 
 def make_dir(dir):
