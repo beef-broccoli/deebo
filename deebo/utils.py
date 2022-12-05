@@ -55,6 +55,8 @@ def plot_info_file_path_match(fp):
         best_arm_index = 8
     elif 'scenario5' in fp:
         best_arm_index = 18
+    else:
+        best_arm_index = -1
 
     if 'eps_greedy' in fp:
         return 'epsilon greedy algorithm', 'epsilon', best_arm_index

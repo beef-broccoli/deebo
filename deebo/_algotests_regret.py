@@ -237,7 +237,7 @@ def ts_beta(scenario, n_sims, n_horizon, folder_name):
     algo = ThompsonSampling(n_arms)
     algo.reset(n_arms)
     results = test_algorithm(algo, arms, n_sims, n_horizon)
-    filename = 'TS_beta.csv'
+    filename = 'TS.csv'
     results.to_csv(output_dir / filename)
 
     return None
@@ -340,6 +340,26 @@ def _test_successive_elimination(scenario=1):  # TODO: migrate this
         bests.to_csv(fp+bests_fn)
 
 
+def _test_batched(scenario, n_sims, n_horizon, folder_name):
+
+    fp = folder_name + f'/scenario{scenario}/batch'
+    output_dir = make_dir(fp)
+
+    means = means_from_scenario(scenario)
+    n_arms = len(means)
+    arms = list(map(lambda x: BernoulliArm(x), means))
+
+    # test for epsilon greedy
+    algos = [EpsilonGreedy(n_arms, eps) for eps in [0.1, 0.2, 0.3, 0.4, 0.5]]
+    result = batched_test_algorithm(algos, arms, n_sims, n_horizon)
+    result.to_csv(output_dir / 'test.csv')
+
+    return None
+
+
 if __name__ == '__main__':
-    #test_all(scenario=4, n_sims=1000, n_horizon=500, folder_name='./logs')
-    test_algo_for_all_scenarios(etc, [4], folder_name='./baseline_logs')
+    #test_all(scenario=5, n_sims=1000, n_horizon=500, folder_name='./logs')
+    #test_algo_for_all_scenarios(etc, [4], folder_name='./baseline_logs')
+    #_test_batched(1, 1000, 250, 'logs/')
+    etc(scenario=5, n_sims=1000, n_horizon=500, folder_name='./baseline_logs/')
+

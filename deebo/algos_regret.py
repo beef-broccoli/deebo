@@ -195,6 +195,7 @@ class AnnealingBoltzmann:
         return
 
 
+#TODO: annealing learning rate
 class Pursuit:
 
     def __init__(self, n_arms, lr, counts=None, emp_means=None, probs=None):

@@ -73,7 +73,8 @@ def plot_probs_choosing_best_arm(fn_list,
                                  title='',
                                  legend_title='',
                                  long_legend=False,
-                                 ignore_first_rounds=0):
+                                 ignore_first_rounds=0,
+                                 vline=0):
     """
 
     Parameters
@@ -102,6 +103,8 @@ def plot_probs_choosing_best_arm(fn_list,
 
     if manual_baseline != 0:
         plt.axhline(y=manual_baseline, xmin=0, xmax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
+    if vline !=0:
+        plt.axvline(x=manual_baseline, ymin=0, ymax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
 
     if etc_baseline:
         base = np.load(etc_fp)
@@ -189,6 +192,7 @@ def plot_average_reward(fn_list,
     plt.show()
 
 
+#TODO: baseline cumu reward with ETC
 def plot_cumulative_reward(fn_list,
                            legend_list,
                            fp='',
@@ -388,60 +392,128 @@ if __name__ == '__main__':
         )
         return None
 
-    scenario1_best_perfomers()
-    #plot_probs_choosing_best_arm_all(folder_path='logs/scenario1/exp3')
+    def scenario2_best_perfomers():
+        prefix = 'logs/scenario2/'
+        n_list = ['eps_greedy/annealing',
+                  'softmax/tau_0.05',
+                  'pursuit/lr_0.05',
+                  'rc/rc_alpha_0.01_beta_0.4',
+                  'optim/ucb1_tuned',
+                  'optim/TS'
+                  ]
+        fn_list = [f'{prefix}{n}.csv' for n in n_list]
+        plot_probs_choosing_best_arm(
+            fn_list=fn_list,
+            legend_list=['eps greedy(annealing)',
+                         'softmax (τ=0.05)',
+                         'pursuit (lr=0.05)',
+                         'reinforcement comparison (α=0.01, β=0.4)',
+                         'ucb1-tuned',
+                         'thompson sampling (beta prior)'],
+            etc_baseline=True,
+            etc_fp=f'{prefix}baseline.npy',
+            title='Accuracy of scenario 2 best performers',
+            legend_title='algorithms',
+            best_arm_index=4,
+            long_legend=False,
+            ignore_first_rounds=5
+        )
+        return None
 
-    # ns = list(np.arange(27)+1)
+    def scenario3_best_perfomers():
+        prefix = 'logs/scenario3/'
+        n_list = ['eps_greedy/annealing',
+                  'pursuit/lr_0.05',
+                  'optim/ucb1_tuned',
+                  'optim/TS'
+                  ]
+        fn_list = [f'{prefix}{n}.csv' for n in n_list]
+        plot_probs_choosing_best_arm(
+            fn_list=fn_list,
+            legend_list=['eps greedy(annealing)',
+                         'pursuit (lr=0.05)',
+                         'ucb1-tuned',
+                         'thompson sampling (beta prior)'],
+            etc_baseline=True,
+            etc_fp=f'{prefix}baseline.npy',
+            title='Accuracy of scenario 3 best performers',
+            legend_title='algorithms',
+            best_arm_index=4,
+            long_legend=False,
+            ignore_first_rounds=5
+        )
+        return None
+
+    def scenario4_best_perfomers():
+        prefix = 'logs/scenario4/'
+        n_list = ['eps_greedy/annealing',
+                  'pursuit/lr_0.025',
+                  'pursuit/lr_0.05',
+                  'optim/ucb1_tuned',
+                  'optim/TS'
+                  ]
+        fn_list = [f'{prefix}{n}.csv' for n in n_list]
+        plot_probs_choosing_best_arm(
+            fn_list=fn_list,
+            legend_list=['eps greedy(annealing)',
+                         'pursuit (lr=0.025)',
+                         'pursuit (lr=0.05)',
+                         'ucb1-tuned',
+                         'thompson sampling (beta prior)'],
+            etc_baseline=True,
+            etc_fp=f'{prefix}baseline.npy',
+            title='Accuracy of scenario 4 best performers',
+            legend_title='algorithms',
+            best_arm_index=8,
+            long_legend=False,
+            ignore_first_rounds=9
+        )
+        return None
+
+    def scenario5_best_perfomers():
+        prefix = 'logs/scenario5/'
+        n_list = ['eps_greedy/annealing',
+                  'pursuit/lr_0.025',
+                  'optim/TS'
+                  ]
+        fn_list = [f'{prefix}{n}.csv' for n in n_list]
+        plot_probs_choosing_best_arm(
+            fn_list=fn_list,
+            legend_list=['eps greedy(annealing)',
+                         'pursuit (lr=0.025)',
+                         'thompson sampling (beta prior)'],
+            etc_baseline=True,
+            etc_fp=f'{prefix}baseline.npy',
+            title='Accuracy of scenario 5 best performers',
+            legend_title='algorithms',
+            best_arm_index=18,
+            long_legend=False,
+            ignore_first_rounds=19,
+        )
+        return None
+
+
+    scenario5_best_perfomers()
+    #plot_probs_choosing_best_arm_all(folder_path='logs/scenario5/ucb2')
+
+    # eps = [0.1, 0.2, 0.3, 0.4, 0.5]
+    # fn_list = ['batch/test.csv']
+    # fn_list = fn_list + [f'eps_greedy/epsilon_{e}.csv' for e in eps]
+    # print(fn_list)
+    # plot_cumulative_reward(
+    #     fn_list=fn_list,
+    #     legend_list=['batched']+[str(e) for e in eps],
+    #     legend_title='epsilon',
+    #     title='Cumulative reward of epsilon greedy algorithm',
+    #     fp='./logs/scenario1/',
+    # )
+
+    # #baseline plot
+    # ns = list(np.arange(26)+1)
     # fn_list = [f'{n}_exp_per_arm.csv' for n in ns]
-    # plot_etc_baseline(explore_times=[n*9 for n in ns], fn_list=fn_list, legend_list=ns,
-    #                   best_arm_index=8, fp='./baseline_logs/scenario4/etc/', long_legend=True)
+    # plot_etc_baseline(explore_times=[n*19 for n in ns], fn_list=fn_list, legend_list=ns,
+    #                   best_arm_index=18, fp='./baseline_logs/scenario5/etc/', long_legend=True)
 
-    # names = ['ucb1', 'ucb1_tuned', 'TS']
-
-    # fn_list = [
-    #     'TS',
-    #     'ucb1',
-    #     'ucb1_tuned',
-    #     'ucbv',
-    #     'moss',
-    #     'ucb2_0.5'
-    # ]
-    # fn_list = [f+'.csv' for f in fn_list]
-    # legend_list = [
-    #     'TS',
-    #     'UCB1',
-    #     'UCB1-tuned',
-    #     'UCB-V',
-    #     'MOSS',
-    #     'UCB2 (alpha=0.5)'
-    # ]
-    #
-    # fn_list = ['dmed.csv', 'dmed_modified.csv']
-    # legend_list = ['DMED', 'DMED (modified)']
-    #
-    # fn_list = [
-    #     'optim/TS.csv',
-    #     'optim/ucb1_tuned.csv',
-    #     'eps_greedy/annealing_epsilon_greedy.csv',
-    #     'eps_greedy/epsilon_0.1.csv',
-    #     'softmax/tau_0.1.csv',
-    #     'softmax/tau_0.2.csv',
-    #     'pursuit/pursuit_lr_0.05.csv',
-    #     'reinforcement_comparison/rc_alpha_0.05_beta_0.4.csv',
-    #     'dmed.csv'
-    # ]
-    # legend_list = [
-    #     'TS (beta prior)',
-    #     'UCB1-Tuned',
-    #     'eps-greedy (annealing)',
-    #     'eps-greedy (0.1)',
-    #     'softmax (0.1)',
-    #     'softmax (0.2)',
-    #     'pursuit (0.05)',
-    #     'RC (0.05, 0.4)',
-    #     'DMED'
-    # ]
-    #
     # plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/scenario1/',
     #                              title='Accuracy of best algorithms in scenario 1', legend_title='algorithms',
     #                              long_legend=True, etc_baseline=True, etc_fp='./logs/scenario1/ETC/baseline.npy')
