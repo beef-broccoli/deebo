@@ -5,7 +5,7 @@ import random
 
 
 # ChemArmSim: chem arms for simulation. Data is fetched from github url and processed based on user selection
-class ChemArmSim:
+class ChemArmRandomDraw:
 
     def __init__(self, val, name, url):
         self.val = val  # e.g. ('CC#N', 'CCC')
@@ -48,7 +48,7 @@ class ChemArmSim:
 
 
 # binary version of ChemArmSim. Yield is converted based on cutoff
-class ChemArmSimBinary(ChemArmSim):
+class ChemArmRandomDrawBinary(ChemArmRandomDraw):
 
     def __init__(self, val, name, url, cutoff):
         super().__init__(val, name, url)
@@ -69,7 +69,7 @@ def _init_chemarmsim():
     base = ['O=C([O-])C.[K+]', 'O=C([O-])C(C)(C)C.[K+]']
     solvent = ['CC(N(C)C)=O', 'CCCC#N']
     vals = list(itertools.product(base, solvent))  # sequence has to match what's in "names"
-    arms = list(map(lambda x: ChemArmSim(x, names, dataset_url), vals))
+    arms = list(map(lambda x: ChemArmRandomDraw(x, names, dataset_url), vals))
 
 
 if __name__ == '__main__':

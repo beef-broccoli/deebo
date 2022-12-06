@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from algos_regret import *
 from analyze import plot_average_reward, plot_cumulative_reward, plot_probs_choosing_best_arm, calculate_baseline
-from arms_chem import ChemArmSim, ChemArmSimBinary
+from arms_chem import ChemArmRandomDraw, ChemArmRandomDrawBinary
 
 
 def chem_test_algorithm(algo, arms, num_sims, horizon):
@@ -41,7 +41,7 @@ def _chem_test_1():
     base = ['O=C([O-])C.[K+]', 'O=C([O-])C(C)(C)C.[K+]']
     solvent = ['CC(N(C)C)=O', 'CCCC#N']
     vals = list(itertools.product(base, solvent))  # sequence has to match what's in "names"
-    arms = list(map(lambda x: ChemArmSim(x, names, dataset_url), vals))
+    arms = list(map(lambda x: ChemArmRandomDraw(x, names, dataset_url), vals))
 
     # since we have data, can figure out which is best arm, and calculate average for all arms
     best_avg = 0
@@ -111,7 +111,7 @@ def _chem_test_2():
     names = ('ligand_name')  # same names with column name in df
     df = pd.read_csv(dataset_url)
     vals = ['A-caPhos', 'BrettPhos', 'Cy-BippyPhos', 'PCy3 HBF4', 'X-Phos']
-    arms = list(map(lambda x: ChemArmSimBinary(x, names, dataset_url, cutoff=0.8), vals))
+    arms = list(map(lambda x: ChemArmRandomDrawBinary(x, names, dataset_url, cutoff=0.8), vals))
 
     # since we have data, can figure out which is best arm, and calculate average for all arms
     best_avg = 0

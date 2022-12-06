@@ -10,13 +10,13 @@ from utils import plot_info_file_path_match
 
 def calculate_baseline(chemarms: list):
     # TODO: take chem arms, calculate a baseline for probability in a traditional reaction optimziation way
-    from arms_chem import ChemArmSim
+    from arms_chem import ChemArmRandomDraw
 
     # type check; check chem arms are from same dataset
     url = chemarms[0].data_url
     name = chemarms[0].name
     for arm in chemarms:
-        assert isinstance(arm, ChemArmSim), "required argument: a list of ChemArm objects"
+        assert isinstance(arm, ChemArmRandomDraw), "required argument: a list of ChemArm objects"
         assert arm.name == name, "ChemArmSim objects should describe same reaction components"
         assert arm.data_url == url, "ChemArmSim objects should come from the same dataset"
 
@@ -334,7 +334,7 @@ def _test_plot():
 
 def _test_cal_baseline():
 
-    from arms_chem import ChemArmSim
+    from arms_chem import ChemArmRandomDraw
     import itertools
 
     # build chem arms
@@ -343,7 +343,7 @@ def _test_cal_baseline():
     base = ['O=C([O-])C.[K+]', 'O=C([O-])C(C)(C)C.[K+]']
     solvent = ['CC(N(C)C)=O', 'CCCC#N']
     vals = list(itertools.product(base, solvent))  # sequence has to match what's in "names"
-    arms = list(map(lambda x: ChemArmSim(x, names, dataset_url), vals))
+    arms = list(map(lambda x: ChemArmRandomDraw(x, names, dataset_url), vals))
 
     # test basline
     calculate_baseline(arms)
