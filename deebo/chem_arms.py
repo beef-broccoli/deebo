@@ -13,6 +13,7 @@ from algos_regret import EpsilonGreedy
 # 1. how to handle when all experiments for one arm has been sampled
 # 2. how to integrate stop conditions, and use arm selection algorithm
 
+
 class Scope:
 
     def __init__(self):
@@ -363,8 +364,5 @@ if __name__ == '__main__':
         scope = pickle.load(f)  # load scope object
     with open(f'{dir}algo.pkl', 'rb') as f:
         algo = pickle.load(f)  # load algo object
-
-
-
 
 

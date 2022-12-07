@@ -4,7 +4,7 @@ from tqdm import tqdm
 import utils
 
 
-def test_algorithm(algo, arms, num_sims, horizon):
+def test_algorithm_regret(algo, arms, num_sims, horizon):
 
     cols = ['num_sims', 'horizon', 'chosen_arm', 'reward', 'cumulative_reward']
     ar = np.zeros((num_sims*horizon, len(cols)))
@@ -59,7 +59,7 @@ def batched_test_algorithm(algos, arms, num_sims, horizon):
     return pd.DataFrame(ar, columns=cols)
 
 
-def test_algo_arm(algo, arms, num_sims, max_horizon):
+def test_algorithm_arm(algo, arms, num_sims, max_horizon):
     """
 
     Parameters
