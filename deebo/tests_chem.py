@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from algos_regret import *
 from analyze import plot_average_reward, plot_cumulative_reward, plot_probs_choosing_best_arm, calculate_baseline
-from arms_chem import ChemArmRandomDraw, ChemArmRandomDrawBinary
+from chem_arms_legacy import ChemArmRandomDraw, ChemArmRandomDrawBinary
 
 
 def chem_test_algorithm(algo, arms, num_sims, horizon):

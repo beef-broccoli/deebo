@@ -10,7 +10,7 @@ from utils import plot_info_file_path_match
 
 def calculate_baseline(chemarms: list):
     # TODO: take chem arms, calculate a baseline for probability in a traditional reaction optimziation way
-    from arms_chem import ChemArmRandomDraw
+    from chem_arms_legacy import ChemArmRandomDraw
 
     # type check; check chem arms are from same dataset
     url = chemarms[0].data_url
@@ -334,7 +334,7 @@ def _test_plot():
 
 def _test_cal_baseline():
 
-    from arms_chem import ChemArmRandomDraw
+    from chem_arms_legacy import ChemArmRandomDraw
     import itertools
 
     # build chem arms
