@@ -1,4 +1,5 @@
 import itertools
+import pickle
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import OneHotEncoder as OHE
@@ -6,6 +7,8 @@ from sklearn.ensemble import RandomForestRegressor as RFR
 from sklearn.linear_model import LinearRegression as LR
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
+
+from algos_regret import EpsilonGreedy
 
 
 class Scope:
@@ -199,7 +202,7 @@ class Scope:
         """
         candidates = self.data.loc[self.data['yield'].isnull()]  # experiments without a yield
         for ii in range(len(self.arm_labels)):  # find available experiments for this arm
-            candidates = candidates.loc[candidates[self.arm_labels[ii]]==self.arms[arm_index][ii]]
+            candidates = candidates.loc[candidates[self.arm_labels[ii]] == self.arms[arm_index][ii]]
 
         if mode == 'random':
             return candidates.sample(1)
@@ -207,22 +210,24 @@ class Scope:
             return
 
 
-# TODO
-def propose_initial_experiments(algo, arms):
+def propose_initial_experiments(scope_dict, arms_dict, algo):
 
-    # build scope first
-    d = {}  # scope dictionary here
     exps = Scope()
-    exps.build_scope(d)
+    exps.build_scope(scope_dict)
+    exps.build_arms(arms_dict)
 
-    cols = ['horizon', 'chosen_arm', 'reward', 'cumulative_reward']
+    log = pd.DataFrame(columns=['horizon', 'chosen_arm', 'reward', 'cumulative_reward'])
     chosen_arm = algo.select_next_arm()
     experiments = exps.propose_experiment(chosen_arm)
+    log.loc[len(log.index)] = [0, chosen_arm, np.nan, 0]
 
-    # save the experiment
-    # save algo
-    # save scope object
-    # save log
+    folder = './test/'
+    experiments.to_csv(f'{folder}proposed_expriments.csv')
+    log.to_csv(f'{folder}log.csv')
+    with open(f'{folder}algo.pkl', 'wb') as f:
+        pickle.dump(algo, f)
+    with open(f'{folder}scope.pkl', 'wb') as f:
+        pickle.dump(exps, f)
 
     return
 
@@ -253,34 +258,12 @@ if __name__ == '__main__':
         'component_a': ['a1', 'a2', 'a3'],
          'component_c': ['c1', 'c2', 'c3', 'c4']
     }
-    s = Scope()
-    s.build_scope(x)
-    xx = {
-        'component_b': 'b1',
-        'component_a': 'a3',
-        'yield': 11,
-        'component_c': 'c1',
-    }
-    s.update(xx)
+    y = {'component_b': ['b1', 'b2'],
+         'component_a': ['a1', 'a3']}
 
-    xx = {
-        'component_b': 'b2',
-        'component_a': 'a2',
-        'yield': 22,
-        'component_c': 'c1',
-    }
-    s.update(xx)
+    algo = EpsilonGreedy(4, 0.1)
+    propose_initial_experiments(x, y, algo)
 
-    s.predict()
 
-    arms_to_build = {
-        'component_c': ['c1', 'c3'],
-        'component_a': ['a2', 'a3']
-    }
-    # build arm
-    s.build_arms(arms_to_build)
-    print(
-        s.propose_experiment(1)
-    )
 
 
