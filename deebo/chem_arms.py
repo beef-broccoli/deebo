@@ -10,6 +10,8 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 
 from algos_regret import EpsilonGreedy
 
+# 1. how to handle when all experiments for one arm has been sampled
+# 2. how to integrate stop conditions, and use arm selection algorithm
 
 class Scope:
 
@@ -20,10 +22,11 @@ class Scope:
         self.pre_accuray = None  # prediction accuracy
         self.arms = None  # a list of arms, e.g., [('a2', 'c1'), ('a2', 'c3'), ('a3', 'c1'), ('a3', 'c3')]
         self.arm_labels = None  # label names. e.g., ['component_a', 'component_b']
+        self.current_experiment_index = None  # df index of the experiments currently running
         return
 
     def __str__(self):
-        return self.data_dic
+        return str(self.data_dic)
 
     def build_scope(self, d):
         """
@@ -95,7 +98,7 @@ class Scope:
             assert len(list(y)) == 1, f'multiple result exist for query {d}'
             return list(y)[0]
 
-    def update(self, d):
+    def update_with_dict(self, d):
         """
         Update scope with reaction yield
 
@@ -130,6 +133,10 @@ class Scope:
             print(f'No update; requested components do not exist for {d}')
         else:
             self.data.loc[boo, 'yield'] = y
+        return
+
+    def update_with_index(self, index, y):
+        self.data.loc[index, 'yield'] = y
         return
 
     def predict(self):
@@ -182,6 +189,10 @@ class Scope:
         self.arms = list(itertools.product(*(d[c] for c in self.arm_labels)))
         return
 
+    def build_arm_dict(self, arm_index):
+        arm = list(self.arms[int(arm_index)])
+        return dict(zip(self.arm_labels, arm))
+
     def clear_arms(self):
         self.arms = None
 
@@ -205,64 +216,154 @@ class Scope:
             candidates = candidates.loc[candidates[self.arm_labels[ii]] == self.arms[arm_index][ii]]
 
         if mode == 'random':
-            return candidates.sample(1)
+            try:
+                sample = candidates.sample(1)
+            except ValueError:  # all reactions for this arm has been sampled
+                # one way is to just return a dummy experiment with average yield here
+                pass
+            self.current_experiment_index = sample.index
+            return sample
         else:
             return
 
 
-def propose_initial_experiments(scope_dict, arms_dict, algo):
+def propose_initial_experiments(scope_dict, arms_dict, algo, dir='./test/'):
+    """
+    Build an initial scope, propose initial experiments and save required objects to be loaded later
+    Propose a single experiment only for now
 
-    exps = Scope()
-    exps.build_scope(scope_dict)
-    exps.build_arms(arms_dict)
+    Parameters
+    ----------
+    scope_dict: dict
+
+    arms_dict: dict
+
+    algo: any of the algo object implemented
+
+    dir: str
+        directory for all the files to be saved into
+
+    Returns
+    -------
+    None
+
+    """
+
+    scope = Scope()
+    scope.build_scope(scope_dict)
+    scope.build_arms(arms_dict)
 
     log = pd.DataFrame(columns=['horizon', 'chosen_arm', 'reward', 'cumulative_reward'])
     chosen_arm = algo.select_next_arm()
-    experiments = exps.propose_experiment(chosen_arm)
+    proposed_experiments = scope.propose_experiment(chosen_arm)
     log.loc[len(log.index)] = [0, chosen_arm, np.nan, 0]
 
-    folder = './test/'
-    experiments.to_csv(f'{folder}proposed_expriments.csv')
-    log.to_csv(f'{folder}log.csv')
-    with open(f'{folder}algo.pkl', 'wb') as f:
-        pickle.dump(algo, f)
-    with open(f'{folder}scope.pkl', 'wb') as f:
-        pickle.dump(exps, f)
+    proposed_experiments.to_csv(f'{dir}proposed_experiments.csv', index=False)  # save proposed experiments
+    log.to_csv(f'{dir}log.csv', index=False)  # save acquisition log
+    with open(f'{dir}algo.pkl', 'wb') as f:
+        pickle.dump(algo, f)  # save algo object
+    with open(f'{dir}scope.pkl', 'wb') as f:
+        pickle.dump(scope, f)  # save scope object
 
     return
 
 
-# TODO
-def update_and_propose(algo, arms, horizon):
-    cols = ['horizon', 'chosen_arm', 'reward', 'cumulative_reward']
-    ar = np.zeros((horizon, len(cols)))
+def update_and_propose(dir='./test/'):
 
-    algo.reset(len(arms))
-    cumulative_reward = 0
+    """
+    After user filled out experimental result, load the result and update scope and algoritm, propose next experiments
 
-    for t in range(horizon):
-        chosen_arm = algo.select_next_arm()  # algorithm selects an arm
-        reward = arms[chosen_arm].draw()  # chosen arm returns reward
-        cumulative_reward = cumulative_reward + reward  # calculate cumulative reward over time horizon
-        algo.update(chosen_arm, reward)  # algorithm updates chosen arm with reward
-        ar[sim*horizon+t, :] = [sim, t, chosen_arm, reward, cumulative_reward]  # logs info
+    Parameters
+    ----------
+    dir: str
+        directory where previous log files and results are stored
 
-    df = pd.DataFrame(ar, columns=cols)
+    Returns
+    -------
+    None
+
+    """
+
+    with open(f'{dir}algo.pkl', 'rb') as f:
+        algo = pickle.load(f)  # load algo object
+    with open(f'{dir}scope.pkl', 'rb') as f:
+        scope = pickle.load(f)  # load scope object
+    log = pd.read_csv(f'{dir}log.csv')
+    exps = pd.read_csv(f'{dir}proposed_experiments.csv')
+
+    # only dealing with one experiments right now, need to modify for batched experiments with list
+    # get info from log and proposed experiments
+    reward = list(exps['yield'])[0]
+    if np.isnan(reward):
+        exit('need to fill in yield')
+    if (reward > 1) or (reward < 0):
+        exit('adjust yield to be between 0 and 1')
+    last_chosen_arm = int(list(log['chosen_arm'])[-1])
+    horizon = list(log['horizon'])[-1]
+    log.drop(log.tail(1).index, inplace=True)  # delete incomplete last row;
+    # important to delete this row first before grabbing cumulative reward
+    try:
+        cumulative_reward = list(log['cumulative_reward'])[-1]
+    except IndexError:  # first time update, only one row to begin with
+        cumulative_reward = 0.0
+    cumulative_reward = cumulative_reward + reward
+
+    # update log
+    log.loc[len(log.index)] = [horizon, last_chosen_arm, reward, cumulative_reward]  # refill with info
+
+    # update scope, algo
+    scope.update_with_index(scope.current_experiment_index, reward)
+    scope.predict()
+    algo.update(last_chosen_arm, reward)
+
+    # propose new experiments
+    chosen_arm = algo.select_next_arm()
+    proposed_experiments = scope.propose_experiment(chosen_arm)
+    log.loc[len(log.index)] = [horizon+1, chosen_arm, np.nan, np.nan]
+
+    # save files and objects again
+    proposed_experiments.to_csv(f'{dir}proposed_experiments.csv', index=False)  # save proposed experiments
+    log.to_csv(f'{dir}log.csv', index=False)  # save acquisition log
+    with open(f'{dir}algo.pkl', 'wb') as f:
+        pickle.dump(algo, f)  # save algo object
+    with open(f'{dir}scope.pkl', 'wb') as f:
+        pickle.dump(scope, f)  # save scope object
+
     return None
+
+
+def simulate_propose_and_update():
+
+    """
+    Method for simulation; skipping the saving and loading by user, query dataset with full results instead
+
+    Returns
+    -------
+
+    """
+    pass
 
 
 if __name__ == '__main__':
 
-    # build scope
-    x = {'component_b': ['b1', 'b2'],
-        'component_a': ['a1', 'a2', 'a3'],
-         'component_c': ['c1', 'c2', 'c3', 'c4']
-    }
-    y = {'component_b': ['b1', 'b2'],
-         'component_a': ['a1', 'a3']}
+    # # build scope
+    # x = {'component_b': ['b1', 'b2'],
+    #     'component_a': ['a1', 'a2', 'a3'],
+    #      'component_c': ['c1', 'c2', 'c3', 'c4']
+    # }
+    # y = {'component_b': ['b1', 'b2'],
+    #      'component_a': ['a1', 'a3']}
+    #
+    # algo = EpsilonGreedy(4, 0.5)
+    # propose_initial_experiments(x, y, algo)
 
-    algo = EpsilonGreedy(4, 0.1)
-    propose_initial_experiments(x, y, algo)
+    # update_and_propose()
+    dir = './test/'
+    with open(f'{dir}scope.pkl', 'rb') as f:
+        scope = pickle.load(f)  # load scope object
+    with open(f'{dir}algo.pkl', 'rb') as f:
+        algo = pickle.load(f)  # load algo object
+
 
 
 

@@ -23,7 +23,7 @@ import numpy as np
 from utils import zero_nor_one
 
 
-class ETC:  # explore then commit
+class ETC():  # explore then commit
 
     def __init__(self, n_arms, counts=None, emp_means=None, explore_limit=1):
         self.counts = counts if counts else [0 for col in range(n_arms)]
