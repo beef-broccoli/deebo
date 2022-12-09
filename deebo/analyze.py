@@ -493,7 +493,7 @@ if __name__ == '__main__':
         return None
 
 
-    scenario5_best_perfomers()
+    scenario1_best_perfomers()
     #plot_probs_choosing_best_arm_all(folder_path='logs/scenario5/ucb2')
 
     # eps = [0.1, 0.2, 0.3, 0.4, 0.5]

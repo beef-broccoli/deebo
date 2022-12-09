@@ -15,7 +15,10 @@ implemented algorithms for regret minimization in a multi armed bandit problem
 - Thompson Sampling
 - EXP3
 
+dummy best arm: most played arm for each algorihtm
+
 """
+
 
 import random
 import math
@@ -23,18 +26,38 @@ import numpy as np
 from utils import zero_nor_one
 
 
-class ETC():  # explore then commit
+# parent class
+class RegretAlgorithm:
 
-    def __init__(self, n_arms, counts=None, emp_means=None, explore_limit=1):
+    def __init__(self, n_arms, counts=None, emp_means=None):
         self.counts = counts if counts else [0 for col in range(n_arms)]
         self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
-        self.limit = explore_limit  # how many rounds per arm
-        self.best_arm = -1
+        self.ranking = []
         return
 
     def reset(self, n_arms):
         self.counts = [0 for col in range(n_arms)]
         self.emp_means = [0.0 for col in range(n_arms)]
+        self.ranking = []
+        return
+
+    def select_next_arm(self):
+        pass
+
+    def update(self, chosen_arm, reward):
+        pass
+
+
+class ETC(RegretAlgorithm):  # explore then commit
+
+    def __init__(self, n_arms, counts=None, emp_means=None, explore_limit=1):
+        RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
+        self.limit = explore_limit  # how many rounds per arm
+        self.best_arm = -1
+        return
+
+    def reset(self, n_arms):
+        RegretAlgorithm.reset(self, n_arms)
         self.best_arm = -1
         return
 
@@ -53,20 +76,11 @@ class ETC():  # explore then commit
         value = self.emp_means[chosen_arm]
         new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
         self.emp_means[chosen_arm] = new_value
+        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
         return
 
 
-class Random:  # random selection of arms
-
-    def __init__(self, n_arms, counts=None, emp_means=None):
-        self.counts = counts if counts else [0 for col in range(n_arms)]
-        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
-        return
-
-    def reset(self, n_arms):
-        self.counts = [0 for col in range(n_arms)]
-        self.emp_means = [0.0 for col in range(n_arms)]
-        return
+class Random(RegretAlgorithm):  # random selection of arms
 
     def select_next_arm(self):
         return random.randrange(len(self.emp_means))
@@ -77,20 +91,15 @@ class Random:  # random selection of arms
         value = self.emp_means[chosen_arm]
         new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
         self.emp_means[chosen_arm] = new_value
+        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
         return
 
 
-class EpsilonGreedy:
+class EpsilonGreedy(RegretAlgorithm):
 
     def __init__(self, n_arms, epsilon, counts=None, emp_means=None):
+        RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
         self.epsilon = epsilon
-        self.counts = counts if counts else [0 for col in range(n_arms)]
-        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
-        return
-
-    def reset(self, n_arms):
-        self.counts = [0 for col in range(n_arms)]
-        self.emp_means = [0.0 for col in range(n_arms)]
         return
 
     def select_next_arm(self):
@@ -106,27 +115,18 @@ class EpsilonGreedy:
         value = self.emp_means[chosen_arm]
         new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
         self.emp_means[chosen_arm] = new_value
+        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
         return
 
 
-class AnnealingEpsilonGreedy:
-
-    def __init__(self, n_arms, counts=None, emp_means=None):
-        self.counts = counts if counts else [0 for col in range(n_arms)]
-        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
-        return
-
-    def reset(self, n_arms):
-        self.counts = [0 for col in range(n_arms)]
-        self.emp_means = [0.0 for col in range(n_arms)]
-        return
+class AnnealingEpsilonGreedy(RegretAlgorithm):
 
     def select_next_arm(self):
         t = np.sum(self.counts) + 1
         epsilon = 1/math.log(t + 1e-7)
 
         if random.random() > epsilon:
-            return np.argmax(self.emp_means)
+            return np.random.choice(np.flatnonzero(np.array(self.emp_means) == max(self.emp_means)))
         else:
             return random.randrange(len(self.emp_means))
 
@@ -136,20 +136,15 @@ class AnnealingEpsilonGreedy:
         value = self.emp_means[chosen_arm]
         new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
         self.emp_means[chosen_arm] = new_value
+        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
         return
 
 
-class Boltzmann:  # aka softmax
+class Boltzmann(RegretAlgorithm):  # aka softmax
 
     def __init__(self, n_arms, tau, counts=None, emp_means=None):
+        RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
         self.tau = tau
-        self.counts = counts if counts else [0 for col in range(n_arms)]
-        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
-        return
-
-    def reset(self, n_arms):
-        self.counts = [0 for col in range(n_arms)]
-        self.emp_means = [0.0 for col in range(n_arms)]
         return
 
     def select_next_arm(self):
@@ -163,24 +158,15 @@ class Boltzmann:  # aka softmax
         value = self.emp_means[chosen_arm]
         new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
         self.emp_means[chosen_arm] = new_value
+        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
         return
 
 
-# TODO: better annealing function
-class AnnealingBoltzmann:
-    def __init__(self, n_arms, counts=None, emp_means=None):
-        self.counts = counts if counts else [0 for col in range(n_arms)]
-        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
-        return
-
-    def reset(self, n_arms):
-        self.counts = [0 for col in range(n_arms)]
-        self.emp_means = [0.0 for col in range(n_arms)]
-        return
+class AnnealingBoltzmann(RegretAlgorithm):
 
     def select_next_arm(self):
         t = np.sum(self.counts) + 1
-        tau = 1/math.log(t + 1e-7)
+        tau = 1/math.log(t + 1e-7)  # TODO: better annealing function
 
         z = sum([math.exp(v / tau) for v in self.emp_means])
         probs = [math.exp(v / tau) / z for v in self.emp_means]
@@ -192,22 +178,21 @@ class AnnealingBoltzmann:
         value = self.emp_means[chosen_arm]
         new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
         self.emp_means[chosen_arm] = new_value
+        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
         return
 
 
 #TODO: annealing learning rate
-class Pursuit:
+class Pursuit(RegretAlgorithm):
 
     def __init__(self, n_arms, lr, counts=None, emp_means=None, probs=None):
+        RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
         self.lr = lr  # learning rate
-        self.counts = counts if counts else [0 for col in range(n_arms)]
-        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
         self.probs = probs if probs else [float(1/n_arms) for col in range(n_arms)]
         return
 
     def reset(self, n_arms):
-        self.counts = [0 for col in range(n_arms)]
-        self.emp_means = [0.0 for col in range(n_arms)]
+        RegretAlgorithm.reset(self, n_arms)
         self.probs = [float(1/n_arms) for col in range(n_arms)]
         return
 
@@ -236,24 +221,24 @@ class Pursuit:
                 else:
                     self.probs[ii] = current_prob + self.lr*(0-current_prob)
 
+        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
+
         return
 
 
-class ReinforcementComparison:  # need more test, doesn't seem to work
+class ReinforcementComparison(RegretAlgorithm):  # hard to tune with two parameters
     
     def __init__(self, n_arms, alpha, beta, counts=None, emp_means=None, preferences=None, exp_rewards=None, probs=None):
+        RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
         self.alpha = alpha  # learning rate for expected reward
-        self.beta = beta  # learning rate for preference 
-        self.counts = counts if counts else [0 for col in range(n_arms)]
-        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
+        self.beta = beta  # learning rate for preference
         self.preferences = preferences if preferences else [0.0 for col in range(n_arms)]
         self.exp_rewards = exp_rewards if exp_rewards else [0.0 for col in range(n_arms)]
         self.probs = probs if probs else [float(1/n_arms) for col in range(n_arms)]
         return
 
     def reset(self, n_arms):
-        self.counts = [0 for col in range(n_arms)]
-        self.emp_means = [0.0 for col in range(n_arms)]
+        RegretAlgorithm.reset(self, n_arms)
         self.preferences = [0.0 for col in range(n_arms)]  # how to initialize?
         self.exp_rewards = [0.0 for col in range(n_arms)]  # how to initialize?
         self.probs = [float(1/n_arms) for col in range(n_arms)]
@@ -283,22 +268,21 @@ class ReinforcementComparison:  # need more test, doesn't seem to work
         exp_preference = [math.exp(p) for p in self.preferences]
         s = np.sum(exp_preference)
         self.probs = [e / s for e in exp_preference]
-        #print(self.probs)
+
+        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
 
         return
 
 
-class UCB1:
+class UCB1(RegretAlgorithm):
 
     def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None):
-        self.counts = counts if counts else [0 for col in range(n_arms)]
-        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
+        RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
         self.ucbs = ucbs if ucbs else [0.0 for col in range(n_arms)] # ucb values calculated with means and counts
         return
 
     def reset(self, n_arms):
-        self.counts = [0 for col in range(n_arms)]
-        self.emp_means = [0.0 for col in range(n_arms)]
+        RegretAlgorithm.reset(self, n_arms)
         self.ucbs = [0.0 for col in range(n_arms)]
         return
 
@@ -321,21 +305,20 @@ class UCB1:
         # update ucb values
         bonuses = [math.sqrt((2 * math.log(sum(self.counts) + 1)) / float(self.counts[arm] + 1e-7)) for arm in range(len(self.counts))]
         self.ucbs = [e + b for e, b in zip(self.emp_means, bonuses)]
+        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
         return
 
 
-class UCB1Tuned:  # seems like V value are a lot bigger than 1/4, but should be normal behavior with small t
+class UCB1Tuned(RegretAlgorithm):  # seems like V value are a lot bigger than 1/4, but should be normal behavior with small t
 
     def __init__(self, n_arms, counts=None, emp_means=None, m2=None, ucbs=None):
-        self.counts = counts if counts else [0 for col in range(n_arms)]
-        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
+        RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
         self.m2 = m2 if m2 else [0.0 for col in range(n_arms)]  # M2(n) = var(n) * n, used to update variance (a more stable Welford's algo)
         self.ucbs = ucbs if ucbs else [0.0 for col in range(n_arms)]  # ucb values calculated with means and counts
         return
 
     def reset(self, n_arms):
-        self.counts = [0 for col in range(n_arms)]
-        self.emp_means = [0.0 for col in range(n_arms)]
+        RegretAlgorithm.reset(self, n_arms)
         self.m2 = [0.0 for col in range(n_arms)]
         self.ucbs = [0.0 for col in range(n_arms)]
         return
@@ -367,6 +350,7 @@ class UCB1Tuned:  # seems like V value are a lot bigger than 1/4, but should be 
         self.m2[chosen_arm] = self.m2[chosen_arm] + (reward - old_mean) * (reward - new_mean)
         # update UCB value
         self.__update_ucbs()
+        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
         return
 
 
@@ -387,6 +371,7 @@ class MOSS(UCB1):
             /float(self.counts[arm]+1e-7)
         ) for arm in range(len(self.counts))]
         self.ucbs = [e + b for e, b in zip(self.emp_means, bonuses)]
+        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
         return
 
 
@@ -409,11 +394,10 @@ class MOSS(UCB1):
 #         return
 
 
-class UCBV:
+class UCBV(RegretAlgorithm):
 
     def __init__(self, n_arms, counts=None, emp_means=None, sum_reward_squared=None, ucbs=None, vars=None, amplitude=1.0):
-        self.counts = counts if counts else [0 for col in range(n_arms)]
-        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
+        RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
         self.sum_reward_squared = sum_reward_squared if sum_reward_squared else [0.0 for col in range(n_arms)]  # sum of reward^2, used to calculate variance
         self.vars = vars if vars else [0.0 for col in range(n_arms)]
         self.ucbs = ucbs if ucbs else [-1.0 for col in range(n_arms)]
@@ -421,8 +405,7 @@ class UCBV:
         return
 
     def reset(self, n_arms, amplitude=1.0):
-        self.counts = [0 for col in range(n_arms)]
-        self.emp_means = [0.0 for col in range(n_arms)]
+        RegretAlgorithm.reset(self, n_arms)
         self.sum_reward_squared = [0.0 for col in range(n_arms)]
         self.vars = [0.0 for col in range(n_arms)]
         self.ucbs = [-1.0 for col in range(n_arms)]
@@ -461,14 +444,14 @@ class UCBV:
         self.vars = [0 if v < 0 else v for v in self.vars]
         # update ucbs
         self.__update_ucbs()
+        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
         return
 
 
-class UCB2:
+class UCB2(RegretAlgorithm):
 
     def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None, rs=None, alpha=0.5, current_arm=-1, play_time=0):
-        self.counts = counts if counts else [0 for col in range(n_arms)]
-        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
+        RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
         self.ucbs = ucbs if ucbs else [0.0 for col in range(n_arms)]  # ucb values calculated with means and counts
         self.rs = rs if rs else [0.0 for col in range(n_arms)]  # r values as proposed in paper
         self.alpha = alpha  # parameter alpha as proposed in paper
@@ -477,8 +460,7 @@ class UCB2:
         return
 
     def reset(self, n_arms):
-        self.counts = [0 for col in range(n_arms)]
-        self.emp_means = [0.0 for col in range(n_arms)]
+        RegretAlgorithm.reset(self, n_arms)
         self.ucbs = [0.0 for col in range(n_arms)]
         self.rs = [0.0 for col in range(n_arms)]
         self.current_arm = -1
@@ -523,21 +505,20 @@ class UCB2:
         self.emp_means[chosen_arm] = new_value
         # update UCB value (actually not necessary at every t)
         self.__update_ucbs()
+        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
         return
 
 
-class ThompsonSampling:  # TS for bernoulli arms, beta distribution as conjugate priors
+class ThompsonSampling(RegretAlgorithm):  # TS for bernoulli arms, beta distribution as conjugate priors
 
     def __init__(self, n_arms, counts=None, emp_means=None, alphas=None, betas=None):
-        self.counts = counts if counts else [0 for col in range(n_arms)]
-        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
+        RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
         self.alphas = alphas if alphas else [1.0 for col in range(n_arms)]
         self.betas = betas if betas else [1.0 for col in range(n_arms)]
         return
 
     def reset(self, n_arms):
-        self.counts = [0 for col in range(n_arms)]
-        self.emp_means = [0.0 for col in range(n_arms)]
+        RegretAlgorithm.reset(self, n_arms)
         self.alphas = [1.0 for col in range(n_arms)]
         self.betas = [1.0 for col in range(n_arms)]
         return
@@ -554,17 +535,19 @@ class ThompsonSampling:  # TS for bernoulli arms, beta distribution as conjugate
         value = self.emp_means[chosen_arm]
         new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
         self.emp_means[chosen_arm] = new_value
+
         # update for beta distribution
         self.alphas[chosen_arm] = self.alphas[chosen_arm] + reward
         self.betas[chosen_arm] = self.betas[chosen_arm] + (1-reward)
+
+        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
         return
 
 
-class DMED:
+class DMED(RegretAlgorithm):
 
     def __init__(self, n_arms, counts=None, emp_means=None, action_list=None, modified=False):
-        self.counts = counts if counts else [0 for col in range(n_arms)]
-        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
+        RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
         self.action_list = action_list if action_list else []
         self.modified = modified  # if true, generate new list with less aggressive pruning. else follow original paper
         return
@@ -578,8 +561,7 @@ class DMED:
         return ys
 
     def reset(self, n_arms):
-        self.counts = [0 for col in range(n_arms)]
-        self.emp_means = [0.0 for col in range(n_arms)]
+        RegretAlgorithm.reset(self, n_arms)
         self.action_list = []
         return
 
@@ -609,22 +591,21 @@ class DMED:
         value = self.emp_means[chosen_arm]
         new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
         self.emp_means[chosen_arm] = new_value
+        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
         return
 
 
-class EXP3:
+class EXP3(RegretAlgorithm):
 
     def __init__(self, n_arms, counts=None, emp_means=None, weights=None, probs=None, gamma=0.5):
-        self.counts = counts if counts else [0 for col in range(n_arms)]
-        self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
+        RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
         self.weights = weights if weights else [1.0] * int(n_arms)
         self.probs = probs if probs else [1.0/int(n_arms)] * int(n_arms)
         self.gamma = gamma
         return
 
     def reset(self, n_arms):
-        self.counts = [0 for col in range(n_arms)]
-        self.emp_means = [0.0 for col in range(n_arms)]
+        RegretAlgorithm.reset(self, n_arms)
         self.weights = [1.0] * int(n_arms)
         self.probs = [1.0/int(n_arms)] * int(n_arms)
         return
@@ -645,6 +626,7 @@ class EXP3:
         xs = [0.0 for n in range(len(self.counts))]
         xs[chosen_arm] = reward/self.probs[chosen_arm]
         self.weights = [weight * math.exp(self.gamma * x / len(self.counts)) for weight, x in zip(self.weights, xs)]
+        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
         return
 
 
