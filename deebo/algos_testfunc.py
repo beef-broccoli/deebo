@@ -27,28 +27,6 @@ def test_algorithm_regret(algo, arms, num_sims, horizon):
     return df
 
 
-def test_algorithm_regret_with_best_arm(algo, arms, num_sims, horizon):
-
-    cols = ['num_sims', 'horizon', 'chosen_arm', 'reward', 'cumulative_reward', 'ranking']
-    ar = np.zeros((num_sims*horizon, len(cols)))
-
-    for sim in tqdm(range(num_sims), leave=False):
-
-        algo.reset(len(arms))
-        cumulative_reward = 0
-
-        for t in range(horizon):
-            chosen_arm = algo.select_next_arm()  # algorithm selects an arm
-            reward = arms[chosen_arm].draw()  # chosen arm returns reward
-            cumulative_reward = cumulative_reward + reward  # calculate cumulative reward over time horizon
-            algo.update(chosen_arm, reward)  # algorithm updates chosen arm with reward
-            ar[sim*horizon+t, :] = [sim, t, chosen_arm, reward, cumulative_reward, algo.ranking[-1]]  # logs info
-
-    df = pd.DataFrame(ar, columns=cols)
-
-    return df
-
-
 # this approach doesn't have any real benefits,
 def batched_test_algorithm(algos, arms, num_sims, horizon):
     n_rounds = horizon // len(algos)  # num of complete rounds

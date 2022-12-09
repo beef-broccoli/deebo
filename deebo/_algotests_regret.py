@@ -331,20 +331,6 @@ def _test_batched(scenario, n_sims, n_horizon, folder_name):
     return None
 
 
-def test_eps_greedy(scenario, n_sims, n_horizon, folder_name):
-    fp = folder_name + f'/scenario{scenario}/eps_greedy'
-    output_dir = make_dir(fp)
-
-    means = means_from_scenario(scenario)
-    n_arms = len(means)
-    arms = list(map(lambda x: BernoulliArm(x), means))
-
-    algo = AnnealingEpsilonGreedy(n_arms)
-    results = test_algorithm_regret_with_best_arm(algo, arms, n_sims, n_horizon)
-    filename = 'random.csv'
-    results.to_csv(output_dir / filename)
-
-
 if __name__ == '__main__':
     test_all(scenario=1, n_sims=50, n_horizon=100, folder_name='./test')
     #test_algo_for_all_scenarios(etc, [4], folder_name='./baseline_logs')
