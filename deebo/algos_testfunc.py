@@ -65,7 +65,7 @@ def test_algorithm_arm(algo, arms, num_sims, max_horizon):
 
     Parameters
     ----------
-    algo: algos_arm algo
+    algo: algos_arm.EliminationAlgorithm()
     arms
     num_sims
     horizon
@@ -78,6 +78,7 @@ def test_algorithm_arm(algo, arms, num_sims, max_horizon):
     cols = ['num_sims', 'horizon', 'chosen_arm', 'reward', 'cumulative_reward']
     ar = np.zeros((num_sims*max_horizon, len(cols)))
     best_arms = np.negative(np.ones((num_sims, len(arms))))  # -1 to distinguish empty ones; could initialize smaller with n_candidates
+    #rankings = np.negative(np.ones((num_sims, len(arms))))  # rankings at the end of each simulations
 
     for sim in tqdm(range(num_sims), leave=False):
 

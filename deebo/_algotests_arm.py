@@ -2,31 +2,29 @@
 import numpy as np
 
 from algos_testfunc import test_algorithm_arm
-from algos_arm import SuccessiveElimination
+from algos_arm import SuccessiveElimination, LilUCB
 from arms import BernoulliArm
+from utils import make_dir, means_from_scenario
 
 
-def _test_successive_elimination(scenario=1):
+def lilucb(scenario, n_sims, n_horizon, folder_name):
 
-    if scenario == 1:
-        means = [0.1, 0.2, 0.3, 0.4, 0.9]
-    elif scenario == 2:
-        means = [0.1, 0.1, 0.1, 0.1, 0.2]
-    elif scenario == 3:
-        means = [0.1, 0.25, 0.5, 0.75, 0.9]
-    else:
-        exit(1)
+    fp = folder_name + f'/scenario{scenario}'
+    output_dir = make_dir(fp)
 
+    means = means_from_scenario(scenario)
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
-    print("Best arm is " + str(np.argmax(means)))
+    algo = LilUCB(n_arms, parameter_set=2)
+    algo.reset(n_arms)
+    results, best_arms = test_algorithm_arm(algo, arms, n_sims, n_horizon)
+    filename = 'test_lilucb.csv'
+    results.to_csv(output_dir / filename)
+    best_arm_fp = 'test_lilucb_bestarm.csv'
+    best_arms.to_csv(output_dir / best_arm_fp)
 
-    algo = SuccessiveElimination(n_arms, delta=0.1)
-    results, bests = test_algorithm_arm(algo, arms, 5, 100)
-    results_fn = f'successive_elim.csv'
-    bests_fn = f'successive_elim_best.csv'
-    fp = f'./logs/tests/'
-    if input('save result (might overwrite)? : ') == 'y':
-        results.to_csv(fp+results_fn)
-        bests.to_csv(fp+bests_fn)
+    return None
+
+if __name__ == '__main__':
+    lilucb(1, 1000, 50, './logs/arms/')

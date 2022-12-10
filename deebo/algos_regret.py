@@ -32,7 +32,7 @@ class RegretAlgorithm:
     def __init__(self, n_arms, counts=None, emp_means=None):
         self.counts = counts if counts else [0 for col in range(n_arms)]
         self.emp_means = emp_means if emp_means else [0.0 for col in range(n_arms)]
-        self.ranking = []
+        self.ranking = []  # ranks from worst to best
         return
 
     def reset(self, n_arms):
@@ -278,7 +278,7 @@ class UCB1(RegretAlgorithm):
 
     def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None):
         RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
-        self.ucbs = ucbs if ucbs else [0.0 for col in range(n_arms)] # ucb values calculated with means and counts
+        self.ucbs = ucbs if ucbs else [0.0 for col in range(n_arms)]  # ucb values calculated with means and counts
         return
 
     def reset(self, n_arms):
