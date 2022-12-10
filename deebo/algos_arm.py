@@ -2,6 +2,9 @@
 Implemented algorithms for best arm identification in multi-armed bandit problem
 
 Successive Elimination
+Lil UCB
+
+Did not implement:
 Exponential-gap elimination: requires repeated sampling of one arm, way too many experiments needed
 
 """
@@ -39,7 +42,6 @@ class EliminationAlgorithm:
     def update(self, chosen_arm, reward):
         # update counts
         self.counts[chosen_arm] = self.counts[chosen_arm] + 1
-
         # update empirical means
         n = self.counts[chosen_arm]
         value = self.emp_means[chosen_arm]

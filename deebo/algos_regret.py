@@ -45,7 +45,16 @@ class RegretAlgorithm:
         pass
 
     def update(self, chosen_arm, reward):
-        pass
+        # update counts
+        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
+        # update empirical means
+        n = self.counts[chosen_arm]
+        value = self.emp_means[chosen_arm]
+        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
+        self.emp_means[chosen_arm] = new_value
+        # update ranking
+        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
+        return
 
 
 class ETC(RegretAlgorithm):  # explore then commit
@@ -70,29 +79,11 @@ class ETC(RegretAlgorithm):  # explore then commit
         else:  # commit
             return self.best_arm
 
-    def update(self, chosen_arm, reward):
-        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
-        n = self.counts[chosen_arm]
-        value = self.emp_means[chosen_arm]
-        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
-        self.emp_means[chosen_arm] = new_value
-        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
-        return
-
 
 class Random(RegretAlgorithm):  # random selection of arms
 
     def select_next_arm(self):
         return random.randrange(len(self.emp_means))
-
-    def update(self, chosen_arm, reward):
-        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
-        n = self.counts[chosen_arm]
-        value = self.emp_means[chosen_arm]
-        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
-        self.emp_means[chosen_arm] = new_value
-        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
-        return
 
 
 class EpsilonGreedy(RegretAlgorithm):
@@ -109,15 +100,6 @@ class EpsilonGreedy(RegretAlgorithm):
         else:
             return random.randrange(len(self.emp_means))
 
-    def update(self, chosen_arm, reward):
-        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
-        n = self.counts[chosen_arm]
-        value = self.emp_means[chosen_arm]
-        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
-        self.emp_means[chosen_arm] = new_value
-        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
-        return
-
 
 class AnnealingEpsilonGreedy(RegretAlgorithm):
 
@@ -129,15 +111,6 @@ class AnnealingEpsilonGreedy(RegretAlgorithm):
             return np.random.choice(np.flatnonzero(np.array(self.emp_means) == max(self.emp_means)))
         else:
             return random.randrange(len(self.emp_means))
-
-    def update(self, chosen_arm, reward):
-        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
-        n = self.counts[chosen_arm]
-        value = self.emp_means[chosen_arm]
-        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
-        self.emp_means[chosen_arm] = new_value
-        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
-        return
 
 
 class Boltzmann(RegretAlgorithm):  # aka softmax
@@ -152,15 +125,6 @@ class Boltzmann(RegretAlgorithm):  # aka softmax
         probs = [math.exp(v / self.tau) / z for v in self.emp_means]
         return random.choices(np.arange(len(self.emp_means)), weights=probs, k=1)[0]
 
-    def update(self, chosen_arm, reward):
-        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
-        n = self.counts[chosen_arm]
-        value = self.emp_means[chosen_arm]
-        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
-        self.emp_means[chosen_arm] = new_value
-        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
-        return
-
 
 class AnnealingBoltzmann(RegretAlgorithm):
 
@@ -171,15 +135,6 @@ class AnnealingBoltzmann(RegretAlgorithm):
         z = sum([math.exp(v / tau) for v in self.emp_means])
         probs = [math.exp(v / tau) / z for v in self.emp_means]
         return random.choices(np.arange(len(self.emp_means)), weights=probs, k=1)[0]
-
-    def update(self, chosen_arm, reward):
-        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
-        n = self.counts[chosen_arm]
-        value = self.emp_means[chosen_arm]
-        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
-        self.emp_means[chosen_arm] = new_value
-        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
-        return
 
 
 #TODO: annealing learning rate
@@ -200,15 +155,7 @@ class Pursuit(RegretAlgorithm):
         return random.choices(np.arange(len(self.emp_means)), weights=self.probs, k=1)[0]
 
     def update(self, chosen_arm, reward):
-
-        # update counts
-        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
-        n = self.counts[chosen_arm]
-
-        # update reward
-        value = self.emp_means[chosen_arm]
-        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
-        self.emp_means[chosen_arm] = new_value
+        RegretAlgorithm.update(self, chosen_arm, reward)
 
         # update probs
         if np.sum(self.emp_means) == 0:  # np.argmax returns the first arm when all reward emp_means are 0, so make sure we don't update probs in that case
@@ -220,8 +167,6 @@ class Pursuit(RegretAlgorithm):
                     self.probs[ii] = current_prob + self.lr*(1-current_prob)
                 else:
                     self.probs[ii] = current_prob + self.lr*(0-current_prob)
-
-        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
 
         return
 
@@ -248,14 +193,7 @@ class ReinforcementComparison(RegretAlgorithm):  # hard to tune with two paramet
         return random.choices(np.arange(len(self.emp_means)), weights=self.probs, k=1)[0]
 
     def update(self, chosen_arm, reward):
-        # update counts
-        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
-        n = self.counts[chosen_arm]
-
-        # update empirical means
-        value = self.emp_means[chosen_arm]
-        new_mean = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
-        self.emp_means[chosen_arm] = new_mean
+        RegretAlgorithm.update(self, chosen_arm, reward)
 
         # update preference
         self.preferences[chosen_arm] = self.preferences[chosen_arm] + self.beta * (reward - self.exp_rewards[chosen_arm])
@@ -268,8 +206,6 @@ class ReinforcementComparison(RegretAlgorithm):  # hard to tune with two paramet
         exp_preference = [math.exp(p) for p in self.preferences]
         s = np.sum(exp_preference)
         self.probs = [e / s for e in exp_preference]
-
-        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
 
         return
 
@@ -295,17 +231,10 @@ class UCB1(RegretAlgorithm):
             return np.argmax(self.ucbs)
 
     def update(self, chosen_arm, reward):
-        # update counts
-        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
-        # update emp means
-        n = self.counts[chosen_arm]
-        value = self.emp_means[chosen_arm]
-        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
-        self.emp_means[chosen_arm] = new_value
+        RegretAlgorithm.update(self, chosen_arm, reward)
         # update ucb values
         bonuses = [math.sqrt((2 * math.log(sum(self.counts) + 1)) / float(self.counts[arm] + 1e-7)) for arm in range(len(self.counts))]
         self.ucbs = [e + b for e, b in zip(self.emp_means, bonuses)]
-        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
         return
 
 
@@ -496,16 +425,9 @@ class UCB2(RegretAlgorithm):
             return self.current_arm
 
     def update(self, chosen_arm, reward):
-        # update counts
-        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
-        # update emp. means
-        n = self.counts[chosen_arm]
-        value = self.emp_means[chosen_arm]
-        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
-        self.emp_means[chosen_arm] = new_value
+        RegretAlgorithm.update(self, chosen_arm, reward)
         # update UCB value (actually not necessary at every t)
         self.__update_ucbs()
-        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
         return
 
 
@@ -529,18 +451,10 @@ class ThompsonSampling(RegretAlgorithm):  # TS for bernoulli arms, beta distribu
         return np.argmax(probs)
 
     def update(self, chosen_arm, reward):
-        # update emp means
-        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
-        n = self.counts[chosen_arm]
-        value = self.emp_means[chosen_arm]
-        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
-        self.emp_means[chosen_arm] = new_value
-
+        RegretAlgorithm.update(self, chosen_arm, reward)
         # update for beta distribution
         self.alphas[chosen_arm] = self.alphas[chosen_arm] + reward
         self.betas[chosen_arm] = self.betas[chosen_arm] + (1-reward)
-
-        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
         return
 
 
@@ -585,15 +499,6 @@ class DMED(RegretAlgorithm):
             # print(self.action_list)
             return self.action_list.pop()
 
-    def update(self, chosen_arm, reward):
-        self.counts[chosen_arm] = self.counts[chosen_arm] + 1
-        n = self.counts[chosen_arm]
-        value = self.emp_means[chosen_arm]
-        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
-        self.emp_means[chosen_arm] = new_value
-        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
-        return
-
 
 class EXP3(RegretAlgorithm):
 
@@ -616,17 +521,11 @@ class EXP3(RegretAlgorithm):
         return random.choices(np.arange(len(self.counts)), weights=self.probs, k=1)[0]
 
     def update(self, chosen_arm, reward):
-        self.counts[chosen_arm] = self.counts[chosen_arm] + 1  # update counts
-        # update empirical means
-        n = self.counts[chosen_arm]
-        value = self.emp_means[chosen_arm]
-        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
-        self.emp_means[chosen_arm] = new_value
+        RegretAlgorithm.update(self, chosen_arm, reward)
         # update weights
         xs = [0.0 for n in range(len(self.counts))]
         xs[chosen_arm] = reward/self.probs[chosen_arm]
         self.weights = [weight * math.exp(self.gamma * x / len(self.counts)) for weight, x in zip(self.weights, xs)]
-        self.ranking = list(np.arange(len(self.counts))[np.argsort(self.counts)])
         return
 
 
