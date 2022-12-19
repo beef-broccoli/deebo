@@ -12,9 +12,13 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 
 import algos_regret
 
-# 1. propose multiple experiments for different arms; this needs to wait for batched algorithms
-# 2. how to integrate stop conditions, and use arm selection algorithm
-# 3. propose experiment in a non-random way
+# dev notes
+# - propose multiple experiments for different arms; this needs to wait for batched algorithms
+# - how to integrate stop conditions, and use arm selection algorithm
+# - propose experiment in a non-random way
+# - (maybe) prediction models with features
+# - add round number
+# - (maybe) better handle situation when no experiments are available. Set algo count very high to eliminate uncertainty?
 
 
 class Scope:
@@ -317,13 +321,14 @@ def update_and_propose(dir='./test/', num_exp=1):
     except FileNotFoundError:
         history = None
 
-    # get results for proposed experiments
+    # get results from user for proposed experiments
     rewards = np.array(list(exps['yield']))
     if np.isnan(rewards).any():
         exit('need to fill in yield')
     if ((rewards > 1).any()) or ((rewards < 0).any()):
         exit('adjust yield to be between 0 and 1')
 
+    # get some info from logs
     if log is not None:
         horizon = log['horizon'].iloc[-1] + 1
         cumulative_reward = log['cumulative_reward'].iloc[-1]
@@ -331,6 +336,7 @@ def update_and_propose(dir='./test/', num_exp=1):
         horizon = 0
         cumulative_reward = 0.0
 
+    # set up horizons, chosen_arms, reward and cumulative reward and update log
     cumulative_rewards = []
     current = cumulative_reward
     for ii in range(len(rewards)):
@@ -352,6 +358,14 @@ def update_and_propose(dir='./test/', num_exp=1):
     # propose new experiments
     chosen_arm = algo.select_next_arm()
     proposed_experiments = scope.propose_experiment(chosen_arm, num_exp=num_exp)
+    while proposed_experiments is None:  # no experiments available for this arm
+        print(f'No experiments available for arm {chosen_arm}: {scope.arms[chosen_arm]}. Trying to find new experiments')
+        algo.update(chosen_arm, algo.emp_means[chosen_arm])
+        new_chosen_arm = algo.select_next_arm()
+        if new_chosen_arm == chosen_arm:
+            continue
+        else:
+            proposed_experiments = scope.propose_experiment(new_chosen_arm, num_exp=num_exp)
 
     # save files and objects again
     new_history.to_csv(f'{dir}history.csv')
@@ -435,10 +449,12 @@ def _test_simulate():
 
 
 if __name__ == '__main__':
+
     dir = 'test/'
-    with open(f'{dir}scope.pkl', 'rb') as f:
-        scope = pickle.load(f)  # load algo object
+    with open(f'{dir}algo.pkl', 'rb') as f:
+        algo = pickle.load(f)  # load algo object
 
     print(
-        scope.data
+        algo.emp_means, algo.counts
     )
+    # _test_human_in_the_loop()
