@@ -358,18 +358,26 @@ def update_and_propose(dir='./test/', num_exp=1):
     # propose new experiments
     chosen_arm = algo.select_next_arm()
     proposed_experiments = scope.propose_experiment(chosen_arm, num_exp=num_exp)
-    while proposed_experiments is None:  # no experiments available for this arm
+    if proposed_experiments is None:  # no experiments available for this arm
+        threshold = 0
         print(f'No experiments available for arm {chosen_arm}: {scope.arms[chosen_arm]}. Trying to find new experiments')
-        algo.update(chosen_arm, algo.emp_means[chosen_arm])
-        new_chosen_arm = algo.select_next_arm()
-        if new_chosen_arm == chosen_arm:
-            continue
-        else:
-            proposed_experiments = scope.propose_experiment(new_chosen_arm, num_exp=num_exp)
+        while proposed_experiments is None:
+            if threshold > 100:
+                print(f'No experiments available for arm {chosen_arm}: {scope.arms[chosen_arm]} after 100 attempts; '
+                      f'it might be the best arm')
+                break
+            algo.update(chosen_arm, algo.emp_means[chosen_arm])
+            new_chosen_arm = algo.select_next_arm()
+            if new_chosen_arm == chosen_arm:
+                threshold = threshold + 1
+                continue
+            else:
+                proposed_experiments = scope.propose_experiment(new_chosen_arm, num_exp=num_exp)
 
     # save files and objects again
     new_history.to_csv(f'{dir}history.csv')
-    proposed_experiments.to_csv(f'{dir}proposed_experiments.csv')  # save proposed experiments
+    if proposed_experiments is not None:
+        proposed_experiments.to_csv(f'{dir}proposed_experiments.csv')  # save proposed experiments
     log.to_csv(f'{dir}log.csv', index=False)  # save acquisition log
     with open(f'{dir}algo.pkl', 'wb') as f:
         pickle.dump(algo, f)  # save algo object
@@ -449,12 +457,12 @@ def _test_simulate():
 
 
 if __name__ == '__main__':
-
-    dir = 'test/'
-    with open(f'{dir}algo.pkl', 'rb') as f:
-        algo = pickle.load(f)  # load algo object
-
-    print(
-        algo.emp_means, algo.counts
-    )
-    # _test_human_in_the_loop()
+    #
+    # dir = 'test/'
+    # with open(f'{dir}algo.pkl', 'rb') as f:
+    #     algo = pickle.load(f)  # load algo object
+    #
+    # print(
+    #     algo.emp_means, algo.counts
+    # )
+    _test_human_in_the_loop()
