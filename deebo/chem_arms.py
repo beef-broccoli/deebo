@@ -2,16 +2,19 @@ import itertools
 import pickle
 import pandas as pd
 import numpy as np
+import re
+import os
 from sklearn.preprocessing import OneHotEncoder as OHE
 from sklearn.ensemble import RandomForestRegressor as RFR
 from sklearn.linear_model import LinearRegression as LR
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 
-from algos_regret import EpsilonGreedy
+import algos_regret
 
-# 1. how to handle when all experiments for one arm has been sampled
+# 1. propose multiple experiments for different arms; this needs to wait for batched algorithms
 # 2. how to integrate stop conditions, and use arm selection algorithm
+# 3. propose experiment in a non-random way
 
 
 class Scope:
@@ -24,6 +27,7 @@ class Scope:
         self.arms = None  # a list of arms, e.g., [('a2', 'c1'), ('a2', 'c3'), ('a3', 'c1'), ('a3', 'c3')]
         self.arm_labels = None  # label names. e.g., ['component_a', 'component_b']
         self.current_experiment_index = None  # df index of the experiments currently running
+        self.current_arms = None  # current arms being evaluated; corresponding to self.current_eperiment_index
         return
 
     def __str__(self):
@@ -197,9 +201,10 @@ class Scope:
     def clear_arms(self):
         self.arms = None
 
-    def propose_experiment(self, arm_index, mode='random'):
+    def propose_experiment(self, arm_index, mode='random', num_exp=1):
         """
-        Propose an experiment for a specified arm
+        Propose an experiment for a specified arm.
+        Will return None when all experiments for a given arm are sampled
 
         Parameters
         ----------
@@ -218,20 +223,31 @@ class Scope:
 
         if mode == 'random':
             try:
-                sample = candidates.sample(1)
-            except ValueError:  # all reactions for this arm has been sampled
-                # one way is to just return a dummy experiment with average yield here
-                pass
-            self.current_experiment_index = sample.index
+                sample = candidates.sample(num_exp)
+            except ValueError:  # not enough available reactions for this arm to be sampled
+                sample = None
+                n = num_exp
+                while n > 1:  # keep reducing the number of sample until its sample-able
+                    n = n-1
+                    try:
+                        sample = candidates.sample(n)
+                        break
+                    except ValueError:
+                        continue
+            if sample is not None:
+                self.current_experiment_index = sample.index
+                self.current_arms = [arm_index]*len(self.current_experiment_index)
+            else:
+                self.current_experiment_index = None
+                self.current_arms = None
             return sample
-        else:
-            return
+        else:  # other sampling modes
+            pass
 
 
-def propose_initial_experiments(scope_dict, arms_dict, algo, dir='./test/'):
+def propose_initial_experiments(scope_dict, arms_dict, algo, dir='./test/', num_exp=1):
     """
     Build an initial scope, propose initial experiments and save required objects to be loaded later
-    Propose a single experiment only for now
 
     Parameters
     ----------
@@ -254,13 +270,14 @@ def propose_initial_experiments(scope_dict, arms_dict, algo, dir='./test/'):
     scope.build_scope(scope_dict)
     scope.build_arms(arms_dict)
 
-    log = pd.DataFrame(columns=['horizon', 'chosen_arm', 'reward', 'cumulative_reward'])
     chosen_arm = algo.select_next_arm()
-    proposed_experiments = scope.propose_experiment(chosen_arm)
-    log.loc[len(log.index)] = [0, chosen_arm, np.nan, 0]
+    proposed_experiments = scope.propose_experiment(chosen_arm, num_exp=num_exp)
 
-    proposed_experiments.to_csv(f'{dir}proposed_experiments.csv', index=False)  # save proposed experiments
-    log.to_csv(f'{dir}log.csv', index=False)  # save acquisition log
+    if os.path.exists(f'{dir}history.csv'):
+        os.remove(f'{dir}history.csv')
+    if os.path.exists(f'{dir}log.csv'):
+        os.remove(f'{dir}log.csv')
+    proposed_experiments.to_csv(f'{dir}proposed_experiments.csv')  # save proposed experiments
     with open(f'{dir}algo.pkl', 'wb') as f:
         pickle.dump(algo, f)  # save algo object
     with open(f'{dir}scope.pkl', 'wb') as f:
@@ -269,7 +286,7 @@ def propose_initial_experiments(scope_dict, arms_dict, algo, dir='./test/'):
     return
 
 
-def update_and_propose(dir='./test/'):
+def update_and_propose(dir='./test/', num_exp=1):
 
     """
     After user filled out experimental result, load the result and update scope and algoritm, propose next experiments
@@ -285,45 +302,60 @@ def update_and_propose(dir='./test/'):
 
     """
 
+    # load all files
     with open(f'{dir}algo.pkl', 'rb') as f:
         algo = pickle.load(f)  # load algo object
     with open(f'{dir}scope.pkl', 'rb') as f:
         scope = pickle.load(f)  # load scope object
-    log = pd.read_csv(f'{dir}log.csv')
-    exps = pd.read_csv(f'{dir}proposed_experiments.csv')
-
-    # only dealing with one experiments right now, need to modify for batched experiments with list
-    # get info from log and proposed experiments
-    reward = list(exps['yield'])[0]
-    if np.isnan(reward):
-        exit('need to fill in yield')
-    if (reward > 1) or (reward < 0):
-        exit('adjust yield to be between 0 and 1')
-    last_chosen_arm = int(list(log['chosen_arm'])[-1])
-    horizon = list(log['horizon'])[-1]
-    log.drop(log.tail(1).index, inplace=True)  # delete incomplete last row;
-    # important to delete this row first before grabbing cumulative reward
+    exps = pd.read_csv(f'{dir}proposed_experiments.csv', index_col=0)  # proposed experiments with results input from user
     try:
-        cumulative_reward = list(log['cumulative_reward'])[-1]
-    except IndexError:  # first time update, only one row to begin with
+        log = pd.read_csv(f'{dir}log.csv')  # acquisition log for algorithm
+    except FileNotFoundError:
+        log = None
+    try:
+        history = pd.read_csv(f'{dir}history.csv', index_col=0)  # experiment history
+    except FileNotFoundError:
+        history = None
+
+    # get results for proposed experiments
+    rewards = np.array(list(exps['yield']))
+    if np.isnan(rewards).any():
+        exit('need to fill in yield')
+    if ((rewards > 1).any()) or ((rewards < 0).any()):
+        exit('adjust yield to be between 0 and 1')
+
+    if log is not None:
+        horizon = log['horizon'].iloc[-1] + 1
+        cumulative_reward = log['cumulative_reward'].iloc[-1]
+    else:  # first time logging
+        horizon = 0
         cumulative_reward = 0.0
-    cumulative_reward = cumulative_reward + reward
 
-    # update log
-    log.loc[len(log.index)] = [horizon, last_chosen_arm, reward, cumulative_reward]  # refill with info
+    cumulative_rewards = []
+    current = cumulative_reward
+    for ii in range(len(rewards)):
+        current = current + rewards[ii]
+        cumulative_rewards.append(current)
+    horizons = list(np.arange(horizon, horizon+len(rewards)))
+    chosen_arms = scope.current_arms
+    new_log = pd.DataFrame(list(zip(horizons, chosen_arms, rewards, cumulative_rewards)),
+                           columns=['horizon', 'chosen_arm', 'reward', 'cumulative_reward'])
+    log = pd.concat([log, new_log])
 
-    # update scope, algo
-    scope.update_with_index(scope.current_experiment_index, reward)
+    # update scope, algo, history
+    for ii in range(len(rewards)):
+        scope.update_with_index(scope.current_experiment_index[ii], rewards[ii])
+        algo.update(scope.current_arms[ii], rewards[ii])
     scope.predict()
-    algo.update(last_chosen_arm, reward)
+    new_history = pd.concat([history, exps])
 
     # propose new experiments
     chosen_arm = algo.select_next_arm()
-    proposed_experiments = scope.propose_experiment(chosen_arm)
-    log.loc[len(log.index)] = [horizon+1, chosen_arm, np.nan, np.nan]
+    proposed_experiments = scope.propose_experiment(chosen_arm, num_exp=num_exp)
 
     # save files and objects again
-    proposed_experiments.to_csv(f'{dir}proposed_experiments.csv', index=False)  # save proposed experiments
+    new_history.to_csv(f'{dir}history.csv')
+    proposed_experiments.to_csv(f'{dir}proposed_experiments.csv')  # save proposed experiments
     log.to_csv(f'{dir}log.csv', index=False)  # save acquisition log
     with open(f'{dir}algo.pkl', 'wb') as f:
         pickle.dump(algo, f)  # save algo object
@@ -333,7 +365,7 @@ def update_and_propose(dir='./test/'):
     return None
 
 
-def simulate_propose_and_update():
+def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo):
 
     """
     Method for simulation; skipping the saving and loading by user, query dataset with full results instead
@@ -342,10 +374,23 @@ def simulate_propose_and_update():
     -------
 
     """
-    pass
+
+    scope = Scope()
+    scope.build_scope(scope_dict)
+    scope.build_arms(arms_dict)
+
+    # propose initial experiments
+    log = pd.DataFrame(columns=['horizon', 'chosen_arm', 'reward', 'cumulative_reward'])
+    chosen_arm = algo.select_next_arm()
+    proposed_experiments = scope.propose_experiment(chosen_arm)
+    history = pd.DataFrame(columns=proposed_experiments.columns)
+
+    log.loc[len(log.index)] = [0, chosen_arm, np.nan, 0]
+
+    return
 
 
-if __name__ == '__main__':
+def _test_human_in_the_loop():
 
     # # build scope
     # x = {'component_b': ['b1', 'b2'],
@@ -355,14 +400,45 @@ if __name__ == '__main__':
     # y = {'component_b': ['b1', 'b2'],
     #      'component_a': ['a1', 'a3']}
     #
-    # algo = EpsilonGreedy(4, 0.5)
-    # propose_initial_experiments(x, y, algo)
+    # algo = algos_regret.EpsilonGreedy(4, 0.5)
+    # propose_initial_experiments(x, y, algo, num_exp=2)
 
-    # update_and_propose()
-    dir = './test/'
+    update_and_propose(num_exp=2)
+
+
+def _test_simulate():
+
+    # fetch ground truth data
+    ground_truth = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv')
+    def scaler(x):
+        # x on a scale of 0-100
+        x = x/100
+        if x>1:
+            return 1.0
+        else:
+            return x
+    ground_truth['yield'] = ground_truth['yield'].apply(scaler)
+    ground_truth = ground_truth[['ligand_name',
+                                 'electrophile_id',
+                                 'nucleophile_id',
+                                 'yield']]
+    ligands = ground_truth['ligand_name'].unique()
+    elecs = ground_truth['electrophile_id'].unique()
+    nucs = ground_truth['nucleophile_id'].unique()
+
+    # build dictionary for acquisition
+    scope_dict = {'ligand': ligands,
+                  'elec': elecs,
+                  'nuc': nucs}
+    arms_dict = {'ligand': ligands}
+    algo = algos_regret.AnnealingEpsilonGreedy
+
+
+if __name__ == '__main__':
+    dir = 'test/'
     with open(f'{dir}scope.pkl', 'rb') as f:
-        scope = pickle.load(f)  # load scope object
-    with open(f'{dir}algo.pkl', 'rb') as f:
-        algo = pickle.load(f)  # load algo object
+        scope = pickle.load(f)  # load algo object
 
-
+    print(
+        scope.data
+    )
