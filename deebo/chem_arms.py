@@ -2,8 +2,8 @@ import itertools
 import pickle
 import pandas as pd
 import numpy as np
-import re
 import os
+from tqdm import tqdm
 from sklearn.preprocessing import OneHotEncoder as OHE
 from sklearn.ensemble import RandomForestRegressor as RFR
 from sklearn.linear_model import LinearRegression as LR
@@ -13,11 +13,11 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 import algos_regret
 
 # dev notes
-# - propose multiple experiments for different arms; this needs to wait for batched algorithms
+# - propose multiple experiments for different arms; WAIT FOR BATCHED ALGORITHM
+# - add round number; WAIT FOR BATCHED ALGORITHM
 # - how to integrate stop conditions, and use arm selection algorithm
 # - propose experiment in a non-random way
 # - (maybe) prediction models with features
-# - add round number
 # - (maybe) better handle situation when no experiments are available. Set algo count very high to eliminate uncertainty?
 
 
@@ -58,11 +58,21 @@ class Scope:
         """
         if self.data:
             exit('scope already exists, cannot build')
-        self.data_dic = d
 
         component_names = sorted(d)
         combinations = itertools.product(*(d[c] for c in component_names))
         self.data = pd.DataFrame(combinations, columns=component_names)
+        # check column dtypes for int or float. These cause issues for value matching when querying/updating
+        # add column name as prefix to force string
+        for col in self.data.columns:
+            if self.data[col].dtype == 'int64' or self.data[col].dtype == 'float64':
+                print(f'Warning: attempting to pass int/float as values for {col}.\n'
+                      f'Renaming values with prefix, e.g., {self.data[col][0]} -> {col} {self.data[col][0]}\n'
+                      f'Modifications to values needed when building arms')
+                new_val = [col+' '+str(v) for v in list(self.data[col])]
+                self.data[col] = new_val
+                d[col] = list(set(new_val))
+        self.data_dic = d
         self.data['yield'] = np.nan
         return
 
@@ -86,10 +96,10 @@ class Scope:
             yield from query, or np.nan if no result is found
         """
 
-        assert self.data.shape[1] - 1 == len(d.items()), 'Missing reaction components when querying data'
+        assert self.data.shape[1] - 1 == len(d.items()), f'Missing reaction components when querying {d}'
         names = set(list(self.data.columns))
         names.remove('yield')  # remove yield from column labels, then match
-        assert names == set(d.keys()), 'labels not fully matched, cannot update'
+        assert names == set(d.keys()), f'labels not fully matched for {d}, cannot query'
 
         component_names = sorted(d)  # sort query dictionary by component name
         scope = self.data.sort_index(axis=1)  # sort scope data by component name (column)
@@ -97,6 +107,7 @@ class Scope:
 
         # can directly match with a list of value, since both query dict and dataframe are sorted
         y = scope[np.equal.outer(scope.to_numpy(copy=False), values).any(axis=1).all(axis=1)]['yield']
+        # WARNING: np.equal seems to cause very weird inequality problem if any dataframe element is int
         if y.empty:
             print(f'Query {d} does not exist in this scope')
             return np.nan  # no such result exists in the scope
@@ -189,7 +200,7 @@ class Scope:
         """
         if self.arms:
             exit('Arms already exist, call clear_arms() first before building')
-        assert set(d.keys()).issubset(set(list(self.data.columns)) ), 'some labels do not exist in this scope'
+        assert set(d.keys()).issubset(set(list(self.data.columns))), 'some labels do not exist in this scope'
         for component in d.keys():
             if not set(d[component]).issubset(set(self.data_dic[component])):
                 exit('attempting to build arms with components not present in current scope.')
@@ -306,6 +317,8 @@ def update_and_propose(dir='./test/', num_exp=1):
 
     """
 
+    THRESHOLD = 100  # threshold for how many experiments to wait for algo to output a different arm to evaluate
+
     # load all files
     with open(f'{dir}algo.pkl', 'rb') as f:
         algo = pickle.load(f)  # load algo object
@@ -362,9 +375,9 @@ def update_and_propose(dir='./test/', num_exp=1):
         threshold = 0
         print(f'No experiments available for arm {chosen_arm}: {scope.arms[chosen_arm]}. Trying to find new experiments')
         while proposed_experiments is None:
-            if threshold > 100:
-                print(f'No experiments available for arm {chosen_arm}: {scope.arms[chosen_arm]} after 100 attempts; '
-                      f'it might be the best arm')
+            if threshold > THRESHOLD:
+                print(f'No experiments available for arm {chosen_arm}: {scope.arms[chosen_arm]} after '
+                      f'{THRESHOLD} attempts; it might be the best arm')
                 break
             algo.update(chosen_arm, algo.emp_means[chosen_arm])
             new_chosen_arm = algo.select_next_arm()
@@ -387,7 +400,7 @@ def update_and_propose(dir='./test/', num_exp=1):
     return None
 
 
-def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo):
+def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, num_sims=3, num_exp=2, num_round=10):
 
     """
     Method for simulation; skipping the saving and loading by user, query dataset with full results instead
@@ -396,42 +409,109 @@ def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo):
     -------
 
     """
+    ground_truth_cols = set(ground_truth.columns)
+    ground_truth_cols.remove('yield')
+    assert set(scope_dict.keys()) == ground_truth_cols, \
+        'ground truth and scope do not have the same fields'
 
-    scope = Scope()
-    scope.build_scope(scope_dict)
-    scope.build_arms(arms_dict)
+    # numpy array for acquisition log
+    log_cols = ['num_sims', 'round', 'experiment', 'horizon', 'chosen_arm', 'reward', 'cumulative_reward']
+    log_arr = np.zeros((num_sims * num_round * num_exp, len(log_cols)))
 
-    # propose initial experiments
-    log = pd.DataFrame(columns=['horizon', 'chosen_arm', 'reward', 'cumulative_reward'])
-    chosen_arm = algo.select_next_arm()
-    proposed_experiments = scope.propose_experiment(chosen_arm)
-    history = pd.DataFrame(columns=proposed_experiments.columns)
+    # numpy array for experimental history. This is just the prefix
+    history_prefix_cols = ['num_sims', 'round', 'experiment', 'horizon']
+    history_prefix_arr = np.zeros((num_sims * num_round * num_exp, len(history_prefix_cols)))
+    history = None  # actual experimental history
 
-    log.loc[len(log.index)] = [0, chosen_arm, np.nan, 0]
+    def ground_truth_query(ground_truth, to_query):
+        """
+        helper function to query ground truth dataset for yield result
+
+        Parameters
+        ----------
+        ground_truth: dataframe with all components + yield
+        to_query: list of dictionaries of component name/values to be queried
+
+        Returns
+        -------
+        a list of yields after query
+
+        """
+
+        # adapted from Scope.query()
+        names = set(list(ground_truth.columns))
+        names.remove('yield')  # remove yield from column labels, then match
+        component_names = sorted(to_query[0])  # only need one list of component names from dict; they are all the same
+
+        ground_truth = ground_truth.sort_index(axis=1)  # important to sort here with column name also
+        ground_truth_np = ground_truth.to_numpy(copy=False)
+        ys = []
+        for d in to_query:
+            assert ground_truth.shape[1] - 1 == len(d.items()), f'Missing reaction components when querying {d}'
+            assert names == set(d.keys()), f'labels not fully matched for {d}, cannot query'
+            values = [d[c] for c in component_names]
+            y = ground_truth[np.equal.outer(ground_truth_np, values).any(axis=1).all(axis=1)]['yield']
+            if y.empty or np.isnan(list(y)[0]):
+                print(f'something went wrong for {d}, no results found')
+            else:
+                assert len(list(y)) == 1, f'multiple result exist for query {d}'
+                ys.append(list(y)[0])
+        return ys
+
+    for sim in tqdm(range(num_sims)):
+        # initialize scope object and reset values
+        scope = Scope()
+        scope.build_scope(scope_dict)
+        scope.build_arms(arms_dict)
+        algo.reset(len(scope.arms))
+        cumulative_reward = 0
+
+        for r in tqdm(range(num_round), leave=False):
+            chosen_arm = algo.select_next_arm()  # choose an arm
+            proposed_experiments = scope.propose_experiment(chosen_arm, num_exp=num_exp)  # scope proposes experiment
+            to_query = proposed_experiments[scope_dict.keys()].to_dict('records')  # generate a list of dicts to query
+            rewards = ground_truth_query(ground_truth, to_query)  # ground truth returns all yields
+            proposed_experiments['yield'] = rewards  # mimic user behavior and fill proposed experiments with yield
+            history = pd.concat([history, proposed_experiments], ignore_index=True)
+
+            for ii in range(len(rewards)):  # update cumulative_reward, scope, algo and log results
+                cumulative_reward = cumulative_reward + rewards[ii]
+                scope.update_with_index(scope.current_experiment_index[ii], rewards[ii])
+                algo.update(scope.current_arms[ii], rewards[ii])
+                log_arr[sim * num_round * num_exp + r*num_exp+ii, :] = [sim, r, ii, r*num_exp+ii, chosen_arm, rewards[ii], cumulative_reward]
+                history_prefix_arr[sim * num_round * num_exp + r*num_exp+ii, :] = [sim, r, ii, r*num_exp+ii]
+            scope.predict()  # update prediction models
+
+    log_df = pd.DataFrame(log_arr, columns=log_cols)
+    history_df = pd.concat([pd.DataFrame(history_prefix_arr, columns=history_prefix_cols), history], axis=1)
+
+    history_df.to_csv('history_test.csv')
+    log_df.to_csv('log_test.csv')
 
     return
 
 
 def _test_human_in_the_loop():
 
-    # # build scope
-    # x = {'component_b': ['b1', 'b2'],
-    #     'component_a': ['a1', 'a2', 'a3'],
-    #      'component_c': ['c1', 'c2', 'c3', 'c4']
-    # }
-    # y = {'component_b': ['b1', 'b2'],
-    #      'component_a': ['a1', 'a3']}
-    #
-    # algo = algos_regret.EpsilonGreedy(4, 0.5)
-    # propose_initial_experiments(x, y, algo, num_exp=2)
+    # build scope
+    x = {'component_b': ['b1', 'b2'],
+        'component_a': [10, 11, 12],
+         'component_c': ['c1', 'c2', 'c3', 'c4']
+    }
+    y = {'component_b': ['b1', 'b2'],
+         'component_a': ['a1', 'a3']}
 
-    update_and_propose(num_exp=2)
+    algo = algos_regret.EpsilonGreedy(4, 0.5)
+    propose_initial_experiments(x, y, algo, num_exp=2)
+
+    # update_and_propose(num_exp=2)
 
 
 def _test_simulate():
 
     # fetch ground truth data
     ground_truth = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv')
+
     def scaler(x):
         # x on a scale of 0-100
         x = x/100
@@ -449,20 +529,25 @@ def _test_simulate():
     nucs = ground_truth['nucleophile_id'].unique()
 
     # build dictionary for acquisition
-    scope_dict = {'ligand': ligands,
-                  'elec': elecs,
-                  'nuc': nucs}
-    arms_dict = {'ligand': ligands}
-    algo = algos_regret.AnnealingEpsilonGreedy
+    scope_dict = {'ligand_name': ligands,
+                  'electrophile_id': elecs,
+                  'nucleophile_id': nucs}
+    arms_dict = {'ligand_name': ligands}
+    algo = algos_regret.AnnealingEpsilonGreedy(len(ligands))
+
+    simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo)
+
+    # val = ['PnBu3 HBF4', '10', 'F']
+    # a = ground_truth.loc[(ground_truth['ligand_name']=='PnBu3 HBF4')]
+    # b = a.loc[a['nucleophile_id']=='F']
+    # b = b.to_numpy(copy=False)
+    # b = b.astype(str)
+    # print(b)
+    # print(np.equal.outer(b[-1,1], val[1]))
+    # print(
+    #     np.equal.outer(b, val)[-1]
+    # )
 
 
 if __name__ == '__main__':
-    #
-    # dir = 'test/'
-    # with open(f'{dir}algo.pkl', 'rb') as f:
-    #     algo = pickle.load(f)  # load algo object
-    #
-    # print(
-    #     algo.emp_means, algo.counts
-    # )
-    _test_human_in_the_loop()
+    _test_simulate()
