@@ -125,12 +125,6 @@ def pursuit(scenario, n_sims, n_horizon, folder_name):
         filename = 'lr_' + str(lr) + '.csv'
         results.to_csv(output_dir / filename)
 
-    # test for pursuit with annealing
-    algo = AnnealingPursuit(n_arms)
-    algo.reset(n_arms)
-    results = test_algorithm_regret(algo, arms, n_sims, n_horizon)
-    results.to_csv(output_dir / 'annealing.csv')
-
     return None
 
 
@@ -340,23 +334,23 @@ def _test_batched(scenario, n_sims, n_horizon, folder_name):
 
 def test_TS_gaussian(scenario, n_sims, n_horizon):
 
-    fp = f'logs/scenario{scenario}/TS'
+    fp = f'./logs/normal arm/scenario{scenario}/'
     output_dir = make_dir(fp)
 
     means = means_from_scenario(scenario)
     n_arms = len(means)
-    arms = list(map(lambda x: BernoulliArm(x), means))
+    arms = list(map(lambda x: NormalArm(x, 0.1), means))
 
     # test for epsilon greedy
     algo = ThompsonSamplingGaussian(n_arms)
     results = test_algorithm_regret(algo, arms, n_sims, n_horizon)
-    results.to_csv(output_dir/'TS_gaussian.csv')
+    results.to_csv(output_dir/'TS_realsd_0.1.csv')
 
     return None
 
 
 if __name__ == '__main__':
-    test_TS_gaussian(5, 1000, 500)
+    test_TS_gaussian(1, 1000, 250)
 
     #test_all(scenario=1, n_sims=50, n_horizon=100, folder_name='./logs/tests')
     #test_algo_for_all_scenarios(pursuit, [4,5], n_horizon=500, folder_name='./test')

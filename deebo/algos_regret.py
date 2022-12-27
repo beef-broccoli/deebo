@@ -458,15 +458,51 @@ class ThompsonSamplingBeta(RegretAlgorithm):
         return
 
 
-class ThompsonSamplingGaussian(RegretAlgorithm):
-    # TS for gaussian arms with gaussian prior
+class ThompsonSamplingGaussianFixedVar(RegretAlgorithm):
+    # TS for gaussian arms, assume unknown mean but known variance
+    # gaussian prior, assume fixed variance of 1
     # can also be used non-parametric stochastic MAB with log regret
-    # assume fixed variance of 1 in this case
+
     def select_next_arm(self):
         stds = [1/(c+1) for c in self.counts]
         rng = np.random.default_rng()
         probs = rng.normal(self.emp_means, stds)
         return np.argmax(probs)
+
+
+class ThompsonSamplingGaussian(RegretAlgorithm):
+    # TS for gaussian arms, assume unknown mean and unknown variance
+    # gaussian-gamma prior
+
+    def __init__(self, n_arms, counts=None, emp_means=None, alphas=None, betas=None):
+        RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
+        self.alphas = alphas if alphas else [1.0 for col in range(n_arms)]
+        self.betas = betas if betas else [1.0 for col in range(n_arms)]
+        return
+
+    def reset(self, n_arms):
+        RegretAlgorithm.reset(self, n_arms)
+        self.alphas = [1.0 for col in range(n_arms)]
+        self.betas = [1.0 for col in range(n_arms)]
+        return
+
+    def select_next_arm(self):
+        rng = np.random.default_rng()
+        precisions = rng.gamma(self.alphas, [1/b for b in self.betas])  # rng.gamma() uses θ (θ=1/β)
+        variances = [1/(p+1e-7) for p in precisions]
+        probs = rng.normal(self.emp_means, np.sqrt(variances))
+        return np.argmax(probs)
+
+    def update(self, chosen_arm, reward):
+        RegretAlgorithm.update(self, chosen_arm, reward)
+        # update for beta distribution
+        n = 1
+        nu = self.counts[chosen_arm]
+        self.alphas[chosen_arm] = self.alphas[chosen_arm] + 0.5
+        self.betas[chosen_arm] = self.betas[chosen_arm] + ((n * nu / (nu + n)) * (((reward - self.emp_means[chosen_arm])**2)/2))
+        #print(self.emp_means)
+        #print([math.sqrt(b/(a+1)) for a, b in zip(self.alphas, self.betas)])  # estimated SD
+        return
 
 
 class DMED(RegretAlgorithm):
