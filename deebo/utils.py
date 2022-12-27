@@ -18,6 +18,15 @@ def fill_list(li, desired_len, to_fill):
         return li + [to_fill]*(desired_len-len(li))
 
 
+def scaler(x):
+    # x on a scale of 0-100
+    x = x/100
+    if x > 1:
+        return 1.0
+    else:
+        return x
+
+
 def means_from_scenario(scenario=0):
     """
 

@@ -1,4 +1,4 @@
-from arms import BernoulliArm
+from arms import BernoulliArm, NormalArm
 from algos_regret import *
 from algos_arm import *
 from algos_testfunc import *
@@ -117,12 +117,19 @@ def pursuit(scenario, n_sims, n_horizon, folder_name):
 
     lrs = [0.01, 0.025, 0.05, 0.1, 0.25, 0.5]
 
+    # pursuit with set learning rates
     for lr in lrs:
         algo = Pursuit(n_arms, lr)
         algo.reset(n_arms)
         results = test_algorithm_regret(algo, arms, n_sims, n_horizon)
         filename = 'lr_' + str(lr) + '.csv'
         results.to_csv(output_dir / filename)
+
+    # test for pursuit with annealing
+    algo = AnnealingPursuit(n_arms)
+    algo.reset(n_arms)
+    results = test_algorithm_regret(algo, arms, n_sims, n_horizon)
+    results.to_csv(output_dir / 'annealing.csv')
 
     return None
 
@@ -234,7 +241,7 @@ def ts_beta(scenario, n_sims, n_horizon, folder_name):
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
-    algo = ThompsonSampling(n_arms)
+    algo = ThompsonSamplingBeta(n_arms)
     algo.reset(n_arms)
     results = test_algorithm_regret(algo, arms, n_sims, n_horizon)
     filename = 'TS.csv'
@@ -331,9 +338,28 @@ def _test_batched(scenario, n_sims, n_horizon, folder_name):
     return None
 
 
+def test_TS_gaussian(scenario, n_sims, n_horizon):
+
+    fp = f'logs/scenario{scenario}/TS'
+    output_dir = make_dir(fp)
+
+    means = means_from_scenario(scenario)
+    n_arms = len(means)
+    arms = list(map(lambda x: BernoulliArm(x), means))
+
+    # test for epsilon greedy
+    algo = ThompsonSamplingGaussian(n_arms)
+    results = test_algorithm_regret(algo, arms, n_sims, n_horizon)
+    results.to_csv(output_dir/'TS_gaussian.csv')
+
+    return None
+
+
 if __name__ == '__main__':
-    test_all(scenario=1, n_sims=50, n_horizon=100, folder_name='./logs/tests')
-    #test_algo_for_all_scenarios(etc, [4], folder_name='./baseline_logs')
+    test_TS_gaussian(5, 1000, 500)
+
+    #test_all(scenario=1, n_sims=50, n_horizon=100, folder_name='./logs/tests')
+    #test_algo_for_all_scenarios(pursuit, [4,5], n_horizon=500, folder_name='./test')
     #_test_batched(1, 1000, 250, 'logs/')
     #etc(scenario=5, n_sims=1000, n_horizon=500, folder_name='./baseline_logs/')
 

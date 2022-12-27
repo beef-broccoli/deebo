@@ -13,6 +13,7 @@ import pandas as pd
 import numpy as np
 import itertools
 import matplotlib.pyplot as plt
+plt.rcParams['savefig.dpi'] = 600
 from matplotlib.patches import Rectangle
 import matplotlib.patches as mpatches
 from collections import Counter
@@ -60,6 +61,8 @@ la_purple = '#552583'
 
 df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv')
 df = df[['ligand_name', 'electrophile_id', 'nucleophile_id', 'yield']]
+df['electrophile_id'] = df['electrophile_id'].apply(lambda x: x.lstrip('e')).astype('int')  # for sorting purposes, so 10 is not immediately after 1
+df['nucleophile_id'] = df['nucleophile_id'].apply(lambda x: x.lstrip('n'))
 ligands = list(df['ligand_name'].unique())
 
 # plot all results. 4x6 for ligands, and each ligand is represented by a 8x8 block, overall 32x48
@@ -69,7 +72,7 @@ nuc_names = list(df['nucleophile_id'].unique())
 elec_names = list(df['electrophile_id'].unique())
 
 
-def plot_all_results(binary=1, cutoff=80):  # heatmap for all results, grouped by ligand
+def plot_all_results(binary=0, cutoff=80):  # heatmap for all results, grouped by ligand
     l = []
 
     for ligand in ligands:
@@ -89,7 +92,7 @@ def plot_all_results(binary=1, cutoff=80):  # heatmap for all results, grouped b
         a = a>cutoff
 
     fig, ax = plt.subplots()
-    im = ax.imshow(a, cmap='inferno')
+    im = ax.imshow(a, cmap='inferno', vmin=0, vmax=110)
     if binary:
         im = ax.imshow(a, cmap='inferno', vmin=0, vmax=2)
     if not binary:
@@ -113,23 +116,21 @@ def plot_all_results(binary=1, cutoff=80):  # heatmap for all results, grouped b
 
 # plot set 2 by products (64 products, 24 ligands)
 # split 8 nucleophiles and 8 electrophiles
-def plot_bar_box_substrates(exps, whichplot):  # TODO
+def plot_bar_box_substrates(df, plotwhat):
 
-    yields = exps[['electrophile', 'electrophile_pci_name', 'nucleophile', 'nucleophile_pci_name', 'yield']].copy()
+    df = df[['electrophile_id', 'nucleophile_id', 'yield']].copy()
 
     # create two dict for electrophiles and nucleophiles: letter/num->chemical name
-    elec = exps[['electrophile_pci_name', 'electrophile']]
-    elec = elec.drop_duplicates(ignore_index=True)
-    nuc = exps[['nucleophile_pci_name', 'nucleophile']]
-    nuc = nuc.drop_duplicates(ignore_index=True)
-    elec = dict(zip(elec['electrophile_pci_name'], elec['electrophile']))
-    nuc = dict(zip(nuc['nucleophile_pci_name'], nuc['nucleophile']))
-    yields.drop(['electrophile', 'nucleophile'], axis=1, inplace=True)  # elec labels, nuc labels, yield
+    # elec = df[['electrophile_pci_name', 'electrophile']]
+    # elec = elec.drop_duplicates(ignore_index=True)
+    # nuc = df[['nucleophile_pci_name', 'nucleophile']]
+    # nuc = nuc.drop_duplicates(ignore_index=True)
+    # df.drop(['electrophile', 'nucleophile'], axis=1, inplace=True)  # elec labels, nuc labels, yield
 
-    if whichplot in {'electrophile', 'nucleophile'}:  # plot a box plot and a stacked bar chart
+    if plotwhat in {'electrophile', 'nucleophile'}:  # plot a box plot and a stacked bar chart
 
-        name = whichplot + '_pci_name'
-        yields = yields[[name, 'yield']]
+        name = plotwhat + '_id'
+        yields = df[[name, 'yield']]
         # avg = yields.groupby([name]).mean()
         # names = yields[name].drop_duplicates().to_list()  # CAREFUL! names will get sorted
         # names = [str(name) for name in names]  # make sure labels are passed as string
@@ -137,7 +138,7 @@ def plot_bar_box_substrates(exps, whichplot):  # TODO
         # box plot
         results = yields.groupby([name]).apply(lambda x: x.values[:, 1].tolist())
         names = [str(name) for name in results.index]
-        _box_plot(list(results), names, whichplot)  # from mpl docs, list is more efficient than np array
+        _box_plot(list(results), names, plotwhat)  # from mpl docs, list is more efficient than np array
 
         # stacked bar
         bins = [-1, 1, 20, 40, 60, 80, 200]  # 100%+ yield exist
@@ -145,18 +146,20 @@ def plot_bar_box_substrates(exps, whichplot):  # TODO
         binned = yields.groupby([name, pd.cut(yields['yield'], bins)]).size().unstack()  # groupby yield bins and ligand
         names = [str(name) for name in binned.index]
         count = binned.values  # for each ligand, count number of yields in each yield bin
-        _categorical_bar(names, count, categories)  # I split these early for generalizabiliy, make sure they have the same ligand sequence
+        _categorical_bar(names, count, categories, ylabel=plotwhat)  # I split these early for generalizabiliy, make sure they have the same ligand sequence
 
         plt.show()
 
-    elif whichplot == 'both':
-        groups = yields.groupby(['electrophile_pci_name', 'nucleophile_pci_name'])
+    elif plotwhat == 'both':
+        groups = df.groupby(['electrophile_id', 'nucleophile_id'])
         avgs = groups.mean().unstack()
         medians = groups.median().unstack()  # after unstacking row name is elec, col name is nuc
         elec_names = list(medians.index.values)  # might be sorted, get names this way
         nuc_names = list(list(zip(*medians.columns.values))[1])
-        _heatmap(nuc_names, elec_names, np.array(medians.values), 'Median yield')
-        _heatmap(nuc_names, elec_names, np.array(avgs.values), 'Average yield')
+        _heatmap(nuc_names, elec_names, np.array(medians.values),
+                 title='Median yield', xlabel='nucleophile (imidazole)', ylabel='electrophile (aryl bromide)')
+        _heatmap(nuc_names, elec_names, np.array(avgs.values),
+                 title='Average yield', xlabel='nucleophile (imidazole)', ylabel='electrophile (aryl bromide)')
         plt.show()
 
     return None
@@ -249,7 +252,7 @@ def plot_best_ligand_with_diff_metric():  # 6 bar plots, each with top 5 ligands
     # for i in range(len(all_top_ligands)):
     #     colors[all_top_ligands[i]] = colormap[i]
 
-    color_list = [classic_blue_hex, cornhusk_hex, stucco_hex,  peach_quartz_hex, baby_blue_hex, monument_hex, provence_hex]
+    color_list = [cornhusk_hex, stucco_hex,  peach_quartz_hex, baby_blue_hex, monument_hex, provence_hex, pink_tint_hex]
     colors = {}
     if len(all_top_ligands) > len(color_list):
         raise RuntimeError('not enough colors for all top ligands. {0} colors, {1} ligands'.format(len(color_list), len(all_top_ligands)))
@@ -265,43 +268,53 @@ def plot_best_ligand_with_diff_metric():  # 6 bar plots, each with top 5 ligands
     def trim(ll):  # trim the long ligand names
         return [s[:10] for s in ll]
 
-    figsize = (10,5)
+    figsize = (10,6)
     kwargs = {'aa': True, 'width': 0.5}
     plt.rcParams['savefig.dpi'] = 300
     figs, axs = plt.subplots(3, 2, figsize=figsize, constrained_layout=True)
 
-    axs[0, 0].bar(trim(list(twentyfive.index)), list(twentyfive.values), color=get_colors(list(twentyfive.index)), **kwargs)
-    axs[0, 0].set_title('1st quantile (Q1)')
-    axs[0, 0].set_ylabel('yield (%)')
+    def ax_plot(ax_x, ax_y, df, title, y_label=None):
+        x = trim(list(df.index))
+        y = list(df.values)
+        axs[ax_x, ax_y].bar(x, y, color=get_colors(list(df.index)), **kwargs)
+        for i in range(len(x)):  # plot value
+            axs[ax_x, ax_y].text(i, y[i]+0.5, round(y[i], 2), ha='center')
+        axs[ax_x, ax_y].set_title(title)  # title
+        if y_label:  # y label
+            axs[ax_x, ax_y].set_ylabel(y_label)
+        axs[ax_x, ax_y].set_ylim(top=axs[ax_x, ax_y].get_ylim()[1] + 5)  # adjust ylim top so value text fits
 
-    axs[0, 1].bar(trim(list(median.index)), list(median.values), color=get_colors(list(median.index)), **kwargs)
-    axs[0, 1].set_title('median')
-
-    axs[1, 0].bar(trim(list(seventyfive.index)), list(seventyfive.values), color=get_colors(list(seventyfive.index)), **kwargs)
-    axs[1, 0].set_title('3rd quantile (Q3)')
-    axs[1, 0].set_ylabel('yield (%)')
-
-    axs[1, 1].bar(trim(list(mean.index)), list(mean.values), color=get_colors(list(mean.index)), **kwargs)
-    axs[1, 1].set_title('average')
-
-    axs[2, 0].bar(trim(list(overtwenty.index)), list(overtwenty.values), color=get_colors(list(overtwenty.index)), **kwargs)
-    axs[2, 0].set_title('yield >20%')
-    axs[2, 0].set_ylabel('count')
-
-    axs[2, 1].bar(trim(list(overeighty.index)), list(overeighty.values), color=get_colors(list(overeighty.index)), **kwargs)
-    axs[2, 1].set_title('yield >80%')
+    ax_plot(0, 0, twentyfive, title='1st quantile (Q1)', y_label='yield (%)')
+    ax_plot(0, 1, median, title='median')
+    ax_plot(1, 0, seventyfive, title='3rd quantile (Q3)', y_label='yield (%)')
+    ax_plot(1, 1, mean, title='average')
+    ax_plot(2, 0, overtwenty, title='yield >20%', y_label='count')
+    ax_plot(2, 1, overeighty, title='yield >80%')
 
     plt.show()
 
 
-def plot_results_with_model_substrates():  # a heatmap, with each substrate pair as model system, best ligand is identified
+def plot_results_with_model_substrates(cutoff=75, select=True):
+    """
+    a heatmap, with each substrate pair as model system, highest yielding ligand is identified
+
+    Parameters
+    ----------
+    cutoff: yield cutoff. If the highest yielding ligand gives a yield lower than cutoff, it's considered not optimized
+    select: plot only selected few ligands for better visualization
+
+    Returns
+    -------
+
+    """
     fd = df.copy()
-    fd['combo'] = fd['electrophile_id'].astype(str) + fd['nucleophile_id'].astype(str)
+    fd['combo'] = fd['electrophile_id'].astype('str') + fd['nucleophile_id'].astype('str')
     #fd = fd.sort_values(by=['combo', 'ligand_name'])
     max = fd.loc[fd.groupby(by=['combo'])['yield'].idxmax()]
+    #print(list(max['ligand_name'].unique()))
     #print(max.loc[max['plot']!=0]['ligand_name'].value_counts())
 
-    def f(x):  # to assign colors
+    def color_select(x):  # to assign colors
         if x == 'CgMe-PPh':
             return 1
         elif x == 'tBPh-CPhos':
@@ -315,8 +328,22 @@ def plot_results_with_model_substrates():  # a heatmap, with each substrate pair
         else:
             return 6
 
-    max['valid'] = df['yield'].apply(lambda x: 0 if x<75 else 1)  # 0 for plotting, if highest yield < 75%
-    max['plot'] = df['ligand_name'].apply(f)
+    # new way to assign colors for all ligands that give above cutoff yields
+    ligands_to_color = max.loc[max['yield']>cutoff]['ligand_name'].unique()
+
+    def color(x):
+        vals = np.arange(len(ligands_to_color)) + 1
+        d = dict(zip(ligands_to_color, vals))
+        if x not in d:
+            return 0
+        else:
+            return d[x]
+
+    max['valid'] = df['yield'].apply(lambda x: 0 if x<cutoff else 1)  # 0 for plotting, if highest yield < 75%
+    if select:
+        max['plot'] = df['ligand_name'].apply(color_select)
+    else:
+        max['plot'] = df['ligand_name'].apply(color)
     max['plot'] = max['plot']*max['valid']
     max = max.pivot(index='nucleophile_id', columns='electrophile_id', values='plot')
 
@@ -330,18 +357,23 @@ def plot_results_with_model_substrates():  # a heatmap, with each substrate pair
 
     ax.set_xticks(np.arange(8), labels=list(max.columns))
     ax.set_yticks(np.arange(8), labels=list(max.index))
-    ax.set_xlabel('aryl bromide')
-    ax.set_ylabel('imidazole')
-    values = list(np.arange(7))
+    ax.set_xlabel('electrophile (aryl bromide)')
+    ax.set_ylabel('nucleophile (imidazole)')
+    if select:
+        values = list(np.arange(7))
+        ligand_color = [f'Not optimized (<{cutoff}%)', 'CgMe-PPh', 'tBPh-CPhos', 'Cy-BippyPhos', 'Et-PhenCar-Phos', 'PPh3', 'other ligands']
+    else:
+        values = list(np.arange(len(ligands_to_color)+1))
+        ligand_color = list(ligands_to_color)
+        ligand_color.insert(0, f'Not optimized (<{cutoff}%)')
     colors = [im.cmap(im.norm(value)) for value in values]
-    ligand_color = ['Not optimized (<75%)', 'CgMe-PPh', 'tBPh-CPhos', 'Cy-BippyPhos', 'Et-PhenCar-Phos', 'PPh3', 'other ligands']
     patches = [mpatches.Patch(color=colors[i], label=ligand_color[i]) for i in range(len(values))]
     plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
 
     ax.spines['top'].set_visible(False)  # remove boundaries
     ax.spines['right'].set_visible(False)
 
-    plt.rcParams['savefig.dpi'] = 300
+    plt.rcParams['savefig.dpi'] = 600
     plt.show()
 
 
@@ -377,7 +409,6 @@ def plot_simulations_random_sampling(ligand='Cy-BippyPhos', n_exp_per_ligand=3):
     ax.spines['right'].set_visible(False)
 
     plt.tight_layout()
-    plt.rcParams['savefig.dpi'] = 300
     plt.show()
 
 
@@ -587,7 +618,6 @@ def plot_calculated_sampling_results():
     plt.show()
 
 
-
 def cluster_substrates(draw_product=1):
     df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv')
     df = df[['electrophile_id', 'electrophile_smiles', 'nucleophile_id', 'nucleophile_smiles', 'product_smiles']].drop_duplicates(ignore_index=True)
@@ -683,7 +713,7 @@ def cluster_substrates(draw_product=1):
 
 
 # categorical heatmap
-def _heatmap(xs, ys, data, title):  # TODO: update heatmap
+def _heatmap(xs, ys, data, title=None, xlabel=None, ylabel=None):  # TODO: update heatmap
     """
         Parameters
         ----------
@@ -698,7 +728,7 @@ def _heatmap(xs, ys, data, title):  # TODO: update heatmap
     """
 
     fig, ax = plt.subplots()
-    im = ax.imshow(data, cmap='RdPu')
+    im = ax.imshow(data, cmap='inferno', vmin=0, vmax=110)
 
     # We want to show all ticks...
     ax.set_xticks(np.arange(len(xs)))
@@ -706,6 +736,8 @@ def _heatmap(xs, ys, data, title):  # TODO: update heatmap
     # ... and label them with the respective list entries
     ax.set_xticklabels(xs)
     ax.set_yticklabels(ys)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
 
     # Rotate the tick labels and set their alignment.
     plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
@@ -758,7 +790,7 @@ def _box_plot(data, labels, name):
 
 
 # draw a horizontal bar chart for discrete categorical values
-def _categorical_bar(labels, data, category_names):
+def _categorical_bar(labels, data, category_names, title=None, ylabel=None):
     """
         Parameters
         ----------
@@ -796,12 +828,14 @@ def _categorical_bar(labels, data, category_names):
 
     ax.legend(ncol=len(category_names), bbox_to_anchor=(0, 1),
               loc='lower left', fontsize='medium')
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
 
     return fig, ax
 
 
 if __name__ == '__main__':
-    plot_all_results()
+    plot_bar_box_substrates(df, 'nucleophile')
 
 def _calculate_random_sampling_deprecated():
 

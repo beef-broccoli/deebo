@@ -11,6 +11,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 
 import algos_regret
+import utils
 
 # dev notes
 # - propose multiple experiments for different arms; WAIT FOR BATCHED ALGORITHM
@@ -29,7 +30,7 @@ class Scope:
         self.predictions = None  # predictions from regression model
         self.pre_accuray = None  # prediction accuracy
         self.arms = None  # a list of arms, e.g., [('a2', 'c1'), ('a2', 'c3'), ('a3', 'c1'), ('a3', 'c3')]
-        self.arm_labels = None  # label names. e.g., ['component_a', 'component_b']
+        self.arm_labels = None  # arm label names. e.g., ['component_a', 'component_b']
         self.current_experiment_index = None  # df index of the experiments currently running
         self.current_arms = None  # current arms being evaluated; corresponding to self.current_eperiment_index
         return
@@ -236,7 +237,7 @@ class Scope:
         for ii in range(len(self.arm_labels)):  # find available experiments for this arm
             candidates = candidates.loc[candidates[self.arm_labels[ii]] == self.arms[arm_index][ii]]
 
-        if mode == 'random':
+        if mode == 'random':  # random sampling
             try:
                 sample = candidates.sample(num_exp)
             except ValueError:  # not enough available reactions for this arm to be sampled
@@ -366,6 +367,7 @@ def update_and_propose(dir='./test/', num_exp=1):
         scope.update_with_index(scope.current_experiment_index[ii], rewards[ii])
         algo.update(scope.current_arms[ii], rewards[ii])
     scope.predict()
+    print(scope.predictions)
     new_history = pd.concat([history, exps])
 
     # propose new experiments
@@ -491,35 +493,24 @@ def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, num_s
     return
 
 
-def _test_human_in_the_loop():
+if __name__ == '__main__':
 
-    # build scope
-    x = {'component_b': ['b1', 'b2'],
-        'component_a': [10, 11, 12],
-         'component_c': ['c1', 'c2', 'c3', 'c4']
-    }
-    y = {'component_b': ['b1', 'b2'],
-         'component_a': ['a1', 'a3']}
-
-    algo = algos_regret.EpsilonGreedy(4, 0.5)
-    propose_initial_experiments(x, y, algo, num_exp=2)
-
+    # # build scope
+    # x = {'component_b': ['b1', 'b2'],
+    #     'component_a': [10, 11, 12],
+    #      'component_c': ['c1', 'c2', 'c3', 'c4']
+    # }
+    # y = {'component_b': ['b1', 'b2'],
+    #      'component_a': ['a1', 'a3']}
+    #
+    # algo = algos_regret.EpsilonGreedy(4, 0.5)
+    # propose_initial_experiments(x, y, algo, num_exp=2)
     # update_and_propose(num_exp=2)
-
-
-def _test_simulate():
 
     # fetch ground truth data
     ground_truth = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv')
 
-    def scaler(x):
-        # x on a scale of 0-100
-        x = x/100
-        if x>1:
-            return 1.0
-        else:
-            return x
-    ground_truth['yield'] = ground_truth['yield'].apply(scaler)
+    ground_truth['yield'] = ground_truth['yield'].apply(utils.scaler)
     ground_truth = ground_truth[['ligand_name',
                                  'electrophile_id',
                                  'nucleophile_id',
@@ -535,19 +526,7 @@ def _test_simulate():
     arms_dict = {'ligand_name': ligands}
     algo = algos_regret.AnnealingEpsilonGreedy(len(ligands))
 
-    simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo)
+    #simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo)
 
-    # val = ['PnBu3 HBF4', '10', 'F']
-    # a = ground_truth.loc[(ground_truth['ligand_name']=='PnBu3 HBF4')]
-    # b = a.loc[a['nucleophile_id']=='F']
-    # b = b.to_numpy(copy=False)
-    # b = b.astype(str)
-    # print(b)
-    # print(np.equal.outer(b[-1,1], val[1]))
-    # print(
-    #     np.equal.outer(b, val)[-1]
-    # )
-
-
-if __name__ == '__main__':
-    _test_simulate()
+    #propose_initial_experiments(scope_dict, arms_dict, algo, num_exp=2)
+    update_and_propose(num_exp=2)

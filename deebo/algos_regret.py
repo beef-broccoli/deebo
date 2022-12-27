@@ -137,7 +137,6 @@ class AnnealingBoltzmann(RegretAlgorithm):
         return random.choices(np.arange(len(self.emp_means)), weights=probs, k=1)[0]
 
 
-#TODO: annealing learning rate
 class Pursuit(RegretAlgorithm):
 
     def __init__(self, n_arms, lr, counts=None, emp_means=None, probs=None):
@@ -431,7 +430,8 @@ class UCB2(RegretAlgorithm):
         return
 
 
-class ThompsonSampling(RegretAlgorithm):  # TS for bernoulli arms, beta distribution as conjugate priors
+class ThompsonSamplingBeta(RegretAlgorithm):
+    # TS for bernoulli arms, beta distribution as conjugate priors
 
     def __init__(self, n_arms, counts=None, emp_means=None, alphas=None, betas=None):
         RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
@@ -456,6 +456,17 @@ class ThompsonSampling(RegretAlgorithm):  # TS for bernoulli arms, beta distribu
         self.alphas[chosen_arm] = self.alphas[chosen_arm] + reward
         self.betas[chosen_arm] = self.betas[chosen_arm] + (1-reward)
         return
+
+
+class ThompsonSamplingGaussian(RegretAlgorithm):
+    # TS for gaussian arms with gaussian prior
+    # can also be used non-parametric stochastic MAB with log regret
+    # assume fixed variance of 1 in this case
+    def select_next_arm(self):
+        stds = [1/(c+1) for c in self.counts]
+        rng = np.random.default_rng()
+        probs = rng.normal(self.emp_means, stds)
+        return np.argmax(probs)
 
 
 class DMED(RegretAlgorithm):

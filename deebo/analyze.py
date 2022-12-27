@@ -493,20 +493,17 @@ if __name__ == '__main__':
         return None
 
 
-    scenario1_best_perfomers()
-    #plot_probs_choosing_best_arm_all(folder_path='logs/scenario5/ucb2')
+    #scenario1_best_perfomers()
 
-    # eps = [0.1, 0.2, 0.3, 0.4, 0.5]
-    # fn_list = ['batch/test.csv']
-    # fn_list = fn_list + [f'eps_greedy/epsilon_{e}.csv' for e in eps]
-    # print(fn_list)
-    # plot_cumulative_reward(
-    #     fn_list=fn_list,
-    #     legend_list=['batched']+[str(e) for e in eps],
-    #     legend_title='epsilon',
-    #     title='Cumulative reward of epsilon greedy algorithm',
-    #     fp='./logs/scenario1/',
-    # )
+
+    plot_probs_choosing_best_arm(
+        fn_list=['logs/scenario5/optim/TS.csv',
+                 'logs/scenario5/TS/TS_gaussian.csv'],
+        legend_list=['TS (beta prior)', 'TS (gaussian prior)'],
+        legend_title='algorithm',
+        best_arm_index=18,
+        title='Test scenario 5, Thompson sampling with different priors',
+    )
 
     # #baseline plot
     # ns = list(np.arange(26)+1)

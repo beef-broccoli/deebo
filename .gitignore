@@ -15,6 +15,7 @@ ax_tutorials/
 /logs/
 legacy/
 /tests/
+/test/
 
 # C extensions
 *.so
@@ -158,3 +159,4 @@ cython_debug/
 /deebo/new_logs/
 /deebo/baselines/
 /deebo/baseline_logs/
+/deebo/test/

@@ -66,7 +66,7 @@ def _chem_test_1():
              UCB1([], [], []),
              UCB1Tuned([], [], [], []),
              UCBV([], [], [], [], []),
-             ThompsonSampling([], [], [], [])
+             ThompsonSamplingBeta([], [], [], [])
              ]
     fp = './logs/chem_test_1/'
     exp_list = ['ETC', 'ucb1', 'ucb1tuned', 'ucbv', 'TS']
@@ -133,13 +133,13 @@ def _chem_test_2():
 
     # parameters for testing
     algos = [Random([], []),
-            ETC([], [], explore_limit=20),
+             ETC([], [], explore_limit=20),
              AnnealingEpsilonGreedy([], []),
              Boltzmann(0.1, [], []),
              UCB1([], [], []),
              UCB1Tuned([], [], [], []),
              UCBV([], [], [], [], []),
-             ThompsonSampling([], [], [], [])
+             ThompsonSamplingBeta([], [], [], [])
              ]
     fp = './logs/chem_test_2/'
     exp_list = ['random', 'ETC', 'eps_greedy_annel', 'softmax_0.1','ucb1', 'ucb1tuned', 'ucbv', 'TS']
