@@ -334,17 +334,17 @@ def _test_batched(scenario, n_sims, n_horizon, folder_name):
 
 def test_TS_gaussian(scenario, n_sims, n_horizon):
 
-    fp = f'./logs/normal arm/scenario{scenario}/'
+    fp = f'./logs/normal arm/scenario{scenario}/TS_beta_init_test/'
     output_dir = make_dir(fp)
 
     means = means_from_scenario(scenario)
     n_arms = len(means)
-    arms = list(map(lambda x: NormalArm(x, 0.1), means))
+    arms = list(map(lambda x: NormalArm(x, 0.5), means))
 
     # test for epsilon greedy
     algo = ThompsonSamplingGaussian(n_arms)
     results = test_algorithm_regret(algo, arms, n_sims, n_horizon)
-    results.to_csv(output_dir/'TS_realsd_0.1.csv')
+    results.to_csv(output_dir/'realsd_0.5_betainit_0.01.csv')
 
     return None
 

@@ -497,11 +497,15 @@ if __name__ == '__main__':
 
 
     plot_probs_choosing_best_arm(
-        fn_list=['logs/normal arm/scenario1/TS_realsd_0.1.csv',
-                 'logs/normal arm/scenario1/TS_realsd_0.1_fixedsd_1.csv'
-                ],
-        legend_list=['unfixed', 'fixed'],
-        legend_title='arm distribution with different SD',
+        fn_list=[
+            'realsd_0.5_betainit_1.csv',
+            'realsd_0.5_betainit_0.5.csv',
+            'realsd_0.5_betainit_0.1.csv',
+            'realsd_0.5_betainit_0.01.csv',
+        ],
+        fp='logs/normal arm/scenario1/TS_beta_init_test/',
+        legend_list=['1', '0.5', '0.1', '0.01'],
+        legend_title='beta parameter initialization',
         best_arm_index=4,
         title='Accuracy of selecting best arm',
     )

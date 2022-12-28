@@ -8,7 +8,6 @@
 # - 4E gives no yield for all ligands, so I'm only simulating through 63 combinations
 
 import math
-
 import pandas as pd
 import numpy as np
 import itertools
@@ -18,7 +17,6 @@ from matplotlib.patches import Rectangle
 import matplotlib.patches as mpatches
 from collections import Counter
 from tqdm import tqdm
-
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem import rdMolDescriptors, DataStructs
@@ -835,7 +833,16 @@ def _categorical_bar(labels, data, category_names, title=None, ylabel=None):
 
 
 if __name__ == '__main__':
-    plot_bar_box_substrates(df, 'nucleophile')
+    def scale(x):
+        x = x / 100
+        if x > 1:
+            return 1.0
+        else:
+            return x
+    df['yield'] = df['yield'].apply(scale)
+    s = df.groupby('ligand_name').describe()
+    print(s)
+
 
 def _calculate_random_sampling_deprecated():
 

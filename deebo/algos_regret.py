@@ -477,13 +477,13 @@ class ThompsonSamplingGaussian(RegretAlgorithm):
     def __init__(self, n_arms, counts=None, emp_means=None, alphas=None, betas=None):
         RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
         self.alphas = alphas if alphas else [1.0 for col in range(n_arms)]
-        self.betas = betas if betas else [1.0 for col in range(n_arms)]
+        self.betas = betas if betas else [0.1 for col in range(n_arms)]
         return
 
     def reset(self, n_arms):
         RegretAlgorithm.reset(self, n_arms)
         self.alphas = [1.0 for col in range(n_arms)]
-        self.betas = [1.0 for col in range(n_arms)]
+        self.betas = [0.1 for col in range(n_arms)]
         return
 
     def select_next_arm(self):
@@ -500,8 +500,9 @@ class ThompsonSamplingGaussian(RegretAlgorithm):
         nu = self.counts[chosen_arm]
         self.alphas[chosen_arm] = self.alphas[chosen_arm] + 0.5
         self.betas[chosen_arm] = self.betas[chosen_arm] + ((n * nu / (nu + n)) * (((reward - self.emp_means[chosen_arm])**2)/2))
-        #print(self.emp_means)
-        #print([math.sqrt(b/(a+1)) for a, b in zip(self.alphas, self.betas)])  # estimated SD
+        # print(self.emp_means)
+        # print([math.sqrt(b/(a+1)) for a, b in zip(self.alphas, self.betas)])  # estimated SD
+        # print('')
         return
 
 
