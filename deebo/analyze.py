@@ -8,25 +8,6 @@ from glob import glob
 from utils import plot_info_file_path_match, means_from_scenario
 
 
-def calculate_baseline(chemarms: list):
-    # TODO: take chem arms, calculate a baseline for probability in a traditional reaction optimziation way
-    from chem_arms_legacy import ChemArmRandomDraw
-
-    # type check; check chem arms are from same dataset
-    url = chemarms[0].data_url
-    name = chemarms[0].name
-    for arm in chemarms:
-        assert isinstance(arm, ChemArmRandomDraw), "required argument: a list of ChemArm objects"
-        assert arm.name == name, "ChemArmSim objects should describe same reaction components"
-        assert arm.data_url == url, "ChemArmSim objects should come from the same dataset"
-
-    df = pd.read_csv(url)
-
-    temp = df[list(name)]
-
-    return
-
-
 def plot_probs_choosing_best_arm_all(folder_path=None):
     """
     Func that can more efficiently plot results for each algo with all parameters
@@ -65,7 +46,8 @@ def plot_probs_choosing_best_arm_all(folder_path=None):
 
 def plot_probs_choosing_best_arm(fn_list,
                                  legend_list,
-                                 manual_baseline=0,
+                                 hline=0,
+                                 vline=0,
                                  etc_baseline=False,
                                  etc_fp='',
                                  best_arm_index=0,
@@ -73,20 +55,35 @@ def plot_probs_choosing_best_arm(fn_list,
                                  title='',
                                  legend_title='',
                                  long_legend=False,
-                                 ignore_first_rounds=0,
-                                 vline=0):
+                                 ignore_first_rounds=0):
     """
 
     Parameters
     ----------
-    fn_list: list of data file names
-    legend_list: list of legend names
-    baseline: a horizontal baseline
-    best_arm_index: the index for best arm (needed for calculation)
-    fp: directory for where the data files are stored
-    title: title for the plot
-    legend_title: title for the legend
-    long_legend: if true, legend will be plotted outside the plot; if false mpl finds the best position within plot
+    fn_list: list
+        list of data file names
+    legend_list: list
+        list of labels for legend
+    hline: int/float
+        value for plotting horizontal baseline
+    vline: int/float
+        value for plotting a vertical baseline
+    etc_baseline: bool
+        display explore-then-commit baseline or not
+    etc_fp: str
+        file path for calculated etc baseline at each time point, a numpy array object
+    best_arm_index: int
+        the index for best arm (needed for calculation)
+    fp: str
+        deepest common directory for where the data files are stored
+    title: str
+        title for the plot
+    legend_title: str
+        title for the legend
+    long_legend: bool
+        if true, legend will be plotted outside the plot; if false mpl finds the best position within plot
+    ignore_first_rounds: int
+        when plotting, ignore the first n rounds. Useful for algos that require running one pass of all arms
 
     Returns
     -------
@@ -101,10 +98,10 @@ def plot_probs_choosing_best_arm(fn_list,
     plt.rcParams['savefig.dpi'] = 300
     fig, ax = plt.subplots()
 
-    if manual_baseline != 0:
-        plt.axhline(y=manual_baseline, xmin=0, xmax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
+    if hline != 0:
+        plt.axhline(y=hline, xmin=0, xmax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
     if vline !=0:
-        plt.axvline(x=manual_baseline, ymin=0, ymax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
+        plt.axvline(x=vline, ymin=0, ymax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
 
     if etc_baseline:
         base = np.load(etc_fp)
@@ -332,7 +329,39 @@ def _test_plot():
     plot_cumulative_reward(fn_list, legend_list, fp='./logs/epsilon_greedy_test/', title='ss', legend_title='dd')
 
 
-def _test_cal_baseline():
+def _plot_boltzmann():
+    # example on using plot function
+    plt.rcParams['savefig.dpi'] = 300
+
+    taus = [0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
+    fn_list = ['tau_' + str(t) + '.csv' for t in taus]
+    fn_list.append('annealing_boltzmann_test.csv')
+    legend_list = [str(t) for t in taus]
+    legend_list.append('annealing')
+
+    plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/Boltzmann_test/', title='accuracy of softmax', legend_title='tau')
+
+
+def _deprecated_calculate_baseline(chemarms: list):
+    # TODO: take chem arms, calculate a baseline for probability in a traditional reaction optimziation way
+    from chem_arms_legacy import ChemArmRandomDraw
+
+    # type check; check chem arms are from same dataset
+    url = chemarms[0].data_url
+    name = chemarms[0].name
+    for arm in chemarms:
+        assert isinstance(arm, ChemArmRandomDraw), "required argument: a list of ChemArm objects"
+        assert arm.name == name, "ChemArmSim objects should describe same reaction components"
+        assert arm.data_url == url, "ChemArmSim objects should come from the same dataset"
+
+    df = pd.read_csv(url)
+
+    temp = df[list(name)]
+
+    return
+
+
+def _deprecated_cal_baseline():
 
     from chem_arms_legacy import ChemArmRandomDraw
     import itertools
@@ -348,18 +377,6 @@ def _test_cal_baseline():
     # test basline
     calculate_baseline(arms)
 
-
-def _plot_boltzmann():
-    # example on using plot function
-    plt.rcParams['savefig.dpi'] = 300
-
-    taus = [0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
-    fn_list = ['tau_' + str(t) + '.csv' for t in taus]
-    fn_list.append('annealing_boltzmann_test.csv')
-    legend_list = [str(t) for t in taus]
-    legend_list.append('annealing')
-
-    plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/Boltzmann_test/', title='accuracy of softmax', legend_title='tau')
 
 
 if __name__ == '__main__':
@@ -557,8 +574,5 @@ if __name__ == '__main__':
     # legend_list = [str(e) for e in es]
     # plot_etc_baseline([e*5 for e in es], fn_list, legend_list, fp='./logs/scenario3/ETC/', best_arm_index=4, title='', legend_title='')
 
-    # plot_probs_choosing_best_arm(['dmed.csv', 'dmed_modified.csv', 'optim/ucb1_tuned.csv', 'optim/ucb1.csv'],
-    #                              ['dmed', 'dmed mod', 'ucb1 tuned', 'ucb1'],
-    #                              best_arm_index=4,
-    #                              fp='./logs/scenario1/')
+
 
