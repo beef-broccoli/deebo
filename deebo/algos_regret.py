@@ -23,6 +23,7 @@ dummy best arm: most played arm for each algorihtm
 import random
 import math
 import numpy as np
+from scipy.stats import beta
 from utils import zero_nor_one
 
 
@@ -303,7 +304,51 @@ class MOSS(UCB1):
         return
 
 
-# class KLUCB(UCB1):
+class BayesUCBBeta(UCB1):
+
+    def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None, alphas=None, betas=None, c=2):
+        UCB1.__init__(self, n_arms, counts, emp_means, ucbs)
+        self.alphas = alphas if alphas else [1.0 for col in range(n_arms)]
+        self.betas = betas if betas else [1.0 for col in range(n_arms)]
+        self.c = c  # num of std's to consider as confidence bound
+        # c=1 is better for scenario 2, all others use c=2
+        return
+
+    def reset(self, n_arms):
+        UCB1.reset(self, n_arms)
+        self.alphas = [1.0 for col in range(n_arms)]
+        self.betas = [1.0 for col in range(n_arms)]
+        return
+
+    def update(self, chosen_arm, reward):
+        RegretAlgorithm.update(self, chosen_arm, reward)
+
+        # update α and β
+        self.alphas[chosen_arm] = self.alphas[chosen_arm] + reward
+        self.betas[chosen_arm] = self.betas[chosen_arm] + (1-reward)
+
+        # update UCB values
+        means = [a/(a+b) for a, b in zip(self.alphas, self.betas)]
+        stds = [self.c * beta.std(a, b) for a, b in zip(self.alphas, self.betas)]
+        self.ucbs = [m + s for m, s in zip(means, stds)]
+
+
+class BayesUCBGaussian(UCB1):
+    # assuming fixed var of 1, similar to TS with gaussian prior
+
+    def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None, c=2):
+        UCB1.__init__(self, n_arms, counts, emp_means, ucbs)
+        self.c = c  # num of std's to consider as confidence bound
+        # c=1 is better for scenario 2, all others use c=2
+        return
+
+    def update(self, chosen_arm, reward):
+        RegretAlgorithm.update(self, chosen_arm, reward)
+        stds = [self.c * 1/(c+1) for c in self.counts]
+        self.ucbs = [m + s for m, s in zip(self.emp_means, stds)]
+
+
+    # class KLUCB(UCB1):
 #
 #     # override
 #     def update(self, chosen_arm, reward):

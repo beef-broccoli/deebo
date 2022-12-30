@@ -5,7 +5,7 @@ import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
 from glob import glob
-from utils import plot_info_file_path_match
+from utils import plot_info_file_path_match, means_from_scenario
 
 
 def calculate_baseline(chemarms: list):
@@ -495,20 +495,43 @@ if __name__ == '__main__':
 
     #scenario1_best_perfomers()
 
-
+    scenario = 2
     plot_probs_choosing_best_arm(
+        best_arm_index=int(np.argmax(means_from_scenario(scenario))),
         fn_list=[
-            'realsd_0.5_betainit_1.csv',
-            'realsd_0.5_betainit_0.5.csv',
-            'realsd_0.5_betainit_0.1.csv',
-            'realsd_0.5_betainit_0.01.csv',
+            'optim/bayes_ucb_gaussian_c=1.csv',
+            'optim/bayes_ucb_beta_c=1.csv',
+            'TS/TS_beta.csv',
+            'TS/TS_gaussian_var=1.csv',
+            'optim/ucb1_tuned.csv'
         ],
-        fp='logs/normal arm/scenario1/TS_beta_init_test/',
-        legend_list=['1', '0.5', '0.1', '0.01'],
-        legend_title='beta parameter initialization',
-        best_arm_index=4,
-        title='Accuracy of selecting best arm',
+        fp=f'logs/scenario{scenario}/',
+        legend_list=['Bayesian UCB (gaussian prior, 1 SD)',
+                     'Bayesian UCB (beta prior, 1 SD)',
+                     'TS (beta prior)',
+                     'TS (gaussian prior)',
+                     'UCB1 tuned'],
+        etc_baseline=True,
+        etc_fp=f'logs/scenario{scenario}/baseline.npy',
+        legend_title='Algorithm',
+        title=f'Test scenario {scenario}, accuracy of selecting the best arm',
+        ignore_first_rounds=len(means_from_scenario(scenario)),
     )
+
+    # plot_probs_choosing_best_arm(
+    #     best_arm_index=4,
+    #     fn_list=[
+    #         'annealing_eps_greedy.csv',
+    #         'TS_gaussian.csv',
+    #         'TS_gaussian_var=1.csv',
+    #     ],
+    #     fp='logs/normal arm/test2/',
+    #     legend_list=['annealing ε-greedy',
+    #                  'TS gaussian prior (unknown var)',
+    #                  'TS gaussian prior (fixed var=1)'],
+    #     legend_title='algorithm',
+    #     title='Accuracy of selecting best arm ([0,1] reward)',
+    # )
 
     # #baseline plot
     # ns = list(np.arange(26)+1)

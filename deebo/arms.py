@@ -29,19 +29,24 @@ class NormalArm:
         return rng.normal(self.mean, self.sd)
 
 
-class NormalArmNonzero:
+class NormalArmZeroToOne:
     # if sample drawn from normal distribution is negative, return zero
     def __init__(self, mean, sd):
         self.mean = mean
         self.sd = sd
 
     def __str__(self):
-        return f'Nonzero arm with normal distribution (mean={self.mean}, sd={self.sd})'
+        return f'[0,1] arm with normal distribution (mean={self.mean}, sd={self.sd})'
 
     def draw(self):
         rng = default_rng()
         sample = rng.normal(self.mean, self.sd)
-        return 0 if sample < 0 else sample
+        if sample < 0:
+            return 0
+        elif sample > 1:
+            return 1
+        else:
+            return sample
 
 
 if __name__ == '__main__':
