@@ -351,9 +351,9 @@ def dmed(scenario, n_sims, n_horizon, folder_name):
     results.to_csv(output_dir / filename)
 
 
-def _test_batched(scenario, n_sims, n_horizon, folder_name):
+def _test_batched_multidraw(scenario, n_sims, n_horizon, folder_name):
 
-    fp = folder_name + f'/scenario{scenario}/batch'
+    fp = folder_name + f'/scenario{scenario}/batch/multidraw/'
     output_dir = make_dir(fp)
 
     means = means_from_scenario(scenario)
@@ -361,9 +361,31 @@ def _test_batched(scenario, n_sims, n_horizon, folder_name):
     arms = list(map(lambda x: BernoulliArm(x), means))
 
     # test for epsilon greedy
-    algos = [EpsilonGreedy(n_arms, eps) for eps in [0.1, 0.2, 0.3, 0.4, 0.5]]
-    result = batched_test_algorithm(algos, arms, n_sims, n_horizon)
-    result.to_csv(output_dir / 'test.csv')
+    for n_exps in [1,2,3,4,5]:
+        algo = ThompsonSamplingBeta(n_arms)
+        result = test_algorithm_regret_multidraw(algo, arms, n_sims, n_horizon, n_exps=n_exps)
+        result.to_csv(output_dir / f'TS_{n_exps}.csv')
+
+    return None
+
+
+def _test_batched_multialgo(scenario, n_sims, n_horizon, folder_name):
+
+    fp = folder_name + f'/scenario{scenario}/batch/multialgo/'
+    output_dir = make_dir(fp)
+
+    means = means_from_scenario(scenario)
+    n_arms = len(means)
+    arms = list(map(lambda x: BernoulliArm(x), means))
+
+    # test for epsilon greedy
+    n_exps = 4
+    algos = [UCB1Tuned(n_arms, batch=True),
+             BayesUCBBeta(n_arms, batch=True),
+             BayesUCBGaussian(n_arms, batch=True, c=1),
+             ThompsonSamplingGaussianFixedVar(n_arms)]
+    result = test_algorithm_regret_multialgos(algos, arms, n_sims, n_horizon)
+    result.to_csv(output_dir / f'UCB1Tuned-BayesUCBBeta-BayesUCBGaussian(c=1)-TSGaussianFixedVar.csv')
 
     return None
 
@@ -393,7 +415,7 @@ if __name__ == '__main__':
     #test_TS_gaussian(0, 1000, 250)
 
     #test_all(scenario=1, n_sims=50, n_horizon=100, folder_name='./logs/tests')
-    test_algo_for_all_scenarios(bayes_ucb_gaussian, [4], n_horizon=500, folder_name='./logs/')
+    _test_batched_multialgo(2, 1000, 250, './logs/')
     #_test_batched(1, 1000, 250, 'logs/')
     #etc(scenario=5, n_sims=1000, n_horizon=500, folder_name='./baseline_logs/')
 

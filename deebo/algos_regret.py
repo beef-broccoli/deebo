@@ -212,9 +212,10 @@ class ReinforcementComparison(RegretAlgorithm):  # hard to tune with two paramet
 
 class UCB1(RegretAlgorithm):
 
-    def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None):
+    def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None, batch=False):
         RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
         self.ucbs = ucbs if ucbs else [0.0 for col in range(n_arms)]  # ucb values calculated with means and counts
+        self.batch = batch
         return
 
     def reset(self, n_arms):
@@ -223,11 +224,14 @@ class UCB1(RegretAlgorithm):
         return
 
     def select_next_arm(self):
-        if sum(self.counts) < len(self.counts):  # run a first pass through all arms
-            for arm in range(len(self.counts)):
-                if self.counts[arm] == 0:
-                    return arm
-        else:  # now select arm based on ucb value
+        if not self.batch:
+            if sum(self.counts) < len(self.counts):  # run a first pass through all arms
+                for arm in range(len(self.counts)):
+                    if self.counts[arm] == 0:
+                        return arm
+            else:  # now select arm based on ucb value
+                return np.argmax(self.ucbs)
+        else:
             return np.argmax(self.ucbs)
 
     def update(self, chosen_arm, reward):
@@ -240,10 +244,13 @@ class UCB1(RegretAlgorithm):
 
 class UCB1Tuned(RegretAlgorithm):  # seems like V value are a lot bigger than 1/4, but should be normal behavior with small t
 
-    def __init__(self, n_arms, counts=None, emp_means=None, m2=None, ucbs=None):
+    def __init__(self, n_arms, batch=False, counts=None, emp_means=None, m2=None, ucbs=None):
         RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
         self.m2 = m2 if m2 else [0.0 for col in range(n_arms)]  # M2(n) = var(n) * n, used to update variance (a more stable Welford's algo)
         self.ucbs = ucbs if ucbs else [0.0 for col in range(n_arms)]  # ucb values calculated with means and counts
+        self.batch = batch  # use this in batch mode or not
+        # batch mode changes select_next_arm() behavior.
+        # The first exploration round is done externally, and is skipped in batch mode to so not all algos are exploring at the same time
         return
 
     def reset(self, n_arms):
@@ -260,11 +267,14 @@ class UCB1Tuned(RegretAlgorithm):  # seems like V value are a lot bigger than 1/
         return
 
     def select_next_arm(self):
-        if sum(self.counts) < len(self.counts):  # run a first pass through all arms
-            for arm in range(len(self.counts)):
-                if self.counts[arm] == 0:
-                    return arm
-        else:  # now select arm based on ucb value
+        if not self.batch:  # not batch mode, with exploration round
+            if sum(self.counts) < len(self.counts):  # run a first pass through all arms
+                for arm in range(len(self.counts)):
+                    if self.counts[arm] == 0:
+                        return arm
+            else:  # now select arm based on ucb value
+                return np.argmax(self.ucbs)
+        else:  # batch mode, no exploration
             return np.argmax(self.ucbs)
 
     def update(self, chosen_arm, reward):
@@ -306,8 +316,8 @@ class MOSS(UCB1):
 
 class BayesUCBBeta(UCB1):
 
-    def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None, alphas=None, betas=None, c=2):
-        UCB1.__init__(self, n_arms, counts, emp_means, ucbs)
+    def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None, alphas=None, betas=None, c=2, batch=False):
+        UCB1.__init__(self, n_arms, counts, emp_means, ucbs, batch)
         self.alphas = alphas if alphas else [1.0 for col in range(n_arms)]
         self.betas = betas if betas else [1.0 for col in range(n_arms)]
         self.c = c  # num of std's to consider as confidence bound
@@ -336,8 +346,8 @@ class BayesUCBBeta(UCB1):
 class BayesUCBGaussian(UCB1):
     # assuming fixed var of 1, similar to TS with gaussian prior
 
-    def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None, c=2):
-        UCB1.__init__(self, n_arms, counts, emp_means, ucbs)
+    def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None, c=2, batch=False):
+        UCB1.__init__(self, n_arms, counts, emp_means, ucbs, batch)
         self.c = c  # num of std's to consider as confidence bound
         # c=1 is better for scenario 2, all others use c=2
         return
@@ -367,6 +377,7 @@ class BayesUCBGaussian(UCB1):
 #         return
 
 
+# batch mode?
 class UCBV(RegretAlgorithm):
 
     def __init__(self, n_arms, counts=None, emp_means=None, sum_reward_squared=None, ucbs=None, vars=None, amplitude=1.0):
@@ -421,6 +432,7 @@ class UCBV(RegretAlgorithm):
         return
 
 
+# batch mode?
 class UCB2(RegretAlgorithm):
 
     def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None, rs=None, alpha=0.5, current_arm=-1, play_time=0):

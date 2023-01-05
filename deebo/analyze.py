@@ -375,7 +375,7 @@ def _deprecated_cal_baseline():
     arms = list(map(lambda x: ChemArmRandomDraw(x, names, dataset_url), vals))
 
     # test basline
-    calculate_baseline(arms)
+    #calculate_baseline(arms)
 
 
 
@@ -513,42 +513,35 @@ if __name__ == '__main__':
     #scenario1_best_perfomers()
 
     scenario = 2
-    plot_probs_choosing_best_arm(
-        best_arm_index=int(np.argmax(means_from_scenario(scenario))),
-        fn_list=[
-            'optim/bayes_ucb_gaussian_c=1.csv',
-            'optim/bayes_ucb_beta_c=1.csv',
-            'TS/TS_beta.csv',
-            'TS/TS_gaussian_var=1.csv',
-            'optim/ucb1_tuned.csv'
-        ],
+    # plot_cumulative_reward(
+    #     fn_list=[f'TS_beta_{n}.csv' for n in [1,2,3,4,5]],
+    #     fp=f'logs/scenario{scenario}/batch/multidraw/',
+    #     legend_list=[str(n) for n in [1,2,3,4,5]],
+    #     legend_title='experiments per batch',
+    #     title=f'Test scenario {scenario}, TS (beta), cumulative reward',
+    # )
+    plot_average_reward(
+        fn_list=['batch/multialgo/UCB1Tuned-BayesUCBBeta-BayesUCBGaussian(c=1)-TSGaussianFixedVar.csv',
+                 'optim/ucb1_tuned.csv',
+                 'optim/bayes_ucb_beta_c=2.csv',
+                 'optim/bayes_ucb_gaussian_c=1.csv',
+                 'TS/TS_gaussian_var=1.csv'],
         fp=f'logs/scenario{scenario}/',
-        legend_list=['Bayesian UCB (gaussian prior, 1 SD)',
-                     'Bayesian UCB (beta prior, 1 SD)',
-                     'TS (beta prior)',
-                     'TS (gaussian prior)',
-                     'UCB1 tuned'],
-        etc_baseline=True,
-        etc_fp=f'logs/scenario{scenario}/baseline.npy',
-        legend_title='Algorithm',
-        title=f'Test scenario {scenario}, accuracy of selecting the best arm',
-        ignore_first_rounds=len(means_from_scenario(scenario)),
+        legend_list=['batched',
+                     'ucb1 tuned',
+                     'Bayes UCB (beta prior, 2SD)',
+                     'Bayes UCB (gaussian prior, 1SD)',
+                     'Thompson sampling (gaussian prior)',
+                     ],
+        legend_title='experiments per batch',
+        title=f'Test scenario {scenario}, batched, cumulative reward',
     )
 
-    # plot_probs_choosing_best_arm(
-    #     best_arm_index=4,
-    #     fn_list=[
-    #         'annealing_eps_greedy.csv',
-    #         'TS_gaussian.csv',
-    #         'TS_gaussian_var=1.csv',
-    #     ],
-    #     fp='logs/normal arm/test2/',
-    #     legend_list=['annealing ε-greedy',
-    #                  'TS gaussian prior (unknown var)',
-    #                  'TS gaussian prior (fixed var=1)'],
-    #     legend_title='algorithm',
-    #     title='Accuracy of selecting best arm ([0,1] reward)',
-    # )
+    # best_arm_index = int(np.argmax(means_from_scenario(scenario)))
+    # etc_baseline = False,
+    # etc_fp = f'logs/scenario{scenario}/baseline.npy',
+    # ignore_first_rounds = len(means_from_scenario(scenario))
+
 
     # #baseline plot
     # ns = list(np.arange(26)+1)
@@ -560,13 +553,7 @@ if __name__ == '__main__':
     #                              title='Accuracy of best algorithms in scenario 1', legend_title='algorithms',
     #                              long_legend=True, etc_baseline=True, etc_fp='./logs/scenario1/ETC/baseline.npy')
     #
-    # gammas = [0.1, 0.2, 0.3, 0.4, 0.5]
-    # fn_list = ['ucb2_'+str(a)+'.csv' for a in gammas]
-    # #fn_list.append('annealing.csv')
-    # legend_list = gammas
-    # #legend_list.append('annealing')
-    # plot_cumulative_reward(fn_list, legend_list, fp='./logs/scenario1/optim/',
-    #                              title='Cumulative reward of UCB2 algorithm', legend_title='alpha')
+
 
     # es = np.arange(15)
     # es = es+1
