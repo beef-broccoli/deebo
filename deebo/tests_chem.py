@@ -1,11 +1,10 @@
 import itertools
 import pandas as pd
-import numpy as np
 from tqdm import tqdm
 
 from algos_regret import *
-from analyze import plot_average_reward, plot_cumulative_reward, plot_probs_choosing_best_arm, calculate_baseline
-from chem_arms_legacy import ChemArmRandomDraw, ChemArmRandomDrawBinary
+from analyze import plot_probs_choosing_best_arm, calculate_baseline
+from deebo.legacy.chem_arms_legacy import ChemArmRandomDraw, ChemArmRandomDrawBinary
 
 
 def chem_test_algorithm(algo, arms, num_sims, horizon):

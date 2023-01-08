@@ -5,7 +5,7 @@ import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
 from glob import glob
-from utils import plot_info_file_path_match, means_from_scenario
+from utils import plot_info_file_path_match
 
 
 def plot_probs_choosing_best_arm_all(folder_path=None):
@@ -60,9 +60,9 @@ def plot_probs_choosing_best_arm(fn_list,
 
     Parameters
     ----------
-    fn_list: list
+    fn_list: Collection
         list of data file names
-    legend_list: list
+    legend_list: Collection
         list of labels for legend
     hline: int/float
         value for plotting horizontal baseline
@@ -344,7 +344,7 @@ def _plot_boltzmann():
 
 def _deprecated_calculate_baseline(chemarms: list):
     # TODO: take chem arms, calculate a baseline for probability in a traditional reaction optimziation way
-    from chem_arms_legacy import ChemArmRandomDraw
+    from deebo.legacy.chem_arms_legacy import ChemArmRandomDraw
 
     # type check; check chem arms are from same dataset
     url = chemarms[0].data_url
@@ -363,7 +363,7 @@ def _deprecated_calculate_baseline(chemarms: list):
 
 def _deprecated_cal_baseline():
 
-    from chem_arms_legacy import ChemArmRandomDraw
+    from deebo.legacy.chem_arms_legacy import ChemArmRandomDraw
     import itertools
 
     # build chem arms
@@ -508,58 +508,6 @@ if __name__ == '__main__':
             ignore_first_rounds=19,
         )
         return None
-
-
-    #scenario1_best_perfomers()
-
-    scenario = 2
-    # plot_cumulative_reward(
-    #     fn_list=[f'TS_beta_{n}.csv' for n in [1,2,3,4,5]],
-    #     fp=f'logs/scenario{scenario}/batch/multidraw/',
-    #     legend_list=[str(n) for n in [1,2,3,4,5]],
-    #     legend_title='experiments per batch',
-    #     title=f'Test scenario {scenario}, TS (beta), cumulative reward',
-    # )
-    plot_average_reward(
-        fn_list=['batch/multialgo/UCB1Tuned-BayesUCBBeta-BayesUCBGaussian(c=1)-TSGaussianFixedVar.csv',
-                 'optim/ucb1_tuned.csv',
-                 'optim/bayes_ucb_beta_c=2.csv',
-                 'optim/bayes_ucb_gaussian_c=1.csv',
-                 'TS/TS_gaussian_var=1.csv'],
-        fp=f'logs/scenario{scenario}/',
-        legend_list=['batched',
-                     'ucb1 tuned',
-                     'Bayes UCB (beta prior, 2SD)',
-                     'Bayes UCB (gaussian prior, 1SD)',
-                     'Thompson sampling (gaussian prior)',
-                     ],
-        legend_title='experiments per batch',
-        title=f'Test scenario {scenario}, batched, cumulative reward',
-    )
-
-    # best_arm_index = int(np.argmax(means_from_scenario(scenario)))
-    # etc_baseline = False,
-    # etc_fp = f'logs/scenario{scenario}/baseline.npy',
-    # ignore_first_rounds = len(means_from_scenario(scenario))
-
-
-    # #baseline plot
-    # ns = list(np.arange(26)+1)
-    # fn_list = [f'{n}_exp_per_arm.csv' for n in ns]
-    # plot_etc_baseline(explore_times=[n*19 for n in ns], fn_list=fn_list, legend_list=ns,
-    #                   best_arm_index=18, fp='./baseline_logs/scenario5/etc/', long_legend=True)
-
-    # plot_probs_choosing_best_arm(fn_list, legend_list, best_arm_index=4, fp='./logs/scenario1/',
-    #                              title='Accuracy of best algorithms in scenario 1', legend_title='algorithms',
-    #                              long_legend=True, etc_baseline=True, etc_fp='./logs/scenario1/ETC/baseline.npy')
-    #
-
-
-    # es = np.arange(15)
-    # es = es+1
-    # fn_list = [f'etc_{e}.csv' for e in es]
-    # legend_list = [str(e) for e in es]
-    # plot_etc_baseline([e*5 for e in es], fn_list, legend_list, fp='./logs/scenario3/ETC/', best_arm_index=4, title='', legend_title='')
 
 
 

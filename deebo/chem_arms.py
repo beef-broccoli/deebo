@@ -1,5 +1,6 @@
 import itertools
 import pickle
+import json
 import pandas as pd
 import numpy as np
 import os
@@ -9,6 +10,7 @@ from sklearn.ensemble import RandomForestRegressor as RFR
 from sklearn.linear_model import LinearRegression as LR
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
+
 
 import algos_regret
 import utils
@@ -28,7 +30,7 @@ class Scope:
         self.data_dic = None  # store a copy of the dictionary that's used to build scope
         self.data = None  # dataframe that holds all experiment and result
         self.predictions = None  # predictions from regression model
-        self.pre_accuray = None  # prediction accuracy
+        self.pre_accuracy = None  # prediction accuracy
         self.arms = None  # a list of arms, e.g., [('a2', 'c1'), ('a2', 'c3'), ('a3', 'c1'), ('a3', 'c3')]
         self.arm_labels = None  # arm label names. e.g., ['component_a', 'component_b']
         self.current_experiment_index = None  # df index of the experiments currently running
@@ -37,6 +39,22 @@ class Scope:
 
     def __str__(self):
         return str(self.data_dic)
+
+    def reset(self):
+        """
+        For simulations, reset the scope object. Keep all arm parameters, but remove all data
+        Returns
+        -------
+
+        """
+        d = self.data_dic
+        self.data = None
+        self.build_scope(d)
+        self.predictions = None
+        self.pre_accuracy = None
+        self.current_experiment_index = None
+        self.current_arms = None
+        return
 
     def build_scope(self, d):
         """
@@ -57,7 +75,7 @@ class Scope:
         None
 
         """
-        if self.data:
+        if self.data is not None:
             exit('scope already exists, cannot build')
 
         component_names = sorted(d)
@@ -179,7 +197,8 @@ class Scope:
 
         model = RFR()
         model.fit(Xs_train, ys_train)
-        self.pre_accuray = model.score(Xs_train, ys_train)
+        if Xs_train.shape[0] > 2:  # to suppress sklearn warning when calculating R2 score with <2 samples
+            self.pre_accuracy = model.score(Xs_train, ys_train)
         self.predictions = model.predict(Xs)
 
         return
@@ -211,6 +230,18 @@ class Scope:
         return
 
     def build_arm_dict(self, arm_index):
+        """
+        Build a dictionary {(component_a, component_b): (a1, b2)}. For query purposes
+        Parameters
+        ----------
+        arm_index: int
+            arm index
+
+        Returns
+        -------
+        dict
+
+        """
         arm = list(self.arms[int(arm_index)])
         return dict(zip(self.arm_labels, arm))
 
@@ -228,6 +259,8 @@ class Scope:
             index of the selected arm
         mode: {'random'}
             sampling method to select one experiment
+        num_exp: int
+            the number of experiments to be proposed
 
         Returns
         -------
@@ -285,6 +318,10 @@ def propose_initial_experiments(scope_dict, arms_dict, algo, dir='./test/', num_
     scope = Scope()
     scope.build_scope(scope_dict)
     scope.build_arms(arms_dict)
+
+    d = dict(zip(np.arange(len(scope.arms)), scope.arms))
+    with open(f'{dir}arms.pkl', 'wb') as f:
+        pickle.dump(d, f)  # save arms dictionary {arm index: arm names}
 
     chosen_arm = algo.select_next_arm()
     proposed_experiments = scope.propose_experiment(chosen_arm, num_exp=num_exp)
@@ -367,7 +404,6 @@ def update_and_propose(dir='./test/', num_exp=1):
         scope.update_with_index(scope.current_experiment_index[ii], rewards[ii])
         algo.update(scope.current_arms[ii], rewards[ii])
     scope.predict()
-    print(scope.predictions)
     new_history = pd.concat([history, exps])
 
     # propose new experiments
@@ -402,15 +438,27 @@ def update_and_propose(dir='./test/', num_exp=1):
     return None
 
 
-def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, num_sims=3, num_exp=2, num_round=10):
-
+def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='./test/', num_sims=1000, num_exp=1, num_round=100):
     """
     Method for simulation; skipping the saving and loading by user, query dataset with full results instead
+
+    Parameters
+    ----------
+    scope_dict: dict
+    arms_dict
+    ground_truth
+    algo
+    num_sims: int
+    num_exp: int
+        number of experiments for the scope object
+    num_round
 
     Returns
     -------
 
     """
+    THRESHOLD = 100
+
     ground_truth_cols = set(ground_truth.columns)
     ground_truth_cols.remove('yield')
     assert set(scope_dict.keys()) == ground_truth_cols, \
@@ -460,17 +508,44 @@ def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, num_s
                 ys.append(list(y)[0])
         return ys
 
-    for sim in tqdm(range(num_sims)):
-        # initialize scope object and reset values
-        scope = Scope()
-        scope.build_scope(scope_dict)
-        scope.build_arms(arms_dict)
+    # initialize scope object
+    scope = Scope()
+    scope.build_scope(scope_dict)
+    scope.build_arms(arms_dict)
+
+    # write arm dictionary into file
+    # example: {<arm_index1>: <arm_name1>, <arm_index2>: <arm_name2>}
+    d = dict(zip(np.arange(len(scope.arms)), scope.arms))
+    with open(f'{dir}arms.pkl', 'wb') as f:
+        pickle.dump(d, f)
+
+    # simulation starts
+    for sim in tqdm(range(num_sims), desc='simulations'):
+
+        # reset scope and algo; arm settings are kept
+        scope.reset()
         algo.reset(len(scope.arms))
         cumulative_reward = 0
 
-        for r in tqdm(range(num_round), leave=False):
+        for r in tqdm(range(num_round), leave=False, desc='rounds'):
             chosen_arm = algo.select_next_arm()  # choose an arm
             proposed_experiments = scope.propose_experiment(chosen_arm, num_exp=num_exp)  # scope proposes experiment
+            if proposed_experiments is None:
+                threshold = 0
+                print(
+                    f'[simulation {sim}, round {r}]: no experiments available for arm {chosen_arm}: {scope.arms[chosen_arm]}. Trying to find new experiments')
+                while proposed_experiments is None:
+                    if threshold > THRESHOLD:
+                        print(f'[simulation {sim}, round {r}]: no experiments available for arm {chosen_arm}: {scope.arms[chosen_arm]} after '
+                              f'{THRESHOLD} attempts; it might be the best arm')
+                        break
+                    algo.update(chosen_arm, algo.emp_means[chosen_arm])
+                    new_chosen_arm = algo.select_next_arm()
+                    if new_chosen_arm == chosen_arm:
+                        threshold = threshold + 1
+                        continue
+                    else:
+                        proposed_experiments = scope.propose_experiment(new_chosen_arm, num_exp=num_exp)
             to_query = proposed_experiments[scope_dict.keys()].to_dict('records')  # generate a list of dicts to query
             rewards = ground_truth_query(ground_truth, to_query)  # ground truth returns all yields
             proposed_experiments['yield'] = rewards  # mimic user behavior and fill proposed experiments with yield
@@ -487,8 +562,8 @@ def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, num_s
     log_df = pd.DataFrame(log_arr, columns=log_cols)
     history_df = pd.concat([pd.DataFrame(history_prefix_arr, columns=history_prefix_cols), history], axis=1)
 
-    history_df.to_csv('history_test.csv')
-    log_df.to_csv('log_test.csv')
+    history_df.to_csv(f'{dir}history.csv')
+    log_df.to_csv(f'{dir}log.csv')
 
     return
 
@@ -497,12 +572,12 @@ if __name__ == '__main__':
 
     # # build scope
     # x = {'component_b': ['b1', 'b2'],
-    #     'component_a': [10, 11, 12],
+    #     'component_a': ['a1', 'a2', 'a3'],
     #      'component_c': ['c1', 'c2', 'c3', 'c4']
     # }
     # y = {'component_b': ['b1', 'b2'],
     #      'component_a': ['a1', 'a3']}
-    #
+
     # algo = algos_regret.EpsilonGreedy(4, 0.5)
     # propose_initial_experiments(x, y, algo, num_exp=2)
     # update_and_propose(num_exp=2)
@@ -526,7 +601,7 @@ if __name__ == '__main__':
     arms_dict = {'ligand_name': ligands}
     algo = algos_regret.AnnealingEpsilonGreedy(len(ligands))
 
-    #simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo)
+    simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, num_sims=100, num_round=100)
 
     #propose_initial_experiments(scope_dict, arms_dict, algo, num_exp=2)
-    update_and_propose(num_exp=2)
+    # update_and_propose(num_exp=2)
