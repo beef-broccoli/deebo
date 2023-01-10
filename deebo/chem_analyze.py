@@ -4,6 +4,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.patches as mpatches
+import gif
 
 
 def plot_arm_stats(arms_dict,
@@ -40,6 +41,7 @@ def plot_arm_stats(arms_dict,
     return None
 
 
+@gif.frame
 def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.csv', round=0, sim=0, binary=False, cutoff=80):
 
     df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv')
@@ -61,17 +63,13 @@ def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.
     history['electrophile_id'] = history['electrophile_id'].apply(lambda x: x.lstrip('e')).astype('int')
     history['nucleophile_id'] = history['nucleophile_id'].apply(lambda x: x.lstrip('n'))
     history = history.to_numpy()
-    print(history)
 
     indexes = []
     for row in range(history.shape[0]):
         indexes.append(np.argwhere(np.isin(ground_truth, history[row,:]).all(axis=1))[0,0])
-    print(indexes)
-    print(df.iloc[indexes])
     df = df.reset_index()
     idx_to_set = df.index.difference(indexes)
     df.loc[idx_to_set, 'yield'] = -1
-    print(df.iloc[indexes])
 
     l = []
 
@@ -99,7 +97,7 @@ def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.
         f = np.vectorize(set_value)
         a = f(a)
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(12,6))
     cmap_custom = mpl.colormaps['inferno']
     cmap_custom.set_under('silver')
     im = ax.imshow(a, cmap=cmap_custom, vmin=0, vmax=110)
@@ -120,7 +118,21 @@ def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.
         cbar = plt.colorbar(im)
         cbar.ax.set_ylabel('yield (%)', rotation=270)
     plt.rcParams['savefig.dpi'] = 300
-    plt.show()
+    return None
+
+
+def make_heatmap_gif(n_sim=0, max_n_round=100, binary=False, history_fp='', save_dir=''):
+
+    frames = []
+    for ii in range(100):
+        frames.append(
+            plot_acquisition_history_heatmap_arylation_scope(sim=1,
+                                                             round=ii,
+                                                             binary=False,
+                                                             history_fp='./dataset_logs/aryl-scope-ligand/eps_greedy_annealing/history.csv'))
+
+    gif.save(frames, 'test.gif', duration=50)
+
     return None
 
 
@@ -132,7 +144,4 @@ if __name__ == '__main__':
     #     arms_dict = pickle.load(f)
     # plot_arm_stats(arms_dict, top_n=10, fp=f'{dir}/log.csv')
 
-    plot_acquisition_history_heatmap_arylation_scope(sim=0,
-                                                     round=1,
-                                                     binary=False,
-        history_fp='./dataset_logs/aryl-scope-ligand/eps_greedy_annealing/history.csv')
+
