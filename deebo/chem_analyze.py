@@ -121,17 +121,18 @@ def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.
     return None
 
 
-def make_heatmap_gif(n_sim=0, max_n_round=100, binary=False, history_fp='', save_dir=''):
+def make_heatmap_gif(n_sim=0, max_n_round=100, binary=False, history_fp='', save_fp=''):
 
     frames = []
     for ii in range(100):
         frames.append(
-            plot_acquisition_history_heatmap_arylation_scope(sim=1,
-                                                             round=ii,
-                                                             binary=False,
-                                                             history_fp='./dataset_logs/aryl-scope-ligand/eps_greedy_annealing/history.csv'))
+            plot_acquisition_history_heatmap_arylation_scope(sim=n_sim,
+                                                             round=max_n_round,
+                                                             binary=binary,
+                                                             history_fp=history_fp))
 
-    gif.save(frames, 'test.gif', duration=50)
+    assert save_fp.endswith('.gif'), 'file suffix needs to be .gif'
+    gif.save(frames, save_fp, duration=50)
 
     return None
 
