@@ -509,5 +509,17 @@ if __name__ == '__main__':
         )
         return None
 
-
-
+    plot_average_reward(
+        fn_list=['./logs/scenario1/batch/multialgo/UCB1Tuned-BayesUCBBeta-BayesUCBGaussian(c=1)-TSGaussianFixedVar.csv',
+                 './logs/scenario1/optim/ucb1_tuned.csv',
+                 './logs/scenario1/TS/TS_gaussian_var=1.csv',
+                 './logs/scenario1/optim/bayes_ucb_beta_c=2.csv',
+                 './logs/scenario1/optim/bayes_ucb_gaussian_c=1.csv',],
+        legend_list=['batched',
+                     'UCB1 tuned',
+                     'Thompson sampling (gaussian prior)',
+                     'Bayes UCB (beta prior, 2SD)',
+                     'Bayes UCB (gaussian prior, 1SD)'],
+        legend_title='Algorithms',
+        title='Test scenario 1, batched, average reward '
+    )

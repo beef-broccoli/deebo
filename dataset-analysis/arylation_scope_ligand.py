@@ -73,7 +73,7 @@ elec_names = list(df['electrophile_id'].unique())
 def plot_all_results(binary=0, cutoff=80):  # heatmap for all results, grouped by ligand
     l = []
 
-    for ligand in ligands:
+    for ligand in ligand_names:
         tempdf = df.loc[df['ligand_name'] == ligand]
         tempdf = tempdf.drop(['ligand_name'], axis=1)
         a = np.array(tempdf.groupby(['electrophile_id'], sort=True)['yield'].apply(list).to_list())
@@ -833,15 +833,7 @@ def _categorical_bar(labels, data, category_names, title=None, ylabel=None):
 
 
 if __name__ == '__main__':
-    def scale(x):
-        x = x / 100
-        if x > 1:
-            return 1.0
-        else:
-            return x
-    df['yield'] = df['yield'].apply(scale)
-    s = df.groupby('ligand_name').describe()
-    print(s)
+    plot_all_results()
 
 
 def _calculate_random_sampling_deprecated():
