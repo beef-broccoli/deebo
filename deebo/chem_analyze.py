@@ -5,65 +5,312 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.patches as mpatches
 import gif
+from utils import scaler
+
+la_gold = '#FDB927'
+la_purple = '#552583'
+
+# TODO: somehow ETC provides a more accurace estimation of average. Need to investigate.
+# TODO: try lower number of simulations
+# TODO: try to enforce 2 experiments per arm
+# TODO: if predicted yield is low, sample again. could be risky
+
+# arm elimination
+
+# TODO: accuracy of ranking; top n
+
+# TODO: box plot somme clean up
 
 
-def plot_arm_stats(arms_dict,
-                   top_n=5,
-                   fp='log.csv',
-                   title='',
-                   legend_title='arms',
-                   long_legend=False):
+def plot_arm_counts(d='',
+                    top_n=5,
+                    title='',
+                    bar_errbar=False,
+                    bar_color='#1f77b4',
+                    plot='bar'):
+    """
+    Plot the average sampling counts for each arm over all simulations
 
-    plt.rcParams['savefig.dpi'] = 300
-    fig, ax = plt.subplots()
+    Parameters
+    ----------
+    d: str
+        directory path for acquisition, should have an arms.pkl file and a history.csv file
+    top_n: int
+        plot top n most sampled arms
+    title: str
+        title of the plot
+    bar_errbar: bool
+        plot a 1 std error for bar plot
+    bar_color: str
+        color for bar plot
+    plot: str
+        box plot or bar plot
 
-    df = pd.read_csv(fp)
+    Returns
+    -------
+    None
+    """
+
+    import os
+    import pickle
+
+    # load files
+    if not os.path.isfile(f'{d}/arms.pkl'):
+        exit('arms.pkl does not exist in this directory')
+    if not os.path.isfile(f'{d}/history.csv'):
+        exit('history.csv does not exist in this directory')
+    with open(f'{d}/arms.pkl', 'rb') as f:
+        arms_dict = pickle.load(f)
+    df = pd.read_csv(f'{d}/log.csv')
+
+    # grab some info from log
     num_sims = max(df['num_sims']) + 1  # number of simulations done
     max_horizon = max(df['horizon']) + 1  # max time horizon
-    df = df[['chosen_arm', 'reward']]
-    gb = df.groupby(['chosen_arm'])
-    avg_counts = gb.count().apply(lambda x: x/num_sims)['reward'].sort_values(ascending=False)
-    avg_counts_val = avg_counts.values[:top_n]  # sorted count values
-    arm_indexes = avg_counts.index.to_numpy()[:top_n]   # corresponding arm index
-    arm_names = ['/'.join(arms_dict[ii]) for ii in arm_indexes]
+
+    # calculate average number of selection per simulation for top arms
+    allcounts = df[['num_sims', 'chosen_arm', 'reward']].groupby(['chosen_arm', 'num_sims']).count()
+
+    # for bar plot, calculate average and std
+    sorted_means = allcounts.groupby('chosen_arm').agg({'reward': ['mean', 'std']}).sort_values(by=('reward', 'mean'), ascending=False)
+    average_counts = list(sorted_means.values[:top_n, 0].flatten())
+    average_counts_errs = list(sorted_means.values[:top_n, 1].flatten())
+    arms_indexes = sorted_means.index.to_numpy()[:top_n]  # corresponding arm index of top n arms
+    arm_names = ['/'.join(arms_dict[ii]) for ii in arms_indexes]  # arm names come as tuple, join all elements in tuple
+
+    # for box plot, get all results
+    x = allcounts.groupby('chosen_arm')['reward'].apply(np.array)
+    x = x.loc[x.index[[int(a) for a in arms_indexes]]]  # use the arms_indexes got from sorted array above, make it int
+    indexes = x.index.to_list()  # substrate pairs names
+    values = x.to_list()  # list of arrays, since dimensions might not match
 
     # calculate baseline (time horizon evenly divided by number of arms)
     baseline = max_horizon/len(arms_dict)
 
-    xs = np.arange(len(avg_counts_val))
-    ax.barh(arm_names, avg_counts_val)
-    plt.axvline(x=baseline, ymin=0, ymax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
-    ax.set_xlabel('average number of times sampled')
-    ax.set_ylabel('arms')
+    # start plotting
+    plt.rcParams['savefig.dpi'] = 300
+    fig, ax = plt.subplots()
+
+    if plot == 'bar':
+        if bar_errbar:
+            ax.barh(arm_names, average_counts, height=0.5, xerr=average_counts_errs, capsize=4, color=bar_color)
+        else:
+            ax.barh(arm_names, average_counts, height=0.5, color=bar_color)
+        plt.axvline(x=baseline, ymin=0, ymax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
+        ax.set_xlabel('average number of times sampled')
+        ax.set_ylabel('arms')
+        ax.set_xticks(np.arange(max(average_counts) + max(average_counts_errs)))
+    elif plot == 'box':
+        plt.axvline(x=baseline, ymin=0, ymax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
+        ax.boxplot(values,
+                   notch=False,
+                   labels=arm_names,
+                   vert=False,
+                   patch_artist=True,
+                   boxprops=dict(facecolor=la_gold, color=la_gold),
+                   capprops=dict(color=la_purple, linewidth=1.5),
+                   whiskerprops=dict(color=la_purple, linewidth=1.5),
+                   medianprops=dict(color=la_purple, linewidth=1.5),
+                   flierprops=dict(markerfacecolor=la_purple, markeredgecolor=la_purple, marker='.'),
+                   showmeans=True,
+                   meanprops=dict(marker='x', markeredgecolor=la_purple, markerfacecolor=la_purple))
+        ax.set_xlabel('number of times sampled')
+        ax.set_ylabel('arms')
+        ax.set_xticks(np.arange(max([max(v) for v in values])+1))
+    else:
+        pass
+
     ax.set_title(title)
     plt.show()
 
     return None
 
 
+def plot_arm_rewards(ground_truth_loc,
+                     d='',
+                     top_n=5,
+                     title='',
+                     errbar=False):
+    """
+
+    Parameters
+    ----------
+    ground_truth_loc: str
+        location for ground truth file
+    d: str
+        directory path for acquisition, should have an arms.pkl file and a history.csv file
+    top_n: int
+        plot top n most sampled arms
+    title: str
+        title of the plot
+    errbar: bool
+        plot error bar or not
+
+    Returns
+    -------
+    None
+
+    """
+
+    import pickle
+    import os
+
+    if not os.path.isfile(f'{d}/arms.pkl'):
+        exit('arms.pkl does not exist in this directory')
+    if not os.path.isfile(f'{d}/history.csv'):
+        exit('history.csv does not exist in this directory')
+    with open(f'{d}/arms.pkl', 'rb') as f:
+        arms_dict = pickle.load(f)
+    df = pd.read_csv(f'{d}/log.csv')
+
+    max_horizon = max(df['horizon']) + 1  # max time horizon
+    n_arms = len(arms_dict)
+
+    # for each arm, average yield across each simulation first
+    # then calculate the average yield
+    # the simulations where a particular arm is not sampled is ignored here
+    gb = df[['num_sims', 'chosen_arm', 'reward']].groupby(['chosen_arm', 'num_sims']).mean().groupby('chosen_arm')
+    sorted_means = gb.agg({'reward': ['mean', 'std']}).sort_values(by=('reward', 'mean'), ascending=False)  # sorted mean values and pick top n
+    sim_average_vals = list(sorted_means.values[:top_n, 0].flatten())
+    sim_average_errs = list(sorted_means.values[:top_n, 1].flatten())
+    arms_indexes = sorted_means.index.to_numpy()[:top_n]  # corresponding arm index of top n arms
+    arms_names = ['/'.join(arms_dict[ii]) for ii in arms_indexes]
+
+    true_averages, etc_averages, etc_errs = calculate_true_and_etc_average(arms_dict,
+                                                                           arms_indexes,
+                                                                           ground_truth=pd.read_csv(ground_truth_loc),
+                                                                           n_sim=100,
+                                                                           n_sample=int(max_horizon//n_arms))
+
+    # it's a horizontal bar plot, but use vertical bar terminology here
+    width = 0.3  # actually is height
+    xs = np.arange(len(arms_names))  # actually is ys
+
+    plt.rcParams['savefig.dpi'] = 300
+    if errbar:
+        plt.barh(xs-width/2, sim_average_vals, color=la_gold, height=width, label='experimental average', xerr=sim_average_errs, capsize=4)
+        plt.barh(xs+width/2, etc_averages, color=la_purple, height=width, label='explore-then-commit baseline', xerr=etc_errs, capsize=4)
+    else:
+        plt.barh(xs-width/2, sim_average_vals, color=la_gold, height=width, label='experimental average')
+        plt.barh(xs+width/2, etc_averages, color=la_purple, height=width, label='explore-then-commit baseline')
+    plt.yticks(xs, arms_names)
+    plt.xlabel('yield')
+    for ii in range(len(true_averages)):
+        plt.vlines(true_averages[ii], ymin=xs[ii]-width-0.1, ymax=xs[ii]+width+0.1, linestyles='dotted', colors='k')
+    plt.title(title)
+    plt.legend(ncol=2, bbox_to_anchor=(0, 1), loc='lower left', fontsize='medium')
+    plt.tight_layout()
+    plt.show()
+
+    return None
+
+
+def calculate_true_and_etc_average(arms_dict,
+                                   arms_indexes,
+                                   ground_truth,
+                                   n_sim=-1,
+                                   n_sample=-1):
+    """
+    Helper function to calculate true average and explore-then-commit average
+
+    Parameters
+    ----------
+    arms_dict: dict
+        dictionary from arms.pkl, stores arm indexes and corresponding names
+    arms_indexes: list like
+        the indexes for arms of interest
+    ground_truth: pd.DataFrame
+        data frame with experimental results
+    n_sim: int
+        number of simulations for explore then commit, good to match the actual acquisition n_sim
+    n_sample: int
+        number of samples drawn per arm. This is calculated (# of available experiments // # of available arms)
+
+    Returns
+    -------
+
+    """
+
+    if ground_truth['yield'].max() > 2:
+        ground_truth['yield'] = ground_truth['yield'].apply(scaler)
+
+    arms = [arms_dict[ii] for ii in arms_indexes]  # get all relevant arms names as a list of tuples
+    inverse_arms_dict = {v: k for k, v in arms_dict.items()}  # inverse arms_dict {arm_name: arm_index}
+
+    # figure out which columns are involved in arms
+    example = arms[0]
+    cols = []
+    for e in example:
+        l = ground_truth.columns[(ground_truth == e).any()].to_list()
+        assert(len(l) == 1)
+        cols.append(l[0])
+    ground_truth['to_query'] = list(zip(*[ground_truth[c] for c in cols]))  # select these cols and make into tuple
+    ground_truth = ground_truth[['to_query', 'yield']]
+    filtered = ground_truth[ground_truth['to_query'].isin(arms)]  # filter, only use arms of interest supplied by indexes
+
+    # calculate average and generate a dict of results
+    means = filtered.groupby(['to_query']).mean()['yield'].to_dict()
+    true_averages = {}
+    for arm in arms:
+        true_averages[inverse_arms_dict[arm]] = means[arm]
+    true_averages = [true_averages[ii] for ii in arms_indexes]  # make into a list based on arms_indexes
+
+    # do explore-then-commit
+    means = np.zeros((n_sim, len(arms)))
+    for n in range(n_sim):
+        for ii in range(len(arms)):
+            df = filtered.loc[filtered['to_query']==arms[ii]]
+            y = df['yield'].sample(n_sample)
+            means[n, ii] = y.mean()
+    etc_averages = np.average(means, axis=0)  # arms is already sorted with arms_indexes, can directly use here
+    etc_errs = np.std(means, axis=0)
+
+    return true_averages, etc_averages, etc_errs
+
+
 @gif.frame
 def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.csv', round=0, sim=0, binary=False, cutoff=80):
+    """
+    plot heatmap for acquisition history at specific time point. Decorator is used to make gifs
+
+    Parameters
+    ----------
+    history_fp: str
+        file path of the history.csv file from acquisition
+    round: int
+        plot the heatmap until this round
+    sim: int
+        the
+    binary
+    cutoff
+
+    Returns
+    -------
+
+    """
 
     df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv')
     df = df[['ligand_name', 'electrophile_id', 'nucleophile_id', 'yield']]
-    df['electrophile_id'] = df['electrophile_id'].apply(lambda x: x.lstrip('e')).astype('int')  # for sorting purposes, so 10 is not immediately after 1
+    df['electrophile_id'] = df['electrophile_id'].apply(lambda x: x.lstrip('e')).astype('int')  # change to 'int' for sorting purposes, so 10 is not immediately after 1
     df['nucleophile_id'] = df['nucleophile_id'].apply(lambda x: x.lstrip('n'))
     ligands = list(df['ligand_name'].unique())
 
-    # plot all results. 4x6 for ligands, and each ligand is represented by a 8x8 block, overall 32x48
+    # heatmap is divided into 4x6 grid based on ligands. Each ligand is represented by a 8x8 block, overall 32x48
     df = df.sort_values(by=['ligand_name', 'electrophile_id', 'nucleophile_id'])
     ligand_names = list(df['ligand_name'].unique())
     nuc_names = list(df['nucleophile_id'].unique())
     elec_names = list(df['electrophile_id'].unique())
 
+
     ground_truth = df[['electrophile_id', 'nucleophile_id', 'ligand_name']].to_numpy()
 
+    # from acquisition history, fetch the reactions that was run, find them in ground_truth to get the indexes (to get yield later)
     history = pd.read_csv(history_fp)
     history = history.loc[(history['round']<=round) & (history['num_sims']==sim)][['electrophile_id', 'nucleophile_id', 'ligand_name']]
     history['electrophile_id'] = history['electrophile_id'].apply(lambda x: x.lstrip('e')).astype('int')
     history['nucleophile_id'] = history['nucleophile_id'].apply(lambda x: x.lstrip('n'))
     history = history.to_numpy()
 
+    # get the indexes for the experiments run, keep the yield, and set the rest of the yields to -1 to signal no rxns run
     indexes = []
     for row in range(history.shape[0]):
         indexes.append(np.argwhere(np.isin(ground_truth, history[row,:]).all(axis=1))[0,0])
@@ -71,8 +318,8 @@ def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.
     idx_to_set = df.index.difference(indexes)
     df.loc[idx_to_set, 'yield'] = -1
 
+    # divide yields by ligand and into 8x8 stacks
     l = []
-
     for ligand in ligand_names:
         tempdf = df.loc[df['ligand_name'] == ligand]
         tempdf = tempdf.drop(['ligand_name'], axis=1)
@@ -86,27 +333,25 @@ def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.
     a4 = np.hstack(l[18:24])
     a = np.vstack([a1, a2, a3, a4])
 
-    def set_value(x):
-        if 0<=x<cutoff:
-            return 0
-        elif x>=cutoff:
-            return 1
-        else:
-            return x
+    # if binary mode is active, set 0/1 values based on cutoff and keep the -1's
     if binary:
+        def set_value(x):
+            if 0 <= x < cutoff:
+                return 0
+            elif x >= cutoff:
+                return 1
+            else:
+                return x
         f = np.vectorize(set_value)
         a = f(a)
 
     fig, ax = plt.subplots(figsize=(12,6))
     cmap_custom = mpl.colormaps['inferno']
-    cmap_custom.set_under('silver')
+    cmap_custom.set_under('silver')  # for the unrun reactions with yield set to -1
     im = ax.imshow(a, cmap=cmap_custom, vmin=0, vmax=110)
     if binary:
         im = ax.imshow(a, cmap=cmap_custom, vmin=0, vmax=2)
-    if not binary:
-        text_kwargs = dict(ha='center', va='center', fontsize=10, color='white')
-    else:
-        text_kwargs = dict(ha='center', va='center', fontsize=10, color='white')
+    text_kwargs = dict(ha='center', va='center', fontsize=10, color='white')
     ii = 0
     for i in range(4):
         for j in range(6):
@@ -118,6 +363,7 @@ def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.
         cbar = plt.colorbar(im)
         cbar.ax.set_ylabel('yield (%)', rotation=270)
     plt.rcParams['savefig.dpi'] = 300
+    plt.show()
     return None
 
 
@@ -140,9 +386,18 @@ def make_heatmap_gif(n_sim=0, max_n_round=100, binary=False, history_fp='', save
 if __name__ == '__main__':
     import pickle
 
-    # dir = 'dataset_logs/aryl-scope-ligand/eps_greedy_annealing/'
-    # with open(f'{dir}arms.pkl', 'rb') as f:
-    #     arms_dict = pickle.load(f)
-    # plot_arm_stats(arms_dict, top_n=10, fp=f'{dir}/log.csv')
+    dd = 'dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400/'
+    fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv'
+    with open(f'{dd}/arms.pkl', 'rb') as f:
+        arms_dict = pickle.load(f)
 
+    plot_arm_counts(dd, top_n=10, bar_errbar=True, plot='box')
+
+    # plot_arm_rewards(fp, d=dd, top_n=10)
+
+    # plot_acquisition_history_heatmap_arylation_scope(sim=0,
+    #                                                  round=1,
+    #                                                  binary=False,
+    #                                                  history_fp='./dataset_logs/aryl-scope-ligand/eps_greedy_annealing/history.csv')
+    #
 

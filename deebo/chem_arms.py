@@ -582,28 +582,26 @@ if __name__ == '__main__':
     #
     # algo = algos_regret.EpsilonGreedy(4, 0.5)
     # propose_initial_experiments(x, y, algo, num_exp=2)
-    update_and_propose(num_exp=2)
-
-    # # fetch ground truth data
-    # ground_truth = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv')
-    #
-    # ground_truth['yield'] = ground_truth['yield'].apply(utils.scaler)
-    # ground_truth = ground_truth[['ligand_name',
-    #                              'electrophile_id',
-    #                              'nucleophile_id',
-    #                              'yield']]
-    # ligands = ground_truth['ligand_name'].unique()
-    # elecs = ground_truth['electrophile_id'].unique()
-    # nucs = ground_truth['nucleophile_id'].unique()
-    #
-    # # build dictionary for acquisition
-    # scope_dict = {'ligand_name': ligands,
-    #               'electrophile_id': elecs,
-    #               'nucleophile_id': nucs}
-    # arms_dict = {'ligand_name': ligands}
-    # algo = algos_regret.AnnealingEpsilonGreedy(len(ligands))
-    #
-    # simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, num_sims=100, num_round=100)
-
-    #propose_initial_experiments(scope_dict, arms_dict, algo, num_exp=2)
     # update_and_propose(num_exp=2)
+
+    # fetch ground truth data
+    ground_truth = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv')
+
+    ground_truth['yield'] = ground_truth['yield'].apply(utils.scaler)
+    ground_truth = ground_truth[['ligand_name',
+                                 'electrophile_id',
+                                 'nucleophile_id',
+                                 'yield']]
+    ligands = ground_truth['ligand_name'].unique()
+    elecs = ground_truth['electrophile_id'].unique()
+    nucs = ground_truth['nucleophile_id'].unique()
+
+    # build dictionary for acquisition
+    scope_dict = {'ligand_name': ligands,
+                  'electrophile_id': elecs,
+                  'nucleophile_id': nucs}
+    arms_dict = {'ligand_name': ligands}
+    algo = algos_regret.BayesUCBGaussian(len(ligands))
+
+    simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='./dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400/', num_sims=400, num_round=100)
+
