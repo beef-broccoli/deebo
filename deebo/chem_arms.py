@@ -206,9 +206,17 @@ class Scope:
     def recommend(self):
 
         df = self.data.copy()
-        df['yield'] = self.predictions
+        # supplement the experiments without yield with predicted yield
+        yields = np.array(df['yield'])
+        pres = np.array(self.predictions)
+        mask = np.isnan(yields)
+        yields[mask] = 0
+        pres[~mask] = 0
+        df['yield'] = yields + pres
+
         df['arm'] = df[self.arm_labels].apply(tuple, axis=1)
         df = df.drop(self.arm_labels, axis=1)
+        print(df)
         columns_to_groupby = [c for c in df.columns if c not in ['yield', 'arm']]
         recommendations = df[df.groupby(columns_to_groupby)['yield'].transform(max) == df['yield']]
 
@@ -571,6 +579,10 @@ def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='
                 log_arr[sim * num_round * num_exp + r*num_exp+ii, :] = [sim, r, ii, r*num_exp+ii, chosen_arm, rewards[ii], cumulative_reward]
                 history_prefix_arr[sim * num_round * num_exp + r*num_exp+ii, :] = [sim, r, ii, r*num_exp+ii]
             scope.predict()  # update prediction models
+            if r == 100:
+                fd = scope.recommend()
+                fd.to_csv('test.csv')
+                exit()
 
     log_df = pd.DataFrame(log_arr, columns=log_cols)
     history_df = pd.concat([pd.DataFrame(history_prefix_arr, columns=history_prefix_cols), history], axis=1)
@@ -614,5 +626,5 @@ if __name__ == '__main__':
     arms_dict = {'ligand_name': ligands}
     algo = algos_regret.BayesUCBGaussian(len(ligands))
 
-    simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='./dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400/', num_sims=400, num_round=100)
+    simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='./dataset_logs/aryl-scope-ligand/TSGaussian-400sim/', num_sims=400, num_round=200)
 
