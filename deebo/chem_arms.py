@@ -203,6 +203,17 @@ class Scope:
 
         return
 
+    def recommend(self):
+
+        df = self.data.copy()
+        df['yield'] = self.predictions
+        df['arm'] = df[self.arm_labels].apply(tuple, axis=1)
+        df = df.drop(self.arm_labels, axis=1)
+        columns_to_groupby = [c for c in df.columns if c not in ['yield', 'arm']]
+        recommendations = df[df.groupby(columns_to_groupby)['yield'].transform(max) == df['yield']]
+
+        return recommendations
+
     def build_arms(self, d):
         """
         Function to build arms with a dictionary

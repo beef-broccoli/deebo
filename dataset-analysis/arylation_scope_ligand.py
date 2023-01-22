@@ -508,7 +508,7 @@ def _calculate_random_sampling_1():
     # print(np.sum(probs))
 
 
-def calculate_random_sampling_n(N=3):
+def calculate_random_sampling_n(num=-1):
 
     # same as sampling 1
     # except need to construct a new array with the average of selections (select n from 64)
@@ -524,7 +524,7 @@ def calculate_random_sampling_n(N=3):
         # l: the list
         # n: choose n from list
         combos = list(itertools.combinations(l, n))
-        avgs = list(map(lambda x: sum(x)/len(x), combos))  # x: iterable; lambda function calcs average
+        avgs = list(map(lambda x: np.sum(x)/len(x), combos))  # x: iterable; lambda function calcs average
         return avgs
 
     l = []
@@ -536,7 +536,7 @@ def calculate_random_sampling_n(N=3):
         tempdf = tempdf.drop(['ligand_name'], axis=1)
         a = tempdf.groupby(['electrophile_id'], sort=True)['yield'].apply(list).to_list()
         a = list(itertools.chain(*a))  # raw reaction data, list of list flattened
-        l.append(select_n_and_average_list(a, n=N))  # exhaustively select n, average
+        l.append(select_n_and_average_list(a, n=num))  # exhaustively select n, average
 
     X = np.vstack(l)
 
@@ -566,9 +566,9 @@ def calculate_random_sampling_n(N=3):
         combos = [count_and_multiply(n) for n in tqdm(ll, desc='2nd loop', leave=False)]
         probability = np.sum(combos)  # probability = n of (roi value bigger than all other rows)/ total number of combinations
         probs.append(probability)
-    print(names)
-    print(probs)
+
     print(np.sum(probs))
+    return dict(zip(names, probs))
 
 
 def plot_calculated_sampling_results():
@@ -833,7 +833,19 @@ def _categorical_bar(labels, data, category_names, title=None, ylabel=None):
 
 
 if __name__ == '__main__':
-    plot_all_results()
+
+    names = ['Cy-BippyPhos', 'Et-PhenCar-Phos', 'tBPh-CPhos', 'CgMe-PPh', 'JackiePhos']
+
+    # calculate random sampling accuracy
+    for n in range(4):
+        d = calculate_random_sampling_n(num=n+1)
+        of_interest = [d[na] for na in names]
+        sum = np.sum(of_interest)
+        print(f'sample {n+1}, prob={sum}')
+        # prob=0.4407793748978305
+        # prob = 0.5019138732379659
+        # prob=0.5573620957756842
+
 
 
 def _calculate_random_sampling_deprecated():

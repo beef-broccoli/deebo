@@ -17,9 +17,7 @@ la_purple = '#552583'
 
 # arm elimination
 
-# TODO: accuracy of ranking; top n
 
-# TODO: box plot somme clean up
 
 
 def plot_arm_counts(d='',
@@ -267,6 +265,133 @@ def calculate_true_and_etc_average(arms_dict,
     return true_averages, etc_averages, etc_errs
 
 
+def calculate_etc_accuracy(arms_dict,
+                           explore_limit,
+                           arms_indexes,
+                           n_sim,
+                           ground_truth):
+
+    if ground_truth['yield'].max() > 2:
+        ground_truth['yield'] = ground_truth['yield'].apply(scaler)
+
+    arms_of_interest = [arms_dict[ii] for ii in arms_indexes]  # get all relevant arms names as a list of tuples
+    arms_all = list(arms_dict.values())  # all arm names
+    inverse_arms_dict = {v: k for k, v in arms_dict.items()}  # inverse arms_dict {arm_name: arm_index}
+
+    # figure out which columns are involved in arms
+    example = arms_of_interest[0]
+    cols = []
+    for e in example:
+        l = ground_truth.columns[(ground_truth == e).any()].to_list()
+        assert(len(l) == 1)
+        cols.append(l[0])
+    ground_truth['to_query'] = list(zip(*[ground_truth[c] for c in cols]))  # select these cols and make into tuple
+    ground_truth = ground_truth[['to_query', 'yield']]
+
+    # do explore then commit
+    means = np.zeros((n_sim, len(arms_all)))
+
+    for e in explore_limit:
+        for n in range(n_sim):
+            for ii in range(len(arms_all)):
+                pass
+            # TODO: write a generic version of this
+
+    return None
+
+
+def plot_probs_choosing_best_arm(best_arm_indexes,
+                                 fn_list,
+                                 legend_list,
+                                 fp='',
+                                 hline=0,
+                                 vline=0,
+                                 etc_baseline=False,
+                                 etc_fp='',
+                                 title='',
+                                 legend_title='',
+                                 long_legend=False,
+                                 ignore_first_rounds=0):
+    """
+
+    Parameters
+    ----------
+    best_arm_indexes: list like
+        list of indexes for optimal arms
+    fn_list: Collection
+        list of data file names
+    legend_list: Collection
+        list of labels for legend
+    hline: int/float
+        value for plotting horizontal baseline
+    vline: int/float
+        value for plotting a vertical baseline
+    etc_baseline: bool
+        display explore-then-commit baseline or not
+    etc_fp: str
+        file path for calculated etc baseline at each time point, a numpy array object
+    fp: str
+        the deepest common directory for where the data files are stored
+    title: str
+        title for the plot
+    legend_title: str
+        title for the legend
+    long_legend: bool
+        if true, legend will be plotted outside the plot; if false mpl finds the best position within plot
+    ignore_first_rounds: int
+        when plotting, ignore the first n rounds. Useful for algos that require running one pass of all arms
+
+    Returns
+    -------
+    matplotlib.pyplot plt object
+
+    """
+
+    assert len(fn_list) == len(legend_list)
+
+    fps = [fp + fn for fn in fn_list]
+
+    plt.rcParams['savefig.dpi'] = 300
+    fig, ax = plt.subplots()
+
+    if hline != 0:
+        plt.axhline(y=hline, xmin=0, xmax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
+    if vline !=0:
+        plt.axvline(x=vline, ymin=0, ymax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
+
+    if etc_baseline:
+        base = np.load(etc_fp)
+        plt.plot(np.arange(len(base))[ignore_first_rounds:], base[ignore_first_rounds:], color='black', label='explore-then-commit', lw=2)
+
+    for i in range(len(fps)):
+        fp = fps[i]
+        df = pd.read_csv(fp)
+        df = df[['num_sims', 'horizon', 'chosen_arm']]
+
+        n_simulations = int(np.max(df['num_sims'])) + 1
+        time_horizon = int(np.max(df['horizon'])) + 1
+        all_arms = np.zeros((n_simulations, time_horizon))
+
+        for ii in range(int(n_simulations)):
+            all_arms[ii, :] = list(df.loc[df['num_sims'] == ii]['chosen_arm'])
+
+        counts = np.count_nonzero(np.isin(all_arms, best_arm_indexes), axis=0)  # average across simulations. shape: (1, time_horizon)
+        probs = counts / n_simulations
+        ax.plot(np.arange(time_horizon)[ignore_first_rounds:], probs[ignore_first_rounds:], label=str(legend_list[i]))
+
+    ax.set_xlabel('time horizon')
+    ax.set_ylabel(f'probability of finding best arm: {best_arm_indexes}')
+    ax.set_title(title)
+    ax.grid(visible=True, which='both', alpha=0.5)
+    if long_legend:
+        ax.legend(title=legend_title, bbox_to_anchor=(1.02, 1), loc="upper left")
+        plt.tight_layout()
+    else:
+        ax.legend(title=legend_title)
+
+    plt.show()
+
+
 @gif.frame
 def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.csv', round=0, sim=0, binary=False, cutoff=80):
     """
@@ -386,12 +511,19 @@ def make_heatmap_gif(n_sim=0, max_n_round=100, binary=False, history_fp='', save
 if __name__ == '__main__':
     import pickle
 
-    dd = 'dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400/'
+    dd = 'dataset_logs/aryl-scope-ligand/eps_greedy_annealing/'
     fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv'
     with open(f'{dd}/arms.pkl', 'rb') as f:
         arms_dict = pickle.load(f)
 
-    plot_arm_counts(dd, top_n=10, bar_errbar=True, plot='box')
+    reverse_arms_dict = {v: k for k, v in arms_dict.items()}
+    ligands = ['Cy-BippyPhos', 'CgMe-PPh', 'Et-PhenCar-Phos', 'JackiePhos', 'tBPh-CPhos']
+    ligands = [(l,) for l in ligands]
+    indexes = [reverse_arms_dict[l] for l in ligands]
+
+    plot_probs_choosing_best_arm(best_arm_indexes=indexes, fn_list=[f'{dd}log.csv'], legend_list=['t'])
+
+    #plot_arm_counts(dd, top_n=10, bar_errbar=True, plot='box')
 
     # plot_arm_rewards(fp, d=dd, top_n=10)
 
