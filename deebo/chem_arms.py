@@ -29,7 +29,6 @@ class Scope:
     def __init__(self):
         self.data_dic = None  # store a copy of the dictionary that's used to build scope
         self.data = None  # dataframe that holds all experiment and result
-        self.predictions = None  # predictions from regression model
         self.pre_accuracy = None  # prediction accuracy
         self.arms = None  # a list of arms, e.g., [('a2', 'c1'), ('a2', 'c3'), ('a3', 'c1'), ('a3', 'c3')]
         self.arm_labels = None  # arm label names. e.g., ['component_a', 'component_b']
@@ -50,7 +49,6 @@ class Scope:
         d = self.data_dic
         self.data = None
         self.build_scope(d)
-        self.predictions = None
         self.pre_accuracy = None
         self.current_experiment_index = None
         self.current_arms = None
@@ -93,6 +91,8 @@ class Scope:
                 d[col] = list(set(new_val))
         self.data_dic = d
         self.data['yield'] = np.nan
+        self.data['prediction'] = np.nan
+
         return
 
     def query(self, d):
@@ -199,7 +199,7 @@ class Scope:
         model.fit(Xs_train, ys_train)
         if Xs_train.shape[0] > 2:  # to suppress sklearn warning when calculating R2 score with <2 samples
             self.pre_accuracy = model.score(Xs_train, ys_train)
-        self.predictions = model.predict(Xs)
+        self.data['prediction'] = model.predict(Xs)
 
         return
 
@@ -208,7 +208,7 @@ class Scope:
         df = self.data.copy()
         # supplement the experiments without yield with predicted yield
         yields = np.array(df['yield'])
-        pres = np.array(self.predictions)
+        pres = np.array(df['prediction'])
         mask = np.isnan(yields)
         yields[mask] = 0
         pres[~mask] = 0
@@ -216,7 +216,6 @@ class Scope:
 
         df['arm'] = df[self.arm_labels].apply(tuple, axis=1)
         df = df.drop(self.arm_labels, axis=1)
-        print(df)
         columns_to_groupby = [c for c in df.columns if c not in ['yield', 'arm']]
         recommendations = df[df.groupby(columns_to_groupby)['yield'].transform(max) == df['yield']]
 
@@ -279,7 +278,7 @@ class Scope:
         mode: {'random'}
             sampling method to select one experiment
         num_exp: int
-            the number of experiments to be proposed
+            the number of experiments to be proposed for this arm
 
         Returns
         -------
@@ -309,11 +308,45 @@ class Scope:
                 self.current_experiment_index = None
                 self.current_arms = None
             return sample
+        elif mode == 'highest':  # choose the n highest predicted yield
+            sample = candidates.nlargest(num_exp, 'prediction')
+            if len(sample.index) != 0:
+                self.current_experiment_index = sample.index
+                self.current_arms = [arm_index] * len(self.current_experiment_index)
+            else:
+                sample = None  # set empty dataframe to None; important for downstream function
+                self.current_experiment_index = None
+                self.current_arms = None
+            return sample
+        elif mode == 'random_highest':  # randomly choose one from n highest yields; n default to 5
+            default_n_highest = 5  # get n experiments with highest predicted yield
+            if num_exp >= default_n_highest:
+                exit(f'requested # of experiments are too many for random highest mode. Default n_highest set to {default_n_highest}.')
+            nlargest = candidates.nlargest(default_n_highest, 'prediction')
+            try:
+                sample = nlargest.sample(num_exp)
+            except ValueError:
+                sample = None
+                n = num_exp
+                while n > 1:  # keep reducing the number of sample until its sample-able
+                    n = n - 1
+                    try:
+                        sample = nlargest.sample(n)
+                        break
+                    except ValueError:
+                        continue
+            if sample is not None:
+                self.current_experiment_index = sample.index
+                self.current_arms = [arm_index] * len(self.current_experiment_index)
+            else:
+                self.current_experiment_index = None
+                self.current_arms = None
+            return sample
         else:  # other sampling modes
             pass
 
 
-def propose_initial_experiments(scope_dict, arms_dict, algo, dir='./test/', num_exp=1):
+def propose_initial_experiments(scope_dict, arms_dict, algo, dir='./test/', num_exp=1, propose_mode='random'):
     """
     Build an initial scope, propose initial experiments and save required objects to be loaded later
 
@@ -343,7 +376,7 @@ def propose_initial_experiments(scope_dict, arms_dict, algo, dir='./test/', num_
         pickle.dump(d, f)  # save arms dictionary {arm index: arm names}
 
     chosen_arm = algo.select_next_arm()
-    proposed_experiments = scope.propose_experiment(chosen_arm, num_exp=num_exp)
+    proposed_experiments = scope.propose_experiment(chosen_arm, num_exp=num_exp, mode=propose_mode)
 
     if os.path.exists(f'{dir}history.csv'):
         os.remove(f'{dir}history.csv')
@@ -358,7 +391,7 @@ def propose_initial_experiments(scope_dict, arms_dict, algo, dir='./test/', num_
     return
 
 
-def update_and_propose(dir='./test/', num_exp=1):
+def update_and_propose(dir='./test/', num_exp=1, propose_mode='random'):
 
     """
     After user filled out experimental result, load the result and update scope and algoritm, propose next experiments
@@ -423,11 +456,11 @@ def update_and_propose(dir='./test/', num_exp=1):
         scope.update_with_index(scope.current_experiment_index[ii], rewards[ii])
         algo.update(scope.current_arms[ii], rewards[ii])
     scope.predict()
-    new_history = pd.concat([history, exps])
+    new_history = pd.concat([history, exps]).drop(columns=['prediction'])
 
     # propose new experiments
     chosen_arm = algo.select_next_arm()
-    proposed_experiments = scope.propose_experiment(chosen_arm, num_exp=num_exp)
+    proposed_experiments = scope.propose_experiment(chosen_arm, num_exp=num_exp, mode=propose_mode)
     if proposed_experiments is None:  # no experiments available for this arm
         threshold = 0
         print(f'No experiments available for arm {chosen_arm}: {scope.arms[chosen_arm]}. Trying to find new experiments')
@@ -442,7 +475,7 @@ def update_and_propose(dir='./test/', num_exp=1):
                 threshold = threshold + 1
                 continue
             else:
-                proposed_experiments = scope.propose_experiment(new_chosen_arm, num_exp=num_exp)
+                proposed_experiments = scope.propose_experiment(new_chosen_arm, num_exp=num_exp, mode=propose_mode)
 
     # save files and objects again
     new_history.to_csv(f'{dir}history.csv')
@@ -457,7 +490,7 @@ def update_and_propose(dir='./test/', num_exp=1):
     return None
 
 
-def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='./test/', num_sims=1000, num_exp=1, num_round=100):
+def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='./test/', num_sims=1000, num_exp=1, num_round=100, propose_mode='random'):
     """
     Method for simulation; skipping the saving and loading by user, query dataset with full results instead
 
@@ -550,7 +583,7 @@ def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='
 
         for r in tqdm(range(num_round), leave=False, desc='rounds'):
             chosen_arm = algo.select_next_arm()  # choose an arm
-            proposed_experiments = scope.propose_experiment(chosen_arm, num_exp=num_exp)  # scope proposes experiment
+            proposed_experiments = scope.propose_experiment(chosen_arm, num_exp=num_exp, mode=propose_mode)  # scope proposes experiment
             if proposed_experiments is None:
                 threshold = 0
                 print(
@@ -566,7 +599,7 @@ def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='
                         threshold = threshold + 1
                         continue
                     else:
-                        proposed_experiments = scope.propose_experiment(new_chosen_arm, num_exp=num_exp)
+                        proposed_experiments = scope.propose_experiment(new_chosen_arm, num_exp=num_exp, mode=propose_mode)
             to_query = proposed_experiments[scope_dict.keys()].to_dict('records')  # generate a list of dicts to query
             rewards = ground_truth_query(ground_truth, to_query)  # ground truth returns all yields
             proposed_experiments['yield'] = rewards  # mimic user behavior and fill proposed experiments with yield
@@ -579,13 +612,9 @@ def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='
                 log_arr[sim * num_round * num_exp + r*num_exp+ii, :] = [sim, r, ii, r*num_exp+ii, chosen_arm, rewards[ii], cumulative_reward]
                 history_prefix_arr[sim * num_round * num_exp + r*num_exp+ii, :] = [sim, r, ii, r*num_exp+ii]
             scope.predict()  # update prediction models
-            if r == 100:
-                fd = scope.recommend()
-                fd.to_csv('test.csv')
-                exit()
 
     log_df = pd.DataFrame(log_arr, columns=log_cols)
-    history_df = pd.concat([pd.DataFrame(history_prefix_arr, columns=history_prefix_cols), history], axis=1)
+    history_df = pd.concat([pd.DataFrame(history_prefix_arr, columns=history_prefix_cols), history], axis=1).drop(columns=['prediction'])
 
     history_df.to_csv(f'{dir}history.csv')
     log_df.to_csv(f'{dir}log.csv')
@@ -595,36 +624,39 @@ def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='
 
 if __name__ == '__main__':
 
-    # # scope
-    # x = {'component_a': ['a1', 'a2', 'a3'],
-    #      'component_b': ['b1', 'b2'],
-    #      'component_c': ['c1', 'c2', 'c3', 'c4']}
+    # scope
+    x = {'component_a': ['a1', 'a2', 'a3'],
+         'component_b': ['b1', 'b2'],
+         'component_c': ['c1', 'c2', 'c3', 'c4']}
+
+    y = {'component_a': ['a1', 'a3'],
+         'component_b': ['b1', 'b2']}
+
+    algo = algos_regret.EpsilonGreedy(4, 0.5)
+    #propose_initial_experiments(x, y, algo, num_exp=1, propose_mode='random_highest')
+    update_and_propose(num_exp=1, propose_mode='random_highest')
+    with open(f'./test/scope.pkl', 'rb') as f:
+        scope = pickle.load(f)  # load scope object
+    print(scope.data)
+
+    # # fetch ground truth data
+    # ground_truth = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv')
     #
-    # y = {'component_a': ['a1', 'a3'],
-    #      'component_b': ['b1', 'b2']}
+    # ground_truth['yield'] = ground_truth['yield'].apply(utils.scaler)
+    # ground_truth = ground_truth[['ligand_name',
+    #                              'electrophile_id',
+    #                              'nucleophile_id',
+    #                              'yield']]
+    # ligands = ground_truth['ligand_name'].unique()
+    # elecs = ground_truth['electrophile_id'].unique()
+    # nucs = ground_truth['nucleophile_id'].unique()
     #
-    # algo = algos_regret.EpsilonGreedy(4, 0.5)
-    # propose_initial_experiments(x, y, algo, num_exp=2)
-    # update_and_propose(num_exp=2)
-
-    # fetch ground truth data
-    ground_truth = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv')
-
-    ground_truth['yield'] = ground_truth['yield'].apply(utils.scaler)
-    ground_truth = ground_truth[['ligand_name',
-                                 'electrophile_id',
-                                 'nucleophile_id',
-                                 'yield']]
-    ligands = ground_truth['ligand_name'].unique()
-    elecs = ground_truth['electrophile_id'].unique()
-    nucs = ground_truth['nucleophile_id'].unique()
-
-    # build dictionary for acquisition
-    scope_dict = {'ligand_name': ligands,
-                  'electrophile_id': elecs,
-                  'nucleophile_id': nucs}
-    arms_dict = {'ligand_name': ligands}
-    algo = algos_regret.BayesUCBGaussian(len(ligands))
-
-    simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='./dataset_logs/aryl-scope-ligand/TSGaussian-400sim/', num_sims=400, num_round=200)
-
+    # # build dictionary for acquisition
+    # scope_dict = {'ligand_name': ligands,
+    #               'electrophile_id': elecs,
+    #               'nucleophile_id': nucs}
+    # arms_dict = {'ligand_name': ligands}
+    # algo = algos_regret.BayesUCBGaussian(len(ligands))
+    #
+    # simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='./dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e/', num_sims=400, num_round=200)
+    #

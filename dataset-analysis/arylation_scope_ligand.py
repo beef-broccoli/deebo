@@ -94,7 +94,7 @@ def plot_all_results(binary=0, cutoff=80):  # heatmap for all results, grouped b
     if binary:
         im = ax.imshow(a, cmap='inferno', vmin=0, vmax=2)
     if not binary:
-        text_kwargs = dict(ha='center', va='center', fontsize=12, color='white')
+        text_kwargs = dict(ha='center', va='center', fontsize=10, color='white')
     else:
         text_kwargs = dict(ha='center', va='center', fontsize=10, color='white')
     ii = 0
@@ -377,18 +377,18 @@ def plot_results_with_model_substrates(cutoff=75, select=True):
 
 # random sampling baseline, for each ligand, sample n experiments, plot the top 5 ligands as bar plots
 # parameters: identify the ligand of interest, and how many experiments per ligand
-def plot_simulations_random_sampling(ligand='Cy-BippyPhos', n_exp_per_ligand=3):
-    n_simulations = 10000
+def plot_simulations_random_sampling(ligand='Cy-BippyPhos', n_exp_per_ligand=3, n_simulations=5000):
     best = []
     gb = df.groupby(by=['ligand_name'])
     for i in tqdm(range(n_simulations)):
-        sample = gb.sample(n_exp_per_ligand).groupby('ligand_name').mean()
+        sample = gb.sample(n_exp_per_ligand).groupby('ligand_name').mean(numeric_only=True)
         best.append(sample['yield'].idxmax())
 
     c = Counter(best).most_common(6)  # outputs a list of tuples
     labels, values = zip(*c)
     percentage = np.array(values)/n_simulations*100
     percentage = [str(round(p, 1)) + '%' for p in percentage]
+    return dict(zip(labels, values))
 
     fig, ax = plt.subplots()
 
@@ -834,17 +834,20 @@ def _categorical_bar(labels, data, category_names, title=None, ylabel=None):
 
 if __name__ == '__main__':
 
+    plot_all_results()
+
     names = ['Cy-BippyPhos', 'Et-PhenCar-Phos', 'tBPh-CPhos', 'CgMe-PPh', 'JackiePhos']
 
-    # calculate random sampling accuracy
-    for n in range(4):
-        d = calculate_random_sampling_n(num=n+1)
-        of_interest = [d[na] for na in names]
-        sum = np.sum(of_interest)
-        print(f'sample {n+1}, prob={sum}')
-        # prob=0.4407793748978305
-        # prob = 0.5019138732379659
-        # prob=0.5573620957756842
+    # # calculate random sampling accuracy
+    # for n in range(4):
+    #     d = calculate_random_sampling_n(num=n+1)
+    #     of_interest = [d[na] for na in names]
+    #     sum = np.sum(of_interest)
+    #     print(f'sample {n+1}, prob={sum}')
+    #     # prob=0.4407793748978305
+    #     # prob = 0.5019138732379659
+    #     # prob=0.5573620957756842
+
 
 
 

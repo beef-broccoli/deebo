@@ -488,17 +488,17 @@ def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.
         cbar = plt.colorbar(im)
         cbar.ax.set_ylabel('yield (%)', rotation=270)
     plt.rcParams['savefig.dpi'] = 300
-    plt.show()
+    #plt.show()
     return None
 
 
 def make_heatmap_gif(n_sim=0, max_n_round=100, binary=False, history_fp='', save_fp=''):
 
     frames = []
-    for ii in range(100):
+    for ii in range(max_n_round):
         frames.append(
             plot_acquisition_history_heatmap_arylation_scope(sim=n_sim,
-                                                             round=max_n_round,
+                                                             round=ii,
                                                              binary=binary,
                                                              history_fp=history_fp))
 
@@ -511,9 +511,13 @@ def make_heatmap_gif(n_sim=0, max_n_round=100, binary=False, history_fp='', save
 if __name__ == '__main__':
     import pickle
 
-    dd = 'dataset_logs/aryl-scope-ligand/eps_greedy_annealing/'
+    dd = 'dataset_logs/aryl-scope-ligand/'
+    fn_list=[f'{dd}{n}/log.csv' for n in ['BayesUCBGaussian-400s-200r-1e',
+                                 'eps_greedy_annealing-400s-200r-1e',
+                                 'TSGaussian-400s-200r-1e',
+                                 'UCB1Tuned-400s-200r-1e']]
     fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv'
-    with open(f'{dd}/arms.pkl', 'rb') as f:
+    with open(f'{dd}BayesUCBGaussian-400s-100r-1e/arms.pkl', 'rb') as f:
         arms_dict = pickle.load(f)
 
     reverse_arms_dict = {v: k for k, v in arms_dict.items()}
@@ -521,15 +525,25 @@ if __name__ == '__main__':
     ligands = [(l,) for l in ligands]
     indexes = [reverse_arms_dict[l] for l in ligands]
 
-    plot_probs_choosing_best_arm(best_arm_indexes=indexes, fn_list=[f'{dd}log.csv'], legend_list=['t'])
+    # plot_probs_choosing_best_arm(best_arm_indexes=indexes, fn_list=fn_list, legend_list=['Bayes UCB (Gaussian)',
+    #                                                                                      'annealing ε-greedy',
+    #                                                                                      'TS (Gaussian)',
+    #                                                                                      'UCB1 tuned'],
+    #                              etc_baseline=True, etc_fp='dataset_logs/aryl-scope-ligand/baseline.npy',
+    #                              ignore_first_rounds=24, title='Accuracy', legend_title='algorithm')
 
-    #plot_arm_counts(dd, top_n=10, bar_errbar=True, plot='box')
+    # plot_arm_counts('dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10, bar_errbar=True, plot='box', title='Average # of samples')
 
-    # plot_arm_rewards(fp, d=dd, top_n=10)
+    plot_arm_rewards(fp, d='dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10)
 
-    # plot_acquisition_history_heatmap_arylation_scope(sim=0,
-    #                                                  round=1,
-    #                                                  binary=False,
-    #                                                  history_fp='./dataset_logs/aryl-scope-ligand/eps_greedy_annealing/history.csv')
-    #
+    # make_heatmap_gif(n_sim=2,
+    #                  max_n_round=100,
+    #                  binary=False,
+    #                  history_fp='./dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-100r-1e/history.csv',
+    #                  save_fp='test.gif')
+
+
+
+
+
 
