@@ -1,4 +1,5 @@
 import itertools
+import pathlib
 import pickle
 import json
 import pandas as pd
@@ -600,10 +601,14 @@ def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='
                         continue
                     else:
                         proposed_experiments = scope.propose_experiment(new_chosen_arm, num_exp=num_exp, mode=propose_mode)
-            to_query = proposed_experiments[scope_dict.keys()].to_dict('records')  # generate a list of dicts to query
-            rewards = ground_truth_query(ground_truth, to_query)  # ground truth returns all yields
-            proposed_experiments['yield'] = rewards  # mimic user behavior and fill proposed experiments with yield
-            history = pd.concat([history, proposed_experiments], ignore_index=True)
+                        # TODO: what if new_chosen_arm also does not have experiments available
+            if proposed_experiments is not None:
+                to_query = proposed_experiments[scope_dict.keys()].to_dict('records')  # generate a list of dicts to query
+                rewards = ground_truth_query(ground_truth, to_query)  # ground truth returns all yields
+                proposed_experiments['yield'] = rewards  # mimic user behavior and fill proposed experiments with yield
+                history = pd.concat([history, proposed_experiments], ignore_index=True)
+            else:
+                pass  # TODO: how to deal with logging and history when no exp is available
 
             for ii in range(len(rewards)):  # update cumulative_reward, scope, algo and log results
                 cumulative_reward = cumulative_reward + rewards[ii]
@@ -624,39 +629,49 @@ def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='
 
 if __name__ == '__main__':
 
-    # scope
-    x = {'component_a': ['a1', 'a2', 'a3'],
-         'component_b': ['b1', 'b2'],
-         'component_c': ['c1', 'c2', 'c3', 'c4']}
+    # # scope
+    # x = {'component_a': ['a1', 'a2', 'a3'],
+    #      'component_b': ['b1', 'b2'],
+    #      'component_c': ['c1', 'c2', 'c3', 'c4']}
+    #
+    # y = {'component_a': ['a1', 'a3'],
+    #      'component_b': ['b1', 'b2']}
+    #
+    # algo = algos_regret.EpsilonGreedy(4, 0.5)
+    # #propose_initial_experiments(x, y, algo, num_exp=1, propose_mode='random_highest')
+    # update_and_propose(num_exp=1, propose_mode='random_highest')
+    # with open(f'./test/scope.pkl', 'rb') as f:
+    #     scope = pickle.load(f)  # load scope object
+    # print(scope.data)
 
-    y = {'component_a': ['a1', 'a3'],
-         'component_b': ['b1', 'b2']}
+    # fetch ground truth data
+    ground_truth = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand-1.csv')
 
-    algo = algos_regret.EpsilonGreedy(4, 0.5)
-    #propose_initial_experiments(x, y, algo, num_exp=1, propose_mode='random_highest')
-    update_and_propose(num_exp=1, propose_mode='random_highest')
-    with open(f'./test/scope.pkl', 'rb') as f:
-        scope = pickle.load(f)  # load scope object
-    print(scope.data)
+    ground_truth['yield'] = ground_truth['yield'].apply(utils.scaler)
+    ground_truth = ground_truth[['ligand_name',
+                                 'electrophile_id',
+                                 'nucleophile_id',
+                                 'yield']]
+    ligands = ground_truth['ligand_name'].unique()
+    elecs = ground_truth['electrophile_id'].unique()
+    nucs = ground_truth['nucleophile_id'].unique()
 
-    # # fetch ground truth data
-    # ground_truth = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv')
-    #
-    # ground_truth['yield'] = ground_truth['yield'].apply(utils.scaler)
-    # ground_truth = ground_truth[['ligand_name',
-    #                              'electrophile_id',
-    #                              'nucleophile_id',
-    #                              'yield']]
-    # ligands = ground_truth['ligand_name'].unique()
-    # elecs = ground_truth['electrophile_id'].unique()
-    # nucs = ground_truth['nucleophile_id'].unique()
-    #
-    # # build dictionary for acquisition
-    # scope_dict = {'ligand_name': ligands,
-    #               'electrophile_id': elecs,
-    #               'nucleophile_id': nucs}
-    # arms_dict = {'ligand_name': ligands}
-    # algo = algos_regret.BayesUCBGaussian(len(ligands))
-    #
-    # simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='./dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e/', num_sims=400, num_round=200)
-    #
+    # build dictionary for acquisition
+    scope_dict = {'ligand_name': ligands,
+                  'electrophile_id': elecs,
+                  'nucleophile_id': nucs}
+    arms_dict = {'ligand_name': ligands}
+
+    algo = algos_regret.ThompsonSamplingGaussianFixedVar(len(ligands))
+    num_sims = 400
+    num_round = 100
+    num_exp = 1
+    dir_name = f'./dataset_logs/aryl-scope-ligand-1/TSGaussian-{num_sims}s-{num_round}r-{num_exp}e/'
+
+    p = pathlib.Path(dir_name)
+    p.mkdir(parents=True)
+
+    simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo,
+                                dir=dir_name, num_sims=num_sims,
+                                num_round=num_round, num_exp=num_exp, propose_mode='random')
+

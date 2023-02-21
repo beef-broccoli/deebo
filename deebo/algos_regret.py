@@ -36,6 +36,9 @@ class RegretAlgorithm:
         self.ranking = []  # ranks from worst to best
         return
 
+    def __str__(self):
+        return None
+
     def reset(self, n_arms):
         self.counts = [0 for col in range(n_arms)]
         self.emp_means = [0.0 for col in range(n_arms)]
@@ -66,6 +69,9 @@ class ETC(RegretAlgorithm):  # explore then commit
         self.best_arm = -1
         return
 
+    def __str__(self):
+        return 'etc'
+
     def reset(self, n_arms):
         RegretAlgorithm.reset(self, n_arms)
         self.best_arm = -1
@@ -83,6 +89,9 @@ class ETC(RegretAlgorithm):  # explore then commit
 
 class Random(RegretAlgorithm):  # random selection of arms
 
+    def __str__(self):
+        return 'random'
+
     def select_next_arm(self):
         return random.randrange(len(self.emp_means))
 
@@ -94,6 +103,9 @@ class EpsilonGreedy(RegretAlgorithm):
         self.epsilon = epsilon
         return
 
+    def __str__(self):
+        return f'eps_greedy_{self.epsilon}'
+
     def select_next_arm(self):
         if random.random() > self.epsilon:
             return np.random.choice(np.flatnonzero(np.array(self.emp_means) == max(self.emp_means)))
@@ -103,6 +115,9 @@ class EpsilonGreedy(RegretAlgorithm):
 
 
 class AnnealingEpsilonGreedy(RegretAlgorithm):
+
+    def __str__(self):
+        return f'eps_greedy_annealing'
 
     def select_next_arm(self):
         t = np.sum(self.counts) + 1
@@ -121,6 +136,9 @@ class Boltzmann(RegretAlgorithm):  # aka softmax
         self.tau = tau
         return
 
+    def __str__(self):
+        return f'softmax_{self.tau}'
+
     def select_next_arm(self):
         z = sum([math.exp(v / self.tau) for v in self.emp_means])
         probs = [math.exp(v / self.tau) / z for v in self.emp_means]
@@ -128,6 +146,9 @@ class Boltzmann(RegretAlgorithm):  # aka softmax
 
 
 class AnnealingBoltzmann(RegretAlgorithm):
+
+    def __str__(self):
+        return 'softmax_annealing'
 
     def select_next_arm(self):
         t = np.sum(self.counts) + 1
@@ -145,6 +166,9 @@ class Pursuit(RegretAlgorithm):
         self.lr = lr  # learning rate
         self.probs = probs if probs else [float(1/n_arms) for col in range(n_arms)]
         return
+
+    def __str__(self):
+        return f'pursuit_{self.lr}'
 
     def reset(self, n_arms):
         RegretAlgorithm.reset(self, n_arms)
@@ -182,6 +206,9 @@ class ReinforcementComparison(RegretAlgorithm):  # hard to tune with two paramet
         self.probs = probs if probs else [float(1/n_arms) for col in range(n_arms)]
         return
 
+    def __str__(self):
+        return f'rc_alpha_{self.alpha}_beta_{self.beta}'
+
     def reset(self, n_arms):
         RegretAlgorithm.reset(self, n_arms)
         self.preferences = [0.0 for col in range(n_arms)]  # how to initialize?
@@ -218,6 +245,9 @@ class UCB1(RegretAlgorithm):
         self.batch = batch
         return
 
+    def __str__(self):
+        return 'ucb1'
+
     def reset(self, n_arms):
         RegretAlgorithm.reset(self, n_arms)
         self.ucbs = [0.0 for col in range(n_arms)]
@@ -252,6 +282,9 @@ class UCB1Tuned(RegretAlgorithm):  # seems like V value are a lot bigger than 1/
         # batch mode changes select_next_arm() behavior.
         # The first exploration round is done externally, and is skipped in batch mode to so not all algos are exploring at the same time
         return
+
+    def __str__(self):
+        return 'ucb1tuned'
 
     def reset(self, n_arms):
         RegretAlgorithm.reset(self, n_arms)
@@ -295,6 +328,9 @@ class UCB1Tuned(RegretAlgorithm):  # seems like V value are a lot bigger than 1/
 
 class MOSS(UCB1):
 
+    def __str__(self):
+        return 'moss'
+
     # override
     def update(self, chosen_arm, reward):
         # update counts
@@ -324,6 +360,9 @@ class BayesUCBBeta(UCB1):
         # c=1 is better for scenario 2, all others use c=2
         return
 
+    def __str__(self):
+        return 'bayes_ucb_beta'
+
     def reset(self, n_arms):
         UCB1.reset(self, n_arms)
         self.alphas = [1.0 for col in range(n_arms)]
@@ -351,6 +390,9 @@ class BayesUCBGaussian(UCB1):
         self.c = c  # num of std's to consider as confidence bound
         # c=1 is better for scenario 2, all others use c=2
         return
+
+    def __str__(self):
+        return f'bayes_ucb_gaussian'
 
     def update(self, chosen_arm, reward):
         RegretAlgorithm.update(self, chosen_arm, reward)
@@ -387,6 +429,9 @@ class UCBV(RegretAlgorithm):
         self.ucbs = ucbs if ucbs else [-1.0 for col in range(n_arms)]
         self.amplitude = amplitude
         return
+
+    def __str__(self):
+        return 'ucbv'
 
     def reset(self, n_arms, amplitude=1.0):
         RegretAlgorithm.reset(self, n_arms)
@@ -444,6 +489,9 @@ class UCB2(RegretAlgorithm):
         self.play_time = play_time  # from algo: need to play best arm tau(r+1)-tau(r) times
         return
 
+    def __str__(self):
+        return f'ucb2_{self.alpha}'
+
     def reset(self, n_arms):
         RegretAlgorithm.reset(self, n_arms)
         self.ucbs = [0.0 for col in range(n_arms)]
@@ -496,6 +544,9 @@ class ThompsonSamplingBeta(RegretAlgorithm):
         self.betas = betas if betas else [1.0 for col in range(n_arms)]
         return
 
+    def __str__(self):
+        return 'ts_beta'
+
     def reset(self, n_arms):
         RegretAlgorithm.reset(self, n_arms)
         self.alphas = [1.0 for col in range(n_arms)]
@@ -520,6 +571,9 @@ class ThompsonSamplingGaussianFixedVar(RegretAlgorithm):
     # gaussian prior, assume fixed variance of 1
     # can also be used non-parametric stochastic MAB with log regret
 
+    def __str__(self):
+        return 'ts_gaussian'
+
     def select_next_arm(self):
         stds = [1/(c+1) for c in self.counts]
         rng = np.random.default_rng()
@@ -536,6 +590,9 @@ class ThompsonSamplingGaussian(RegretAlgorithm):
         self.alphas = alphas if alphas else [1.0 for col in range(n_arms)]
         self.betas = betas if betas else [0.1 for col in range(n_arms)]
         return
+
+    def __str__(self):
+        return 'ts_gaussian_novar'
 
     def reset(self, n_arms):
         RegretAlgorithm.reset(self, n_arms)
@@ -570,6 +627,12 @@ class DMED(RegretAlgorithm):
         self.action_list = action_list if action_list else []
         self.modified = modified  # if true, generate new list with less aggressive pruning. else follow original paper
         return
+
+    def __str__(self):
+        if self.modified:
+            return 'dmed_modified'
+        else:
+            return 'dmed'
 
     def __kl(self, ps, qs):
         ps = [p+1e-7 if p == 0.0 else p for p in ps]
@@ -613,6 +676,9 @@ class EXP3(RegretAlgorithm):
         self.probs = probs if probs else [1.0/int(n_arms)] * int(n_arms)
         self.gamma = gamma
         return
+
+    def __str__(self):
+        return 'exp3'
 
     def reset(self, n_arms):
         RegretAlgorithm.reset(self, n_arms)

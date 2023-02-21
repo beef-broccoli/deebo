@@ -10,14 +10,13 @@ from utils import scaler
 la_gold = '#FDB927'
 la_purple = '#552583'
 
+
 # TODO: somehow ETC provides a more accurace estimation of average. Need to investigate.
 # TODO: try lower number of simulations
 # TODO: try to enforce 2 experiments per arm
 # TODO: if predicted yield is low, sample again. could be risky
 
 # arm elimination
-
-
 
 
 def plot_arm_counts(d='',
@@ -69,7 +68,8 @@ def plot_arm_counts(d='',
     allcounts = df[['num_sims', 'chosen_arm', 'reward']].groupby(['chosen_arm', 'num_sims']).count()
 
     # for bar plot, calculate average and std
-    sorted_means = allcounts.groupby('chosen_arm').agg({'reward': ['mean', 'std']}).sort_values(by=('reward', 'mean'), ascending=False)
+    sorted_means = allcounts.groupby('chosen_arm').agg({'reward': ['mean', 'std']}).sort_values(by=('reward', 'mean'),
+                                                                                                ascending=False)
     average_counts = list(sorted_means.values[:top_n, 0].flatten())
     average_counts_errs = list(sorted_means.values[:top_n, 1].flatten())
     arms_indexes = sorted_means.index.to_numpy()[:top_n]  # corresponding arm index of top n arms
@@ -82,7 +82,7 @@ def plot_arm_counts(d='',
     values = x.to_list()  # list of arrays, since dimensions might not match
 
     # calculate baseline (time horizon evenly divided by number of arms)
-    baseline = max_horizon/len(arms_dict)
+    baseline = max_horizon / len(arms_dict)
 
     # start plotting
     plt.rcParams['savefig.dpi'] = 300
@@ -113,7 +113,7 @@ def plot_arm_counts(d='',
                    meanprops=dict(marker='x', markeredgecolor=la_purple, markerfacecolor=la_purple))
         ax.set_xlabel('number of times sampled')
         ax.set_ylabel('arms')
-        ax.set_xticks(np.arange(max([max(v) for v in values])+1))
+        ax.set_xticks(np.arange(max([max(v) for v in values]) + 1))
     else:
         pass
 
@@ -167,7 +167,8 @@ def plot_arm_rewards(ground_truth_loc,
     # then calculate the average yield
     # the simulations where a particular arm is not sampled is ignored here
     gb = df[['num_sims', 'chosen_arm', 'reward']].groupby(['chosen_arm', 'num_sims']).mean().groupby('chosen_arm')
-    sorted_means = gb.agg({'reward': ['mean', 'std']}).sort_values(by=('reward', 'mean'), ascending=False)  # sorted mean values and pick top n
+    sorted_means = gb.agg({'reward': ['mean', 'std']}).sort_values(by=('reward', 'mean'),
+                                                                   ascending=False)  # sorted mean values and pick top n
     sim_average_vals = list(sorted_means.values[:top_n, 0].flatten())
     sim_average_errs = list(sorted_means.values[:top_n, 1].flatten())
     arms_indexes = sorted_means.index.to_numpy()[:top_n]  # corresponding arm index of top n arms
@@ -177,7 +178,7 @@ def plot_arm_rewards(ground_truth_loc,
                                                                            arms_indexes,
                                                                            ground_truth=pd.read_csv(ground_truth_loc),
                                                                            n_sim=100,
-                                                                           n_sample=int(max_horizon//n_arms))
+                                                                           n_sample=int(max_horizon // n_arms))
 
     # it's a horizontal bar plot, but use vertical bar terminology here
     width = 0.3  # actually is height
@@ -185,15 +186,18 @@ def plot_arm_rewards(ground_truth_loc,
 
     plt.rcParams['savefig.dpi'] = 300
     if errbar:
-        plt.barh(xs-width/2, sim_average_vals, color=la_gold, height=width, label='experimental average', xerr=sim_average_errs, capsize=4)
-        plt.barh(xs+width/2, etc_averages, color=la_purple, height=width, label='explore-then-commit baseline', xerr=etc_errs, capsize=4)
+        plt.barh(xs - width / 2, sim_average_vals, color=la_gold, height=width, label='experimental average',
+                 xerr=sim_average_errs, capsize=4)
+        plt.barh(xs + width / 2, etc_averages, color=la_purple, height=width, label='explore-then-commit baseline',
+                 xerr=etc_errs, capsize=4)
     else:
-        plt.barh(xs-width/2, sim_average_vals, color=la_gold, height=width, label='experimental average')
-        plt.barh(xs+width/2, etc_averages, color=la_purple, height=width, label='explore-then-commit baseline')
+        plt.barh(xs - width / 2, sim_average_vals, color=la_gold, height=width, label='experimental average')
+        plt.barh(xs + width / 2, etc_averages, color=la_purple, height=width, label='explore-then-commit baseline')
     plt.yticks(xs, arms_names)
     plt.xlabel('yield')
     for ii in range(len(true_averages)):
-        plt.vlines(true_averages[ii], ymin=xs[ii]-width-0.1, ymax=xs[ii]+width+0.1, linestyles='dotted', colors='k')
+        plt.vlines(true_averages[ii], ymin=xs[ii] - width - 0.1, ymax=xs[ii] + width + 0.1, linestyles='dotted',
+                   colors='k')
     plt.title(title)
     plt.legend(ncol=2, bbox_to_anchor=(0, 1), loc='lower left', fontsize='medium')
     plt.tight_layout()
@@ -239,11 +243,12 @@ def calculate_true_and_etc_average(arms_dict,
     cols = []
     for e in example:
         l = ground_truth.columns[(ground_truth == e).any()].to_list()
-        assert(len(l) == 1)
+        assert (len(l) == 1)
         cols.append(l[0])
     ground_truth['to_query'] = list(zip(*[ground_truth[c] for c in cols]))  # select these cols and make into tuple
     ground_truth = ground_truth[['to_query', 'yield']]
-    filtered = ground_truth[ground_truth['to_query'].isin(arms)]  # filter, only use arms of interest supplied by indexes
+    filtered = ground_truth[
+        ground_truth['to_query'].isin(arms)]  # filter, only use arms of interest supplied by indexes
 
     # calculate average and generate a dict of results
     means = filtered.groupby(['to_query']).mean()['yield'].to_dict()
@@ -256,7 +261,7 @@ def calculate_true_and_etc_average(arms_dict,
     means = np.zeros((n_sim, len(arms)))
     for n in range(n_sim):
         for ii in range(len(arms)):
-            df = filtered.loc[filtered['to_query']==arms[ii]]
+            df = filtered.loc[filtered['to_query'] == arms[ii]]
             y = df['yield'].sample(n_sample)
             means[n, ii] = y.mean()
     etc_averages = np.average(means, axis=0)  # arms is already sorted with arms_indexes, can directly use here
@@ -270,7 +275,6 @@ def calculate_etc_accuracy(arms_dict,
                            arms_indexes,
                            n_sim,
                            ground_truth):
-
     if ground_truth['yield'].max() > 2:
         ground_truth['yield'] = ground_truth['yield'].apply(scaler)
 
@@ -283,7 +287,7 @@ def calculate_etc_accuracy(arms_dict,
     cols = []
     for e in example:
         l = ground_truth.columns[(ground_truth == e).any()].to_list()
-        assert(len(l) == 1)
+        assert (len(l) == 1)
         cols.append(l[0])
     ground_truth['to_query'] = list(zip(*[ground_truth[c] for c in cols]))  # select these cols and make into tuple
     ground_truth = ground_truth[['to_query', 'yield']]
@@ -313,6 +317,7 @@ def plot_probs_choosing_best_arm(best_arm_indexes,
                                  long_legend=False,
                                  ignore_first_rounds=0):
     """
+    The probability of choosing the best arm(s) at each time point across all simulations
 
     Parameters
     ----------
@@ -356,12 +361,13 @@ def plot_probs_choosing_best_arm(best_arm_indexes,
 
     if hline != 0:
         plt.axhline(y=hline, xmin=0, xmax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
-    if vline !=0:
+    if vline != 0:
         plt.axvline(x=vline, ymin=0, ymax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
 
     if etc_baseline:
         base = np.load(etc_fp)
-        plt.plot(np.arange(len(base))[ignore_first_rounds:], base[ignore_first_rounds:], color='black', label='explore-then-commit', lw=2)
+        plt.plot(np.arange(len(base))[ignore_first_rounds:], base[ignore_first_rounds:], color='black',
+                 label='explore-then-commit', lw=2)
 
     for i in range(len(fps)):
         fp = fps[i]
@@ -375,7 +381,8 @@ def plot_probs_choosing_best_arm(best_arm_indexes,
         for ii in range(int(n_simulations)):
             all_arms[ii, :] = list(df.loc[df['num_sims'] == ii]['chosen_arm'])
 
-        counts = np.count_nonzero(np.isin(all_arms, best_arm_indexes), axis=0)  # average across simulations. shape: (1, time_horizon)
+        counts = np.count_nonzero(np.isin(all_arms, best_arm_indexes),
+                                  axis=0)  # average across simulations. shape: (1, time_horizon)
         probs = counts / n_simulations
         ax.plot(np.arange(time_horizon)[ignore_first_rounds:], probs[ignore_first_rounds:], label=str(legend_list[i]))
 
@@ -392,8 +399,89 @@ def plot_probs_choosing_best_arm(best_arm_indexes,
     plt.show()
 
 
+def plot_accuracy_best_arm(best_arm_indexes,
+                           fn_list,
+                           legend_list,
+                           fp='',
+                           hline=0,
+                           vline=0,
+                           etc_baseline=False,
+                           etc_fp='',
+                           title='',
+                           legend_title='',
+                           long_legend=False,
+                           ignore_first_rounds=0):
+    """
+    Accuracy at each time point.
+    At each time point, consider all past experiments until this point, and pick the arm with the highest number of samples
+    Accuracy = (# of times best empirical arm is in best_arm_indexes) / (# of simulations)
+
+    Parameters
+    ----------
+    best_arm_indexes
+
+    Returns
+    -------
+
+    """
+
+    assert len(fn_list) == len(legend_list)
+
+    fps = [fp + fn for fn in fn_list]
+
+    plt.rcParams['savefig.dpi'] = 300
+    fig, ax = plt.subplots()
+
+    if hline != 0:
+        plt.axhline(y=hline, xmin=0, xmax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
+    if vline != 0:
+        plt.axvline(x=vline, ymin=0, ymax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
+
+    if etc_baseline:
+        base = np.load(etc_fp)
+        plt.plot(np.arange(len(base))[ignore_first_rounds:], base[ignore_first_rounds:], color='black',
+                 label='explore-then-commit', lw=2)
+
+    for i in range(len(fps)):
+        fp = fps[i]
+        df = pd.read_csv(fp)
+        df = df[['num_sims', 'horizon', 'chosen_arm']]
+
+        n_simulations = int(np.max(df['num_sims'])) + 1
+        time_horizon = int(np.max(df['horizon'])) + 1
+
+        best_arms = np.zeros((n_simulations, time_horizon))  # each time point will have a best arm up to that point
+
+        for n in range(int(n_simulations)):
+            data = np.array(list(df.loc[df['num_sims'] == n]['chosen_arm']))
+            for t in range(len(data)):
+                u, counts = np.unique(data[:t+1], return_counts=True)
+                best_arms[n, t] = u[np.random.choice(np.flatnonzero(counts == max(counts)))]
+
+        isinfunc = lambda x: x in best_arm_indexes
+        visinfunc = np.vectorize(isinfunc)
+        boo = visinfunc(best_arms)
+        probs = boo.sum(axis=0)/n_simulations
+
+        ax.plot(np.arange(time_horizon)[ignore_first_rounds:], probs[ignore_first_rounds:], label=str(legend_list[i]))
+
+    ax.set_xlabel('time horizon')
+    ax.set_ylabel(f'Accuracy of identifying best arm: {best_arm_indexes}')
+    ax.set_title(title)
+    ax.grid(visible=True, which='both', alpha=0.5)
+    if long_legend:
+        ax.legend(title=legend_title, bbox_to_anchor=(1.02, 1), loc="upper left")
+        plt.tight_layout()
+    else:
+        ax.legend(title=legend_title)
+    plt.show()
+
+    return None
+
+
 @gif.frame
-def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.csv', round=0, sim=0, binary=False, cutoff=80):
+def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.csv', round=0, sim=0, binary=False,
+                                                     cutoff=80):
     """
     plot heatmap for acquisition history at specific time point. Decorator is used to make gifs
 
@@ -415,7 +503,8 @@ def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.
 
     df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv')
     df = df[['ligand_name', 'electrophile_id', 'nucleophile_id', 'yield']]
-    df['electrophile_id'] = df['electrophile_id'].apply(lambda x: x.lstrip('e')).astype('int')  # change to 'int' for sorting purposes, so 10 is not immediately after 1
+    df['electrophile_id'] = df['electrophile_id'].apply(lambda x: x.lstrip('e')).astype(
+        'int')  # change to 'int' for sorting purposes, so 10 is not immediately after 1
     df['nucleophile_id'] = df['nucleophile_id'].apply(lambda x: x.lstrip('n'))
     ligands = list(df['ligand_name'].unique())
 
@@ -425,12 +514,12 @@ def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.
     nuc_names = list(df['nucleophile_id'].unique())
     elec_names = list(df['electrophile_id'].unique())
 
-
     ground_truth = df[['electrophile_id', 'nucleophile_id', 'ligand_name']].to_numpy()
 
     # from acquisition history, fetch the reactions that was run, find them in ground_truth to get the indexes (to get yield later)
     history = pd.read_csv(history_fp)
-    history = history.loc[(history['round']<=round) & (history['num_sims']==sim)][['electrophile_id', 'nucleophile_id', 'ligand_name']]
+    history = history.loc[(history['round'] <= round) & (history['num_sims'] == sim)][
+        ['electrophile_id', 'nucleophile_id', 'ligand_name']]
     history['electrophile_id'] = history['electrophile_id'].apply(lambda x: x.lstrip('e')).astype('int')
     history['nucleophile_id'] = history['nucleophile_id'].apply(lambda x: x.lstrip('n'))
     history = history.to_numpy()
@@ -438,7 +527,7 @@ def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.
     # get the indexes for the experiments run, keep the yield, and set the rest of the yields to -1 to signal no rxns run
     indexes = []
     for row in range(history.shape[0]):
-        indexes.append(np.argwhere(np.isin(ground_truth, history[row,:]).all(axis=1))[0,0])
+        indexes.append(np.argwhere(np.isin(ground_truth, history[row, :]).all(axis=1))[0, 0])
     df = df.reset_index()
     idx_to_set = df.index.difference(indexes)
     df.loc[idx_to_set, 'yield'] = -1
@@ -467,10 +556,11 @@ def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.
                 return 1
             else:
                 return x
+
         f = np.vectorize(set_value)
         a = f(a)
 
-    fig, ax = plt.subplots(figsize=(12,6))
+    fig, ax = plt.subplots(figsize=(12, 6))
     cmap_custom = mpl.colormaps['inferno']
     cmap_custom.set_under('silver')  # for the unrun reactions with yield set to -1
     im = ax.imshow(a, cmap=cmap_custom, vmin=0, vmax=110)
@@ -480,20 +570,19 @@ def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.
     ii = 0
     for i in range(4):
         for j in range(6):
-            ax.add_patch(Rectangle((8*j-0.5, 8*i-0.5), 8, 8, fill=False, edgecolor='white', lw=2))
-            plt.text(8*j+3.5, 8*i+3.5, ligand_names[ii], **text_kwargs)
-            ii = ii+1
+            ax.add_patch(Rectangle((8 * j - 0.5, 8 * i - 0.5), 8, 8, fill=False, edgecolor='white', lw=2))
+            plt.text(8 * j + 3.5, 8 * i + 3.5, ligand_names[ii], **text_kwargs)
+            ii = ii + 1
     plt.axis('off')
     if not binary:
         cbar = plt.colorbar(im)
         cbar.ax.set_ylabel('yield (%)', rotation=270)
     plt.rcParams['savefig.dpi'] = 300
-    #plt.show()
+    # plt.show()
     return None
 
 
 def make_heatmap_gif(n_sim=0, max_n_round=100, binary=False, history_fp='', save_fp=''):
-
     frames = []
     for ii in range(max_n_round):
         frames.append(
@@ -511,39 +600,37 @@ def make_heatmap_gif(n_sim=0, max_n_round=100, binary=False, history_fp='', save
 if __name__ == '__main__':
     import pickle
 
-    dd = 'dataset_logs/aryl-scope-ligand/'
-    fn_list=[f'{dd}{n}/log.csv' for n in ['BayesUCBGaussian-400s-200r-1e',
-                                 'eps_greedy_annealing-400s-200r-1e',
-                                 'TSGaussian-400s-200r-1e',
-                                 'UCB1Tuned-400s-200r-1e']]
-    fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv'
-    with open(f'{dd}BayesUCBGaussian-400s-100r-1e/arms.pkl', 'rb') as f:
+    dd = 'dataset_logs/deoxyf/PBSF/'
+    num_sims = 400
+    num_round = 100
+    num_exp = 1
+    fn_list = [f'{dd}{n}/log.csv' for n in
+               [f'ts_gaussian-{num_sims}s-{num_round}r-{num_exp}e',
+                f'ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e',
+                f'eps_greedy_annealing-{num_sims}s-{num_round}r-{num_exp}e',
+                f'bayes_ucb_gaussian-{num_sims}s-{num_round}r-{num_exp}e']]
+    fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv'
+    with open(f'{dd}ts_gaussian-{num_sims}s-{num_round}r-{num_exp}e/arms.pkl', 'rb') as f:
         arms_dict = pickle.load(f)
 
     reverse_arms_dict = {v: k for k, v in arms_dict.items()}
-    ligands = ['Cy-BippyPhos', 'CgMe-PPh', 'Et-PhenCar-Phos', 'JackiePhos', 'tBPh-CPhos']
-    ligands = [(l,) for l in ligands]
+    # ligands = ['Cy-BippyPhos', 'CgMe-PPh', 'Et-PhenCar-Phos', 'JackiePhos', 'tBPh-CPhos']
+    ligands_l = ['PBSF']
+    # ligands = ['Et-PhenCar-Phos', 'JackiePhos']
+    ligands = [(l,) for l in ligands_l]
     indexes = [reverse_arms_dict[l] for l in ligands]
 
-    # plot_probs_choosing_best_arm(best_arm_indexes=indexes, fn_list=fn_list, legend_list=['Bayes UCB (Gaussian)',
-    #                                                                                      'annealing ε-greedy',
-    #                                                                                      'TS (Gaussian)',
-    #                                                                                      'UCB1 tuned'],
-    #                              etc_baseline=True, etc_fp='dataset_logs/aryl-scope-ligand/baseline.npy',
-    #                              ignore_first_rounds=24, title='Accuracy', legend_title='algorithm')
+    plot_accuracy_best_arm(best_arm_indexes=indexes, fn_list=fn_list,
+                                 legend_list=['TS Gaussian', 'ucb1-tuned', 'eps greedy', 'bayes ucb'],
+                                 etc_baseline=True, etc_fp=f'{dd}etc/no_dbu.npy',
+                                 ignore_first_rounds=4, title=f'Accuracy of identifying {ligands_l} as optimal', legend_title='algorithm')
 
     # plot_arm_counts('dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10, bar_errbar=True, plot='box', title='Average # of samples')
 
-    plot_arm_rewards(fp, d='dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10)
+    # plot_arm_rewards(fp, d='dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10)
 
     # make_heatmap_gif(n_sim=2,
     #                  max_n_round=100,
     #                  binary=False,
     #                  history_fp='./dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-100r-1e/history.csv',
     #                  save_fp='test.gif')
-
-
-
-
-
-
