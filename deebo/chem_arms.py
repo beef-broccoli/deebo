@@ -96,6 +96,37 @@ class Scope:
 
         return
 
+    def expand_scope(self, expand_d):
+        """
+
+        Parameters
+        ----------
+        d
+
+        Returns
+        -------
+
+        """
+
+        expand_components = sorted(expand_d)  # sorted(dict) returns a list
+
+        # only support expanding existing dimensions
+        for e in expand_components:
+            if e not in self.data.columns:
+                exit(f'Cannot expand scope; requested dimension {e} does not exist')
+            if e in self.arm_labels:
+                exit(f'Cannot expand scope; requested dimension {e} will modify arms')
+            data_dic = self.data_dic.copy()
+            data_dic[e] = expand_d[e]  # for the dimension getting expanded, change value to the ones in expansion
+            expand_combinations = itertools.product(*(data_dic[d] for d in data_dic.keys()))
+            expand_df = pd.DataFrame(expand_combinations, columns=data_dic.keys())
+            expand_df['yield'] = np.nan
+            expand_df['prediction'] = np.nan
+            self.data = pd.concat([self.data, expand_df])  # add the expansion df to self.data
+            self.data_dic[e] = self.data_dic[e] + expand_d[e]  # update self.data_dic
+
+        return
+
     def query(self, d):
         """
         Queries the reaction scope for yield with a dictionary
@@ -158,14 +189,16 @@ class Scope:
         None
 
         """
-        assert self.data.shape[1] == len(d.items()), 'missing reaction components or yield'
+        assert self.data.shape[1]-1 == len(d.items()), 'missing reaction components or yield'
         assert 'yield' in list(d.keys()), 'missing yield, cannot update'
         assert type(d['yield']) in [int, float], 'yield value is not numerical'
-        assert set(list(self.data.columns)) == set(d.keys()), 'labels not fully matched, cannot update'
+        cols = set(list(self.data.columns))
+        cols.remove('prediction')
+        assert cols == set(d.keys()), 'labels not fully matched, cannot update'
 
         y = d.pop('yield')
         component_names = sorted(d)  # sort query dictionary by component name
-        self.data = self.data.sort_index(axis=1)  # sort scope data by component name (column)
+        #self.data = self.data.sort_index(axis=1)  # sort scope data by component name (column)
         values = [d[c] for c in component_names]  # get values for each component
         # match and update yield
         boo = np.equal.outer(self.data.to_numpy(copy=False), values).any(axis=1).all(axis=1)
@@ -629,14 +662,31 @@ def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='
 
 if __name__ == '__main__':
 
-    # # scope
-    # x = {'component_a': ['a1', 'a2', 'a3'],
-    #      'component_b': ['b1', 'b2'],
-    #      'component_c': ['c1', 'c2', 'c3', 'c4']}
-    #
-    # y = {'component_a': ['a1', 'a3'],
-    #      'component_b': ['b1', 'b2']}
-    #
+    # scope
+    x = {'component_a': ['a1', 'a2', 'a3'],
+         'component_b': ['b1', 'b2'],
+         'component_c': ['c1', 'c2', 'c3', 'c4']}
+
+    y = {'component_a': ['a1', 'a3'],
+         'component_b': ['b1', 'b2']}
+
+    z = {'component_b': ['b5', 'b6'],
+         'component_c': ['c5', 'c6']}
+
+    scope = Scope()
+    scope.build_scope(x)
+    scope.build_arms(y)
+
+    d1 = {'component_a': 'a1',
+          'component_b': 'b1',
+          'component_c': 'c2',
+          'yield': 96}
+
+    scope.update_with_dict(d1)
+    scope.expand_scope(z)
+    print(scope.data)
+
+
     # algo = algos_regret.EpsilonGreedy(4, 0.5)
     # #propose_initial_experiments(x, y, algo, num_exp=1, propose_mode='random_highest')
     # update_and_propose(num_exp=1, propose_mode='random_highest')
@@ -645,33 +695,33 @@ if __name__ == '__main__':
     # print(scope.data)
 
     # fetch ground truth data
-    ground_truth = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand-1.csv')
-
-    ground_truth['yield'] = ground_truth['yield'].apply(utils.scaler)
-    ground_truth = ground_truth[['ligand_name',
-                                 'electrophile_id',
-                                 'nucleophile_id',
-                                 'yield']]
-    ligands = ground_truth['ligand_name'].unique()
-    elecs = ground_truth['electrophile_id'].unique()
-    nucs = ground_truth['nucleophile_id'].unique()
-
-    # build dictionary for acquisition
-    scope_dict = {'ligand_name': ligands,
-                  'electrophile_id': elecs,
-                  'nucleophile_id': nucs}
-    arms_dict = {'ligand_name': ligands}
-
-    algo = algos_regret.ThompsonSamplingGaussianFixedVar(len(ligands))
-    num_sims = 400
-    num_round = 100
-    num_exp = 1
-    dir_name = f'./dataset_logs/aryl-scope-ligand-1/TSGaussian-{num_sims}s-{num_round}r-{num_exp}e/'
-
-    p = pathlib.Path(dir_name)
-    p.mkdir(parents=True)
-
-    simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo,
-                                dir=dir_name, num_sims=num_sims,
-                                num_round=num_round, num_exp=num_exp, propose_mode='random')
-
+    # ground_truth = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand-1.csv')
+    #
+    # ground_truth['yield'] = ground_truth['yield'].apply(utils.scaler)
+    # ground_truth = ground_truth[['ligand_name',
+    #                              'electrophile_id',
+    #                              'nucleophile_id',
+    #                              'yield']]
+    # ligands = ground_truth['ligand_name'].unique()
+    # elecs = ground_truth['electrophile_id'].unique()
+    # nucs = ground_truth['nucleophile_id'].unique()
+    #
+    # # build dictionary for acquisition
+    # scope_dict = {'ligand_name': ligands,
+    #               'electrophile_id': elecs,
+    #               'nucleophile_id': nucs}
+    # arms_dict = {'ligand_name': ligands}
+    #
+    # algo = algos_regret.ThompsonSamplingGaussianFixedVar(len(ligands))
+    # num_sims = 400
+    # num_round = 100
+    # num_exp = 1
+    # dir_name = f'./dataset_logs/aryl-scope-ligand-1/TSGaussian-{num_sims}s-{num_round}r-{num_exp}e/'
+    #
+    # p = pathlib.Path(dir_name)
+    # p.mkdir(parents=True)
+    #
+    # simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo,
+    #                             dir=dir_name, num_sims=num_sims,
+    #                             num_round=num_round, num_exp=num_exp, propose_mode='random')
+    #

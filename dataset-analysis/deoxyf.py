@@ -6,23 +6,25 @@ import matplotlib.patches as mpatches
 import itertools
 import yaml
 
-df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv')
+DF = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv')
 
-df = df[['base_name', 'fluoride_name', 'substrate_name', 'yield']]
-fd = df.copy()
-df = df.loc[df['substrate_name'] != 's37']
-fs = list(df['fluoride_name'].unique())
-bs = list(df['base_name'].unique())
-ss = list(df['substrate_name'].unique())
+DF = DF[['base_name', 'fluoride_name', 'substrate_name', 'yield']]
+FD = DF.copy()
+DF = DF.loc[DF['substrate_name'] != 's37']
+FS = list(DF['fluoride_name'].unique())
+BS = list(DF['base_name'].unique())
+SS = list(DF['substrate_name'].unique())
 
 with open('colors.yml', 'r') as file:
     COLORS = yaml.safe_load(file)
 
 
 def plot_all_results():
+    df = DF.copy()
+    fd = DF.copy()
     ds = []
     averages = []
-    for f, b in itertools.product(fs, bs):
+    for f, b in itertools.product(FS, BS):
         ds.append(df.loc[(df['fluoride_name'] == f) & (df['base_name'] == b)]['yield'].to_numpy().reshape(6,6))
         averages.append(round(np.average(fd.loc[(fd['fluoride_name'] == f) & (fd['base_name'] == b)]['yield'].to_numpy()),1))
 
@@ -42,8 +44,8 @@ def plot_all_results():
             plt.text(6 * i + 2.5, 6 * j + 2.5, averages[ii], **text_kwargs)
             ii = ii + 1
     #plt.axis('off')
-    ax.set_xticks([2.5, 8.5, 14.5, 20.5, 26.5], fs)
-    ax.set_yticks([2.5, 8.5, 14.5, 20.5], bs)
+    ax.set_xticks([2.5, 8.5, 14.5, 20.5, 26.5], FS)
+    ax.set_yticks([2.5, 8.5, 14.5, 20.5], BS)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['bottom'].set_visible(False)
@@ -72,7 +74,7 @@ def plot_results_with_model_substrates(cutoff=75, select=False, which_dimension=
     -------
 
     """
-    fd = df.copy()
+    fd = DF.copy()
 
     #fd = fd.sort_values(by=['combo', 'ligand_name'])
     fd['combo'] = fd['fluoride_name'].astype('str') + '/' + fd['base_name'].astype('str')
@@ -153,17 +155,17 @@ def plot_results_with_model_substrates(cutoff=75, select=False, which_dimension=
     plt.show()
 
 
-def plot_best_with_diff_metric(which_dimension='combo'):  # 6 bar plots, each with top 5 ligands, and their performance wrt metric
+def plot_best_with_diff_metric(df, nlargest=5, which_dimension='combo'):  # 6 bar plots, each with top 5 ligands, and their performance wrt metric
 
     df['combo'] = df['fluoride_name'].astype('str') + '/' + df['base_name'].astype('str')
     stats = df.groupby(by=[which_dimension]).describe()
-    twentyfive = stats.loc[:, ('yield', '25%')].nlargest(5)  # 1st quantile top 5
-    median = stats.loc[:, ('yield', '50%')].nlargest(5)  # 2nd quantile
-    seventyfive = stats.loc[:, ('yield', '75%')].nlargest(5)  # 3rd quantile
-    mean = stats.loc[:, ('yield', 'mean')].nlargest(5)  # average
+    twentyfive = stats.loc[:, ('yield', '25%')].nlargest(nlargest)  # 1st quantile top 5
+    median = stats.loc[:, ('yield', '50%')].nlargest(nlargest)  # 2nd quantile
+    seventyfive = stats.loc[:, ('yield', '75%')].nlargest(nlargest)  # 3rd quantile
+    mean = stats.loc[:, ('yield', 'mean')].nlargest(nlargest)  # average
 
-    overtwenty = df.loc[df['yield'] > 20].groupby(by=which_dimension).size().nlargest(5)  # top 5, over 20%, count
-    overeighty = df.loc[df['yield'] > 80].groupby(by=which_dimension).size().nlargest(5)  # top 5, over 80%, count
+    overtwenty = df.loc[df['yield'] > 20].groupby(by=which_dimension).size().nlargest(nlargest)  # top 5, over 20%, count
+    overeighty = df.loc[df['yield'] > 80].groupby(by=which_dimension).size().nlargest(nlargest)  # top 5, over 80%, count
 
     # make color dictionary, one color for one ligand
     all_top_ligands = []
@@ -190,7 +192,7 @@ def plot_best_with_diff_metric(which_dimension='combo'):  # 6 bar plots, each wi
         return out
 
     def trim(ll):  # trim the long ligand names
-        return [s[:10] for s in ll]
+        return [s[:20] for s in ll]
 
     figsize = (10,6)
     kwargs = {'aa': True, 'width': 0.5}
@@ -219,6 +221,7 @@ def plot_best_with_diff_metric(which_dimension='combo'):  # 6 bar plots, each wi
 
 
 if __name__ == '__main__':
+    df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf-seg3.csv')
+    plot_best_with_diff_metric(df=df, nlargest=3, which_dimension='combo')
 
-    plot_best_with_diff_metric(which_dimension='fluoride_name')
 

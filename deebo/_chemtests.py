@@ -26,11 +26,11 @@ def deoxyf():
                   'fluoride_name': fluorides,
                   'substrate_name': substrates}
     arms_dict = {'base_name': bases,
-                 'fluoride_name': fluorides}
-    algo = algos_regret.BayesUCBGaussian(len(bases)*len(fluorides))
+                 'fluoride_name': fluorides,}
+    algo = algos_regret.ETC(len(bases), explore_limit=2)
     wkdir = './dataset_logs/deoxyf/combo/'
-    num_sims = 400
-    num_round = 150
+    num_sims = 1
+    num_round = 73
     num_exp = 1
     propose_mode = 'random'
 #######################################################################################################################

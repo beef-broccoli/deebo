@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.patches as mpatches
 import gif
+import itertools
 from utils import scaler
 
 la_gold = '#FDB927'
@@ -480,7 +481,7 @@ def plot_accuracy_best_arm(best_arm_indexes,
 
 
 @gif.frame
-def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.csv', round=0, sim=0, binary=False,
+def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.csv', roun=0, sim=0, binary=False,
                                                      cutoff=80):
     """
     plot heatmap for acquisition history at specific time point. Decorator is used to make gifs
@@ -489,10 +490,10 @@ def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.
     ----------
     history_fp: str
         file path of the history.csv file from acquisition
-    round: int
-        plot the heatmap until this round
+    roun: int
+        avoid built-in func round(); plot the heatmap until this round
     sim: int
-        the
+        which simulation
     binary
     cutoff
 
@@ -518,7 +519,7 @@ def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.
 
     # from acquisition history, fetch the reactions that was run, find them in ground_truth to get the indexes (to get yield later)
     history = pd.read_csv(history_fp)
-    history = history.loc[(history['round'] <= round) & (history['num_sims'] == sim)][
+    history = history.loc[(history['round'] <= roun) & (history['num_sims'] == sim)][
         ['electrophile_id', 'nucleophile_id', 'ligand_name']]
     history['electrophile_id'] = history['electrophile_id'].apply(lambda x: x.lstrip('e')).astype('int')
     history['nucleophile_id'] = history['nucleophile_id'].apply(lambda x: x.lstrip('n'))
@@ -582,17 +583,101 @@ def plot_acquisition_history_heatmap_arylation_scope(history_fp='./test/history.
     return None
 
 
-def make_heatmap_gif(n_sim=0, max_n_round=100, binary=False, history_fp='', save_fp=''):
+@gif.frame
+def plot_acquisition_history_heatmap_deoxyf(history_fp='./test/history.csv', roun=0, sim=0, binary=False,
+                                                     cutoff=80):
+    """
+
+    Parameters
+    ----------
+    history_fp: str
+        file path of history.csv
+    roun: int
+        avoid built-in func round(); plot up until this round
+    sim: int
+        which simulation to plot
+    binary:
+    cutoff:
+
+    Returns
+    -------
+
+    """
+    df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv')
+
+    df = df[['base_name', 'fluoride_name', 'substrate_name', 'yield']]
+    fd = df.copy()
+    df = df.loc[df['substrate_name'] != 's37']
+    fs = list(df['fluoride_name'].unique())
+    bs = list(df['base_name'].unique())
+    ss = list(df['substrate_name'].unique())
+
+    ground_truth = df[['base_name', 'fluoride_name', 'substrate_name']].to_numpy()
+
+    # from acquisition history, fetch the reactions that was run, find them in ground_truth to get the indexes (to get yield later)
+    history = pd.read_csv(history_fp)
+    history = history.loc[(history['round'] <= roun) & (history['num_sims'] == sim)][
+        ['base_name', 'fluoride_name', 'substrate_name']]
+    history = history.loc[history['substrate_name'] != 's37']
+    history = history.to_numpy()
+
+    # get the indexes for the experiments run, keep the yield, and set the rest of the yields to -1 to signal no rxns run
+    indexes = []
+    for row in range(history.shape[0]):
+        indexes.append(np.argwhere(np.isin(ground_truth, history[row, :]).all(axis=1))[0, 0])
+    df = df.reset_index()
+    idx_to_set = df.index.difference(indexes)
+    df.loc[idx_to_set, 'yield'] = -1
+
+    ds = []
+    averages = []
+    for f, b in itertools.product(fs, bs):
+        ds.append(df.loc[(df['fluoride_name'] == f) & (df['base_name'] == b)]['yield'].to_numpy().reshape(6,6))
+        to_average = df.loc[(df['fluoride_name'] == f) & (df['base_name'] == b) & (df['yield']!=-1)]['yield'].to_numpy()
+        if len(to_average) == 0:  # catch the np.average warning for empty array
+            averages.append('n/a')
+        else:
+            averages.append(round(np.average(to_average), 1))
+
+    data = np.hstack([np.vstack(ds[0:4]),
+                      np.vstack(ds[4:8]),
+                      np.vstack(ds[8:12]),
+                      np.vstack(ds[12:16]),
+                      np.vstack(ds[16:20])])
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(data, cmap='inferno', vmin=0, vmax=110)
+    text_kwargs = dict(ha='center', va='center', fontsize=12, color='white')
+    ii = 0
+    for i in range(5):
+        for j in range(4):
+            ax.add_patch(Rectangle((6 * i - 0.5, 6 * j - 0.5), 6, 6, fill=False, edgecolor='white', lw=2))
+            plt.text(6 * i + 2.5, 6 * j + 2.5, averages[ii], **text_kwargs)
+            ii = ii + 1
+    #plt.axis('off')
+    ax.set_xticks([2.5, 8.5, 14.5, 20.5, 26.5], fs)
+    ax.set_yticks([2.5, 8.5, 14.5, 20.5], bs)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    cbar = plt.colorbar(im)
+    cbar.ax.set_ylabel('yield (%)', rotation=270)
+    plt.rcParams['savefig.dpi'] = 300
+    #plt.show()
+
+
+def make_heatmap_gif(plot_func, n_sim=0, max_n_round=100, binary=False, history_fp='', save_fp=''):
     frames = []
     for ii in range(max_n_round):
         frames.append(
-            plot_acquisition_history_heatmap_arylation_scope(sim=n_sim,
-                                                             round=ii,
-                                                             binary=binary,
-                                                             history_fp=history_fp))
+            plot_func(sim=n_sim,
+                      roun=ii,
+                      binary=binary,
+                      history_fp=history_fp))
 
     assert save_fp.endswith('.gif'), 'file suffix needs to be .gif'
-    gif.save(frames, save_fp, duration=50)
+    gif.save(frames, save_fp, duration=100)
 
     return None
 
@@ -600,37 +685,42 @@ def make_heatmap_gif(n_sim=0, max_n_round=100, binary=False, history_fp='', save
 if __name__ == '__main__':
     import pickle
 
-    dd = 'dataset_logs/deoxyf/PBSF/'
-    num_sims = 400
-    num_round = 100
-    num_exp = 1
-    fn_list = [f'{dd}{n}/log.csv' for n in
-               [f'ts_gaussian-{num_sims}s-{num_round}r-{num_exp}e',
-                f'ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e',
-                f'eps_greedy_annealing-{num_sims}s-{num_round}r-{num_exp}e',
-                f'bayes_ucb_gaussian-{num_sims}s-{num_round}r-{num_exp}e']]
-    fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv'
-    with open(f'{dd}ts_gaussian-{num_sims}s-{num_round}r-{num_exp}e/arms.pkl', 'rb') as f:
-        arms_dict = pickle.load(f)
+    dd = 'dataset_logs/deoxyf/combo/'
+    # num_sims = 400
+    # num_round = 100
+    # num_exp = 1
+    # fn_list = [f'{dd}{n}/log.csv' for n in
+    #            [f'ts_gaussian-{num_sims}s-{num_round}r-{num_exp}e',
+    #             f'ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e',
+    #             f'eps_greedy_annealing-{num_sims}s-{num_round}r-{num_exp}e',
+    #             f'bayes_ucb_gaussian-{num_sims}s-{num_round}r-{num_exp}e',
+    #             ]]
+    # fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv'
+    # with open(f'{dd}ts_gaussian-{num_sims}s-{num_round}r-{num_exp}e/arms.pkl', 'rb') as f:
+    #     arms_dict = pickle.load(f)
+    #
+    # reverse_arms_dict = {v: k for k, v in arms_dict.items()}
+    # # ligands = ['Cy-BippyPhos', 'CgMe-PPh', 'Et-PhenCar-Phos', 'JackiePhos', 'tBPh-CPhos']
+    # bs = ['BTMG', 'BTPP']
+    # fs = ['PBSF']
+    # # ligands = ['Et-PhenCar-Phos', 'JackiePhos']
+    # #ligands = [(b,) for b in bs]
+    # ligands = [('BTMG', 'PBSF'), ('BTPP', 'PBSF')]
+    # indexes = [reverse_arms_dict[l] for l in ligands]
 
-    reverse_arms_dict = {v: k for k, v in arms_dict.items()}
-    # ligands = ['Cy-BippyPhos', 'CgMe-PPh', 'Et-PhenCar-Phos', 'JackiePhos', 'tBPh-CPhos']
-    ligands_l = ['PBSF']
-    # ligands = ['Et-PhenCar-Phos', 'JackiePhos']
-    ligands = [(l,) for l in ligands_l]
-    indexes = [reverse_arms_dict[l] for l in ligands]
-
-    plot_accuracy_best_arm(best_arm_indexes=indexes, fn_list=fn_list,
-                                 legend_list=['TS Gaussian', 'ucb1-tuned', 'eps greedy', 'bayes ucb'],
-                                 etc_baseline=True, etc_fp=f'{dd}etc/no_dbu.npy',
-                                 ignore_first_rounds=4, title=f'Accuracy of identifying {ligands_l} as optimal', legend_title='algorithm')
+    # plot_accuracy_best_arm(best_arm_indexes=indexes, fn_list=fn_list,
+    #                        legend_list=['TS Gaussian', 'ucb1-tuned', 'eps greedy', 'bayes ucb'],
+    #                        etc_baseline=True, etc_fp=f'{dd}etc/btpp_btmg_100r.npy',
+    #                        ignore_first_rounds=4, title=f'Accuracy of identifying {ligands} as optimal',
+    #                        legend_title='algorithm')
 
     # plot_arm_counts('dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10, bar_errbar=True, plot='box', title='Average # of samples')
 
     # plot_arm_rewards(fp, d='dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10)
 
-    # make_heatmap_gif(n_sim=2,
-    #                  max_n_round=100,
-    #                  binary=False,
-    #                  history_fp='./dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-100r-1e/history.csv',
-    #                  save_fp='test.gif')
+    make_heatmap_gif(plot_acquisition_history_heatmap_deoxyf,
+                     n_sim=0,
+                     max_n_round=100,
+                     binary=False,
+                     history_fp=f'{dd}etc-1s-73r-1e/history.csv',
+                     save_fp=f'test/test.gif')
