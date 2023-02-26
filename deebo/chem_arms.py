@@ -101,7 +101,11 @@ class Scope:
 
         Parameters
         ----------
-        d
+        expand_d: dict
+            expansion dictionary
+            e.g.,
+                {component_a: [a_6, a_7, a_8],
+                 component_b: [b_9]}
 
         Returns
         -------
@@ -123,7 +127,7 @@ class Scope:
             expand_df['yield'] = np.nan
             expand_df['prediction'] = np.nan
             self.data = pd.concat([self.data, expand_df])  # add the expansion df to self.data
-            self.data_dic[e] = self.data_dic[e] + expand_d[e]  # update self.data_dic
+            self.data_dic[e] = list(self.data_dic[e]) + list(expand_d[e])  # update self.data_dic
 
         return
 
@@ -524,7 +528,17 @@ def update_and_propose(dir='./test/', num_exp=1, propose_mode='random'):
     return None
 
 
-def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='./test/', num_sims=1000, num_exp=1, num_round=100, propose_mode='random'):
+def simulate_propose_and_update(scope_dict,
+                                arms_dict,
+                                ground_truth,
+                                algo,
+                                dir='./test/',
+                                num_sims=10,
+                                num_exp=1,
+                                num_round=20,
+                                propose_mode='random',
+                                expansion_dict=None,
+                                ):
     """
     Method for simulation; skipping the saving and loading by user, query dataset with full results instead
 
@@ -539,7 +553,14 @@ def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='
     num_sims: int
     num_exp: int
         number of experiments for the scope object
-    num_round
+    num_round: int
+        number of rounds
+    propose_mode: str
+        how to propose experiments (choosing from substrates)
+    expansion_dict: dict
+        dictionary for expansion, {round for expansion: individual_expansion_dict}
+        e.g. {50: {component_a: [a4, a5, a6]},
+              100: {component_a: [a7, a8]}}
 
     Returns
     -------
@@ -650,6 +671,13 @@ def simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo, dir='
                 log_arr[sim * num_round * num_exp + r*num_exp+ii, :] = [sim, r, ii, r*num_exp+ii, chosen_arm, rewards[ii], cumulative_reward]
                 history_prefix_arr[sim * num_round * num_exp + r*num_exp+ii, :] = [sim, r, ii, r*num_exp+ii]
             scope.predict()  # update prediction models
+
+            # check if expansion is needed
+            if expansion_dict is not None:
+                if r in expansion_dict.keys():
+                    scope.expand_scope(expansion_dict[int(r)])
+                    print(f'expand scope at round {r}')
+
 
     log_df = pd.DataFrame(log_arr, columns=log_cols)
     history_df = pd.concat([pd.DataFrame(history_prefix_arr, columns=history_prefix_cols), history], axis=1).drop(columns=['prediction'])

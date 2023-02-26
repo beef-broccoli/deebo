@@ -6,20 +6,20 @@ import matplotlib.patches as mpatches
 import itertools
 import yaml
 
-DF = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv')
-
-DF = DF[['base_name', 'fluoride_name', 'substrate_name', 'yield']]
-FD = DF.copy()
-DF = DF.loc[DF['substrate_name'] != 's37']
-FS = list(DF['fluoride_name'].unique())
-BS = list(DF['base_name'].unique())
-SS = list(DF['substrate_name'].unique())
 
 with open('colors.yml', 'r') as file:
     COLORS = yaml.safe_load(file)
 
 
 def plot_all_results():
+    DF = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv')
+
+    DF = DF[['base_name', 'fluoride_name', 'substrate_name', 'yield']]
+    FD = DF.copy()
+    FS = list(DF['fluoride_name'].unique())
+    BS = list(DF['base_name'].unique())
+    SS = list(DF['substrate_name'].unique())
+
     df = DF.copy()
     fd = DF.copy()
     ds = []
@@ -74,6 +74,15 @@ def plot_results_with_model_substrates(cutoff=75, select=False, which_dimension=
     -------
 
     """
+
+    DF = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv')
+
+    DF = DF[['base_name', 'fluoride_name', 'substrate_name', 'yield']]
+    DF = DF.loc[DF['substrate_name'] != 's37']
+    FD = DF.copy()
+    FS = list(DF['fluoride_name'].unique())
+    BS = list(DF['base_name'].unique())
+    SS = list(DF['substrate_name'].unique())
     fd = DF.copy()
 
     #fd = fd.sort_values(by=['combo', 'ligand_name'])
@@ -220,8 +229,63 @@ def plot_best_with_diff_metric(df, nlargest=5, which_dimension='combo'):  # 6 ba
     plt.show()
 
 
+def plot_condition_comparison(which_stat='average'):
+    df1 = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf-seg1.csv')
+    df2 = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf-seg2.csv')
+    df3 = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf-seg3.csv')
+    df4 = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv')
+    dfs = [df1, df2, df3, df4]
+
+    components = [('PBSF', 'BTPP'),
+                  ('PBSF', 'BTMG'),
+                  ('PBSF', 'MTBD'),
+                  ('3-CF3', 'BTPP'),
+                  ('3-CF3', 'BTMG')]
+    components_for_plot_labels = []
+    for c in components:
+        components_for_plot_labels.append(
+            '/'.join(c)
+        )
+
+
+    if which_stat=='average':
+        stats = np.zeros((len(dfs), len(components)))
+        for ii in range(len(dfs)):
+            for jj in range(len(components)):
+                stats[ii, jj] = np.average(
+                    dfs[ii].loc[(dfs[ii]['fluoride_name'] == components[jj][0]) &
+                                (dfs[ii]['base_name'] == components[jj][1])]['yield']
+                )
+    else:
+        stats = None
+
+    overall_stat = stats[-1, :]
+    segment_stat = stats[:-1, :]
+
+    width = 0.2
+    Xs = np.arange(len(components))
+    plt.rcParams['savefig.dpi'] = 300
+    plt.bar(Xs-width, segment_stat[0,:], width=width, color=COLORS['classic_blue'], label='group 1')
+    plt.bar(Xs, segment_stat[1,:], width=width, color=COLORS['provence'], label='group 2')
+    plt.bar(Xs+width, segment_stat[2,:], width=width, color=COLORS['baby_blue'], label='group 3')
+
+    for ii in range(len(overall_stat)):
+        if ii == 0:
+            plt.hlines([overall_stat[ii]], Xs[ii]-width*1.5, Xs[ii]+width*1.5, linestyles='-', color='k', label=f'true {which_stat}')
+        else:
+            plt.hlines([overall_stat[ii]], Xs[ii] - width * 1.5, Xs[ii] + width * 1.5, linestyles='-', color='k')
+
+    plt.xticks(Xs, components_for_plot_labels)
+    plt.ylabel('yield (%)')
+    plt.title(f'{which_stat} for substrate groups under different conditions')
+    plt.legend()
+    plt.show()
+
+    return
+
 if __name__ == '__main__':
-    df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf-seg3.csv')
-    plot_best_with_diff_metric(df=df, nlargest=3, which_dimension='combo')
+    df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv')
+    #plot_best_with_diff_metric(df=df, nlargest=5, which_dimension='base_name')
+    plot_condition_comparison()
 
 
