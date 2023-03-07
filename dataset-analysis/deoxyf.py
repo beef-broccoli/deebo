@@ -283,6 +283,7 @@ def plot_condition_comparison(which_stat='average'):
 
     return
 
+
 if __name__ == '__main__':
     df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv')
     #plot_best_with_diff_metric(df=df, nlargest=5, which_dimension='base_name')

@@ -77,9 +77,9 @@ def deoxyf_adversarial():
                       100: {'substrate_name': substrates_3}}
     arms_dict = {'base_name': bases,
                  'fluoride_name': fluorides,}
-    algo = algos_regret.UCB1(n_arms=20)
+    algo = algos_regret.BayesUCBGaussian(n_arms=20)
     wkdir = './dataset_logs/deoxyf/adversarial/combo/'
-    num_sims = 1
+    num_sims = 400
     num_round = 150
     num_exp = 1
     propose_mode = 'random'
@@ -92,7 +92,8 @@ def deoxyf_adversarial():
     simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo,
                                 dir=dir_name, num_sims=num_sims,
                                 num_round=num_round, num_exp=num_exp, propose_mode=propose_mode,
-                                expansion_dict=expansion_dict)
+                                expansion_dict=expansion_dict
+                                )
 
 
 if __name__ == '__main__':

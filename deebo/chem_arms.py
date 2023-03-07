@@ -528,6 +528,7 @@ def update_and_propose(dir='./test/', num_exp=1, propose_mode='random'):
     return None
 
 
+# skipping prediction for now
 def simulate_propose_and_update(scope_dict,
                                 arms_dict,
                                 ground_truth,
@@ -628,6 +629,13 @@ def simulate_propose_and_update(scope_dict,
     with open(f'{dir}arms.pkl', 'wb') as f:
         pickle.dump(d, f)
 
+    # performance upgrade
+    if expansion_dict is not None:
+        expansion_rounds = expansion_dict.keys()
+        check_expand = True
+    else:
+        check_expand = False
+
     # simulation starts
     for sim in tqdm(range(num_sims), desc='simulations'):
 
@@ -670,14 +678,11 @@ def simulate_propose_and_update(scope_dict,
                 algo.update(scope.current_arms[ii], rewards[ii])
                 log_arr[sim * num_round * num_exp + r*num_exp+ii, :] = [sim, r, ii, r*num_exp+ii, chosen_arm, rewards[ii], cumulative_reward]
                 history_prefix_arr[sim * num_round * num_exp + r*num_exp+ii, :] = [sim, r, ii, r*num_exp+ii]
-            scope.predict()  # update prediction models
+            # scope.predict()  # update prediction models
 
             # check if expansion is needed
-            if expansion_dict is not None:
-                if r in expansion_dict.keys():
-                    scope.expand_scope(expansion_dict[int(r)])
-                    print(f'expand scope at round {r}')
-
+            if check_expand and (r in expansion_rounds):
+                scope.expand_scope(expansion_dict[int(r)])
 
     log_df = pd.DataFrame(log_arr, columns=log_cols)
     history_df = pd.concat([pd.DataFrame(history_prefix_arr, columns=history_prefix_cols), history], axis=1).drop(columns=['prediction'])

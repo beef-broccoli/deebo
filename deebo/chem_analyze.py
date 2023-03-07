@@ -404,8 +404,8 @@ def plot_accuracy_best_arm(best_arm_indexes,
                            fn_list,
                            legend_list,
                            fp='',
-                           hline=0,
-                           vline=0,
+                           hlines=None,
+                           vlines=None,
                            etc_baseline=False,
                            etc_fp='',
                            title='',
@@ -433,10 +433,12 @@ def plot_accuracy_best_arm(best_arm_indexes,
     plt.rcParams['savefig.dpi'] = 300
     fig, ax = plt.subplots()
 
-    if hline != 0:
-        plt.axhline(y=hline, xmin=0, xmax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
-    if vline != 0:
-        plt.axvline(x=vline, ymin=0, ymax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
+    if hlines is not None:
+        for hline in hlines:
+            plt.axhline(y=hline, xmin=0, xmax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
+    if vlines is not None:
+        for vline in vlines:
+            plt.axvline(x=vline, ymin=0, ymax=1, linestyle='dashed', color='black', alpha=0.5)
 
     if etc_baseline:
         base = np.load(etc_fp)
@@ -685,42 +687,42 @@ def make_heatmap_gif(plot_func, n_sim=0, max_n_round=100, binary=False, history_
 if __name__ == '__main__':
     import pickle
 
-    dd = 'dataset_logs/deoxyf/combo/'
-    # num_sims = 400
-    # num_round = 100
-    # num_exp = 1
-    # fn_list = [f'{dd}{n}/log.csv' for n in
-    #            [f'ts_gaussian-{num_sims}s-{num_round}r-{num_exp}e',
-    #             f'ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e',
-    #             f'eps_greedy_annealing-{num_sims}s-{num_round}r-{num_exp}e',
-    #             f'bayes_ucb_gaussian-{num_sims}s-{num_round}r-{num_exp}e',
-    #             ]]
-    # fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv'
-    # with open(f'{dd}ts_gaussian-{num_sims}s-{num_round}r-{num_exp}e/arms.pkl', 'rb') as f:
-    #     arms_dict = pickle.load(f)
-    #
-    # reverse_arms_dict = {v: k for k, v in arms_dict.items()}
-    # # ligands = ['Cy-BippyPhos', 'CgMe-PPh', 'Et-PhenCar-Phos', 'JackiePhos', 'tBPh-CPhos']
-    # bs = ['BTMG', 'BTPP']
-    # fs = ['PBSF']
-    # # ligands = ['Et-PhenCar-Phos', 'JackiePhos']
-    # #ligands = [(b,) for b in bs]
-    # ligands = [('BTMG', 'PBSF'), ('BTPP', 'PBSF')]
-    # indexes = [reverse_arms_dict[l] for l in ligands]
+    dd = 'dataset_logs/deoxyf/adversarial/combo/'
+    num_sims = 400
+    num_round = 150
+    num_exp = 1
+    fn_list = [f'{dd}{n}/log.csv' for n in
+               [f'ts_gaussian-{num_sims}s-{num_round}r-{num_exp}e',
+                f'ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e',
+                f'exp3-{num_sims}s-{num_round}r-{num_exp}e',
+                f'bayes_ucb_gaussian-{num_sims}s-{num_round}r-{num_exp}e',
+                ]]
+    fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv'
+    with open(f'{dd}ts_gaussian-{num_sims}s-{num_round}r-{num_exp}e/arms.pkl', 'rb') as f:
+        arms_dict = pickle.load(f)
 
-    # plot_accuracy_best_arm(best_arm_indexes=indexes, fn_list=fn_list,
-    #                        legend_list=['TS Gaussian', 'ucb1-tuned', 'eps greedy', 'bayes ucb'],
-    #                        etc_baseline=True, etc_fp=f'{dd}etc/btpp_btmg_100r.npy',
-    #                        ignore_first_rounds=4, title=f'Accuracy of identifying {ligands} as optimal',
-    #                        legend_title='algorithm')
+    reverse_arms_dict = {v: k for k, v in arms_dict.items()}
+    # ligands = ['Cy-BippyPhos', 'CgMe-PPh', 'Et-PhenCar-Phos', 'JackiePhos', 'tBPh-CPhos']
+    bs = ['BTMG', 'BTPP']
+    fs = ['PBSF']
+    # ligands = ['Et-PhenCar-Phos', 'JackiePhos']
+    #ligands = [(b,) for b in bs]
+    ligands = [('BTMG', 'PBSF'), ('BTPP', 'PBSF')]
+    indexes = [reverse_arms_dict[l] for l in ligands]
+
+    plot_accuracy_best_arm(best_arm_indexes=indexes, fn_list=fn_list,
+                           legend_list=['TS Gaussian', 'ucb1-tuned', 'exp3', 'bayes ucb'],
+                           etc_baseline=False, etc_fp=f'{dd}etc.npy',
+                           ignore_first_rounds=4, title=f'Accuracy of identifying {ligands} as optimal',
+                           legend_title='algorithm', vlines=[50, 100])
 
     # plot_arm_counts('dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10, bar_errbar=True, plot='box', title='Average # of samples')
 
     # plot_arm_rewards(fp, d='dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10)
 
-    make_heatmap_gif(plot_acquisition_history_heatmap_deoxyf,
-                     n_sim=0,
-                     max_n_round=100,
-                     binary=False,
-                     history_fp=f'{dd}etc-1s-73r-1e/history.csv',
-                     save_fp=f'test/test.gif')
+    # make_heatmap_gif(plot_acquisition_history_heatmap_deoxyf,
+    #                  n_sim=0,
+    #                  max_n_round=100,
+    #                  binary=False,
+    #                  history_fp=f'{dd}etc-1s-73r-1e/history.csv',
+    #                  save_fp=f'test/test.gif')

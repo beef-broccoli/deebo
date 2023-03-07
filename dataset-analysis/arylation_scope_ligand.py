@@ -604,10 +604,12 @@ def plot_calculated_sampling_results():
 
     X = np.arange(len(names))
     fig, ax = plt.subplots()
-    ax.barh(X + 0.0, all_probs_sample_1, height=0.25, color=cornhusk_hex, zorder=10)
-    ax.barh(X + 0.25, all_probs_sample_2, height=0.25, color=peach_quartz_hex, zorder=11)
+    ax.barh(X + 0.0, all_probs_sample_1, height=0.25, color=classic_blue_hex, zorder=10)
+    ax.barh(X + 0.25, all_probs_sample_2, height=0.25, color=provence_hex, zorder=11)
     ax.barh(X + 0.5, all_probs_sample_3, height=0.25, color=baby_blue_hex, zorder=12)
     ax.set_yticks(X + 0.25, names)
+    ax.set_xticks(np.linspace(0, 0.14, 15))
+    ax.set_xlabel('Probability')
     ax.legend(labels=['sample 1 exp', 'sample 2 exp', 'sample 3 exp'])
     ax.grid(axis='x', alpha=0.5)
     ax.set_title('Calculated probability for random sampling')
@@ -834,7 +836,7 @@ def _categorical_bar(labels, data, category_names, title=None, ylabel=None):
 
 if __name__ == '__main__':
 
-    plot_all_results()
+    #plot_all_results()
 
     names = ['Cy-BippyPhos', 'Et-PhenCar-Phos', 'tBPh-CPhos', 'CgMe-PPh', 'JackiePhos']
 
@@ -847,6 +849,7 @@ if __name__ == '__main__':
     #     # prob=0.4407793748978305
     #     # prob = 0.5019138732379659
     #     # prob=0.5573620957756842
+    plot_calculated_sampling_results()
 
 
 

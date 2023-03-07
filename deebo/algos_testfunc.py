@@ -147,7 +147,7 @@ def test_algorithm_regret_multialgos(algo_list, arms, num_sims, horizon):
     return pd.DataFrame(ar, columns=cols)
 
 
-def test_algorithm_arm(algo, arms, num_sims, max_horizon):
+def test_algorithm_arm(algo, arms, num_sims, max_horizon, n_candidates=1):
     """
 
     Parameters
@@ -159,22 +159,29 @@ def test_algorithm_arm(algo, arms, num_sims, max_horizon):
 
     Returns
     -------
+    acquisition history (if sim is terminated by algo before specified time limit, all empty entries are removed)
+    best arms identified by algo (# specified by user, padded with -1) (shape: n_sim, n_arms)
+    rankings based on # of samples at the end of each sim (shape: n_sim, n_arms)
+    the round at which simulation terminates (shape: n_sim, 1)
+
 
     """
 
     cols = ['num_sims', 'horizon', 'chosen_arm', 'reward', 'cumulative_reward']
-    ar = np.zeros((num_sims*max_horizon, len(cols)))
+    ar = np.negative(np.ones((num_sims*max_horizon, len(cols))))
     best_arms = np.negative(np.ones((num_sims, len(arms))))  # -1 to distinguish empty ones; could initialize smaller with n_candidates
-    #rankings = np.negative(np.ones((num_sims, len(arms))))  # rankings at the end of each simulations
+    rankings = np.negative(np.ones((num_sims, len(arms))))  # rankings at the end of each simulations
+    termination_round = np.negative(np.ones((num_sims,)))  # the round where each simulation terminates
 
     for sim in tqdm(range(num_sims), leave=False):
 
-        algo.reset(len(arms))
+        algo.reset()
         cumulative_reward = 0
 
         for t in range(max_horizon):
             chosen_arm = algo.select_next_arm()  # algorithm selects an arm
-            if chosen_arm is None:
+            if chosen_arm is None:  # no next experiment; optimal arm has been found
+                termination_round[sim] = t-1
                 break
             reward = arms[chosen_arm].draw()  # chosen arm returns reward
             cumulative_reward = cumulative_reward + reward  # calculate cumulative reward over time horizon
@@ -182,10 +189,11 @@ def test_algorithm_arm(algo, arms, num_sims, max_horizon):
             ar[sim*max_horizon+t, :] = [sim, t, chosen_arm, reward, cumulative_reward]  # logs info
 
         best_arms[sim, :] = utils.fill_list(algo.best_arms, len(arms), -1)
+        rankings[sim, :] = algo.rankings
 
     # remove all zero rows: time horizons that are not used because requested # of candidates are found
-    ar = ar[~np.all(ar==0, axis=1)]
+    ar = ar[~np.all(ar==-1, axis=1)]
 
-    return pd.DataFrame(ar, columns=cols), pd.DataFrame(best_arms)
+    return pd.DataFrame(ar, columns=cols), pd.DataFrame(best_arms), pd.DataFrame(rankings), pd.DataFrame(termination_round)
 
 
