@@ -687,34 +687,42 @@ def make_heatmap_gif(plot_func, n_sim=0, max_n_round=100, binary=False, history_
 if __name__ == '__main__':
     import pickle
 
-    dd = 'dataset_logs/deoxyf/adversarial/combo/'
-    num_sims = 400
-    num_round = 150
+    dd = 'dataset_logs/nib/etoh-60cutoff/'
+    num_sims = 500
+    num_round = 75
     num_exp = 1
     fn_list = [f'{dd}{n}/log.csv' for n in
                [f'ts_gaussian-{num_sims}s-{num_round}r-{num_exp}e',
+                f'ts_beta-{num_sims}s-{num_round}r-{num_exp}e',
                 f'ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e',
-                f'exp3-{num_sims}s-{num_round}r-{num_exp}e',
+                f'ucb1-{num_sims}s-{num_round}r-{num_exp}e',
                 f'bayes_ucb_gaussian-{num_sims}s-{num_round}r-{num_exp}e',
+                f'bayes_ucb_beta-{num_sims}s-{num_round}r-{num_exp}e',
+                f'random-{num_sims}s-{num_round}r-{num_exp}e',
                 ]]
-    fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv'
+    fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/nib-etoh.csv'
     with open(f'{dd}ts_gaussian-{num_sims}s-{num_round}r-{num_exp}e/arms.pkl', 'rb') as f:
         arms_dict = pickle.load(f)
 
     reverse_arms_dict = {v: k for k, v in arms_dict.items()}
     # ligands = ['Cy-BippyPhos', 'CgMe-PPh', 'Et-PhenCar-Phos', 'JackiePhos', 'tBPh-CPhos']
-    bs = ['BTMG', 'BTPP']
-    fs = ['PBSF']
     # ligands = ['Et-PhenCar-Phos', 'JackiePhos']
     #ligands = [(b,) for b in bs]
-    ligands = [('BTMG', 'PBSF'), ('BTPP', 'PBSF')]
+    ligands = ['PPh2Cy', 'CX-PCy', 'PPh3', 'P(p-F-Ph)3', 'P(p-Anis)3', 'Cy-JohnPhos']
+    ligands = [(l,) for l in ligands]
     indexes = [reverse_arms_dict[l] for l in ligands]
 
     plot_accuracy_best_arm(best_arm_indexes=indexes, fn_list=fn_list,
-                           legend_list=['TS Gaussian', 'ucb1-tuned', 'exp3', 'bayes ucb'],
+                           legend_list=['TS Gaussian',
+                                        'TS Beta',
+                                        'ucb1-tuned',
+                                        'ucb1',
+                                        'Bayes ucb gaussian',
+                                        'Bayes ucb beta',
+                                        'random'],
                            etc_baseline=False, etc_fp=f'{dd}etc.npy',
-                           ignore_first_rounds=4, title=f'Accuracy of identifying {ligands} as optimal',
-                           legend_title='algorithm', vlines=[50, 100])
+                           ignore_first_rounds=0, title=f'Accuracy of identifying as optimal',
+                           legend_title='algorithm')
 
     # plot_arm_counts('dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10, bar_errbar=True, plot='box', title='Average # of samples')
 

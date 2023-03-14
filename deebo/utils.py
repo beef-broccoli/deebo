@@ -27,6 +27,13 @@ def scaler(x):
         return x
 
 
+def cutoffer(x, cutoff):
+    if x>cutoff:
+        return 1
+    else:
+        return 0
+
+
 def means_from_scenario(scenario=0):
     """
 

@@ -539,6 +539,7 @@ def simulate_propose_and_update(scope_dict,
                                 num_round=20,
                                 propose_mode='random',
                                 expansion_dict=None,
+                                predict=False,
                                 ):
     """
     Method for simulation; skipping the saving and loading by user, query dataset with full results instead
@@ -662,23 +663,28 @@ def simulate_propose_and_update(scope_dict,
                         threshold = threshold + 1
                         continue
                     else:
-                        proposed_experiments = scope.propose_experiment(new_chosen_arm, num_exp=num_exp, mode=propose_mode)
-                        # TODO: what if new_chosen_arm also does not have experiments available
+                        chosen_arm = new_chosen_arm
+                        proposed_experiments = scope.propose_experiment(chosen_arm, num_exp=num_exp, mode=propose_mode)
+
             if proposed_experiments is not None:
                 to_query = proposed_experiments[scope_dict.keys()].to_dict('records')  # generate a list of dicts to query
                 rewards = ground_truth_query(ground_truth, to_query)  # ground truth returns all yields
                 proposed_experiments['yield'] = rewards  # mimic user behavior and fill proposed experiments with yield
                 history = pd.concat([history, proposed_experiments], ignore_index=True)
-            else:
-                pass  # TODO: how to deal with logging and history when no exp is available
 
-            for ii in range(len(rewards)):  # update cumulative_reward, scope, algo and log results
-                cumulative_reward = cumulative_reward + rewards[ii]
-                scope.update_with_index(scope.current_experiment_index[ii], rewards[ii])
-                algo.update(scope.current_arms[ii], rewards[ii])
-                log_arr[sim * num_round * num_exp + r*num_exp+ii, :] = [sim, r, ii, r*num_exp+ii, chosen_arm, rewards[ii], cumulative_reward]
-                history_prefix_arr[sim * num_round * num_exp + r*num_exp+ii, :] = [sim, r, ii, r*num_exp+ii]
-            # scope.predict()  # update prediction models
+                for ii in range(len(rewards)):  # update cumulative_reward, scope, algo and log results
+                    cumulative_reward = cumulative_reward + rewards[ii]
+                    scope.update_with_index(scope.current_experiment_index[ii], rewards[ii])
+                    algo.update(scope.current_arms[ii], rewards[ii])
+                    log_arr[sim * num_round * num_exp + r * num_exp + ii, :] = [sim, r, ii, r * num_exp + ii,
+                                                                                chosen_arm, rewards[ii],
+                                                                                cumulative_reward]
+                    history_prefix_arr[sim * num_round * num_exp + r * num_exp + ii, :] = [sim, r, ii, r * num_exp + ii]
+            else:  # this is where no exp is available and algorithm refuses to choose any other arms
+                pass  # TODO
+
+            if predict:
+                scope.predict()  # update prediction models
 
             # check if expansion is needed
             if check_expand and (r in expansion_rounds):

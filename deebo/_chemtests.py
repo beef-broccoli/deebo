@@ -96,5 +96,51 @@ def deoxyf_adversarial():
                                 )
 
 
+def nickel_borylation():
+    # 60% cutoff for yield, EtOH, use the top ligands identified by z score in paper
+    # top 6 ligand is identical to the ones in the paper
+
+    top_six = ['PPh2Cy', 'CX-PCy', 'PPh3', 'P(p-F-Ph)3', 'P(p-Anis)3', 'Cy-JohnPhos']
+
+    # fetch ground truth data
+    ground_truth = pd.read_csv(
+        'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/nib-etoh.csv', index_col=0)
+
+    ground_truth['yield'] = ground_truth['yield'].apply(utils.cutoffer, args=(60,))
+    ligands = ground_truth['ligand_name'].unique()
+    electrophiles = ground_truth['electrophile_id'].unique()
+
+    #######################################################################################################################
+    # build dictionary for acquisition
+    scope_dict = {'electrophile_id': electrophiles,
+                  'ligand_name': ligands,}
+    arms_dict = {'ligand_name': ligands}
+    algos = [algos_regret.BayesUCBBeta(n_arms=len(ligands)),  # keeps picking CyJohnPhos
+             algos_regret.BayesUCBGaussian(n_arms=len(ligands)),
+             algos_regret.ThompsonSamplingBeta(n_arms=len(ligands)),
+             algos_regret.ThompsonSamplingGaussianFixedVar(n_arms=len(ligands)),
+             algos_regret.UCB1Tuned(n_arms=len(ligands)),
+             algos_regret.UCB1(n_arms=len(ligands)),
+             algos_regret.Random(n_arms=len(ligands)),
+             ]
+    wkdir = './dataset_logs/nib/etoh-60cutoff/'
+    num_sims = 500
+    num_round = 75
+    num_exp = 1
+    propose_mode = 'random'
+    #######################################################################################################################
+
+    for algo in algos:
+        dir_name = f'{wkdir}{algo.__str__()}-{num_sims}s-{num_round}r-{num_exp}e/'
+        p = pathlib.Path(dir_name)
+        p.mkdir(parents=True)
+
+        simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo,
+                                    dir=dir_name, num_sims=num_sims,
+                                    num_round=num_round, num_exp=num_exp, propose_mode=propose_mode,
+                                    )
+    return
+
+
 if __name__ == '__main__':
-    deoxyf_adversarial()
+    nickel_borylation()

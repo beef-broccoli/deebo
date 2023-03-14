@@ -209,12 +209,7 @@ class LUCBPlusPlus(EliminationAlgorithm):
             # add confidence interval for all of them
             top_mean_with_conf = [self.emp_means[int(t)]-self._confidence_interval(self.counts[int(t)], self.delta/(2*(len(self.counts)-self.n_candidates)), option=2) for t in top]
             bottom_mean_with_conf = [self.emp_means[int(t)]+self._confidence_interval(self.counts[int(t)], self.delta/(2*self.n_candidates), option=2) for t in bottom]
-            # print(f'emp_means {self.emp_means}')
-            # print(top)
-            # print(top_mean_with_conf)
-            # print(bottom)
-            # print(bottom_mean_with_conf)
-            # print()
+            # confidence interval values look too big here. Impossible to converge
 
             if min(top_mean_with_conf) > max(bottom_mean_with_conf):  # (k)th element is confidently bigger than (k+1)th element
                 self.best_arms = top  # all top k arms are found, terminate
@@ -253,13 +248,12 @@ class SequentialHalving:
         n_sample = math.floor(
             self.time_limit / (len(self.current_set) * math.ceil(math.log(self.n_arms, 2)))
         )
-        print(n_sample)
         # populate to_play list
         self.to_play = [val for val in self.current_set for _ in range(n_sample)]
         return
 
     def __str__(self):
-        return f'sequental_halving'
+        return f'sequential_halving'
 
     def reset(self):
         self.counts = [0 for col in range(self.n_arms)]
