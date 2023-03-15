@@ -117,7 +117,7 @@ class EpsilonGreedy(RegretAlgorithm):
 class AnnealingEpsilonGreedy(RegretAlgorithm):
 
     def __str__(self):
-        return f'eps_greedy_annealing'
+        return 'eps_greedy_annealing'
 
     def select_next_arm(self):
         t = np.sum(self.counts) + 1

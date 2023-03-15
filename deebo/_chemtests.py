@@ -115,14 +115,8 @@ def nickel_borylation():
     scope_dict = {'electrophile_id': electrophiles,
                   'ligand_name': ligands,}
     arms_dict = {'ligand_name': ligands}
-    algos = [algos_regret.BayesUCBBeta(n_arms=len(ligands)),  # keeps picking CyJohnPhos
-             algos_regret.BayesUCBGaussian(n_arms=len(ligands)),
-             algos_regret.ThompsonSamplingBeta(n_arms=len(ligands)),
-             algos_regret.ThompsonSamplingGaussianFixedVar(n_arms=len(ligands)),
-             algos_regret.UCB1Tuned(n_arms=len(ligands)),
-             algos_regret.UCB1(n_arms=len(ligands)),
-             algos_regret.Random(n_arms=len(ligands)),
-             ]
+    # bayes ucb beta keeps picking the same arm with n_exp=100, but looks to be optimal
+    algos = [algos_regret.AnnealingEpsilonGreedy(len(ligands))]
     wkdir = './dataset_logs/nib/etoh-60cutoff/'
     num_sims = 500
     num_round = 75

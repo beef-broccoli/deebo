@@ -411,15 +411,41 @@ def plot_accuracy_best_arm(best_arm_indexes,
                            title='',
                            legend_title='',
                            long_legend=False,
-                           ignore_first_rounds=0):
+                           ignore_first_rounds=0,
+                           shade_first_rounds=0):
     """
-    Accuracy at each time point.
+    Accuracy up to each time point
     At each time point, consider all past experiments until this point, and pick the arm with the highest number of samples
     Accuracy = (# of times best empirical arm is in best_arm_indexes) / (# of simulations)
 
     Parameters
     ----------
-    best_arm_indexes
+    best_arm_indexes: Collection
+        list of indexes for the best arms
+    fn_list: Collection
+        list of data file names
+    legend_list: Collection
+        list of labels used in legend
+    fp: str
+        file path of the deepest common dir, used with fn_list
+    hlines: Collection
+        list of y axis locations to draw horizontal lines
+    vlines: Collection
+        list of x axis locations to draw horizontal lines
+    etc_baseline: bool
+        draw the explore-then-commit baseline or not
+    etc_fp: str
+        filepath of .npy file that stores numpy array with etc baseline
+    title: str
+        title of plot
+    legend_title: str
+        title of legend
+    long_legend: bool
+        if the legend is long, will move the legend outside of the plot
+    ignore_first_rounds: int
+        ignore the first n data points in the plot for all traces
+    shade_first_rounds: int
+        plot all data points, but vertically shade until x=n. And mark this area as "exploration"
 
     Returns
     -------
@@ -440,11 +466,7 @@ def plot_accuracy_best_arm(best_arm_indexes,
         for vline in vlines:
             plt.axvline(x=vline, ymin=0, ymax=1, linestyle='dashed', color='black', alpha=0.5)
 
-    if etc_baseline:
-        base = np.load(etc_fp)
-        plt.plot(np.arange(len(base))[ignore_first_rounds:], base[ignore_first_rounds:], color='black',
-                 label='explore-then-commit', lw=2)
-
+    max_time_horizon = 0  # etc baseline cuts off at this time horizon
     for i in range(len(fps)):
         fp = fps[i]
         df = pd.read_csv(fp)
@@ -452,6 +474,8 @@ def plot_accuracy_best_arm(best_arm_indexes,
 
         n_simulations = int(np.max(df['num_sims'])) + 1
         time_horizon = int(np.max(df['horizon'])) + 1
+        if time_horizon > max_time_horizon:
+            max_time_horizon = time_horizon
 
         best_arms = np.zeros((n_simulations, time_horizon))  # each time point will have a best arm up to that point
 
@@ -468,6 +492,19 @@ def plot_accuracy_best_arm(best_arm_indexes,
 
         ax.plot(np.arange(time_horizon)[ignore_first_rounds:], probs[ignore_first_rounds:], label=str(legend_list[i]))
 
+    if etc_baseline:
+        base = np.load(etc_fp)
+        plt.plot(np.arange(len(base))[ignore_first_rounds:max_time_horizon], base[ignore_first_rounds:max_time_horizon],
+                 color='black',
+                 label='explore-then-commit',
+                 lw=2,
+                 zorder=-100)
+
+    if shade_first_rounds != 0:
+        ax.axvspan(0, shade_first_rounds, facecolor='lightgray', alpha=0.5, zorder=100)
+        _, ymax = ax.get_ylim()
+        ax.text(shade_first_rounds/2, ymax*0.75, 'exploration', verticalalignment='center', horizontalalignment='center', zorder=101)
+
     ax.set_xlabel('time horizon')
     ax.set_ylabel(f'Accuracy of identifying best arm: {best_arm_indexes}')
     ax.set_title(title)
@@ -480,6 +517,61 @@ def plot_accuracy_best_arm(best_arm_indexes,
     plt.show()
 
     return None
+
+
+#TODO: baseline cumu reward with ETC
+def plot_cumulative_reward(fn_list,
+                           legend_list,
+                           fp='',
+                           title='Cumulative reward',
+                           legend_title='',
+                           ignore_first_rounds=0,
+                           shade_first_rounds=0,
+                           long_legend=False):
+
+    assert len(fn_list) == len(legend_list)
+
+    fps = [fp + fn for fn in fn_list]
+
+    plt.rcParams['savefig.dpi'] = 300
+    fig, ax = plt.subplots()
+
+    for i in range(len(fps)):
+        fp = fps[i]
+        df = pd.read_csv(fp)
+        df = df[['num_sims', 'horizon', 'cumulative_reward']]
+
+        def get_rewards(df):  # for one simulation, calculate reward (average or cumulative) at each time horizon t
+            rewards = df['cumulative_reward'].to_numpy()
+            return rewards
+
+        n_simulations = int(np.max(df['num_sims']))+1
+        time_horizon = int(np.max(df['horizon']))+1
+        all_rewards = np.zeros((n_simulations, time_horizon))
+
+        for ii in range(int(n_simulations)):
+            rewards = df.loc[df['num_sims'] == ii]['cumulative_reward'].to_numpy()
+            all_rewards[ii, :] = rewards
+
+        avg_reward = np.average(all_rewards, axis=0)  # average across simulations. shape: (1, time_horizon)
+        ax.plot(np.arange(time_horizon)[ignore_first_rounds:], avg_reward[ignore_first_rounds:], label=str(legend_list[i]))
+
+    if shade_first_rounds != 0:
+        ax.axvspan(0, shade_first_rounds, facecolor='lightgray', alpha=0.5, zorder=100)
+        _, ymax = ax.get_ylim()
+        ax.text(shade_first_rounds/2, ymax*0.75, 'exploration', verticalalignment='center', horizontalalignment='center', zorder=101)
+
+    ax.set_xlabel('time horizon')
+    ax.set_ylabel('cumulative reward')
+    ax.set_title(title)
+    ax.grid(visible=True, which='both', alpha=0.5)
+    if long_legend:
+        ax.legend(title=legend_title, bbox_to_anchor=(1.02, 1), loc="upper left")
+        plt.tight_layout()
+    else:
+        ax.legend(title=legend_title)
+    plt.show()
+
 
 
 @gif.frame
@@ -698,8 +790,17 @@ if __name__ == '__main__':
                 f'ucb1-{num_sims}s-{num_round}r-{num_exp}e',
                 f'bayes_ucb_gaussian-{num_sims}s-{num_round}r-{num_exp}e',
                 f'bayes_ucb_beta-{num_sims}s-{num_round}r-{num_exp}e',
+                f'eps_greedy_annealing-{num_sims}s-{num_round}r-{num_exp}e',
                 f'random-{num_sims}s-{num_round}r-{num_exp}e',
                 ]]
+    legend_list = ['TS Gaussian',
+                   'TS Beta',
+                   'ucb1-tuned',
+                   'ucb1',
+                   'Bayes ucb gaussian',
+                   'Bayes ucb beta',
+                   'ε-greedy',
+                   'pure exploration']
     fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/nib-etoh.csv'
     with open(f'{dd}ts_gaussian-{num_sims}s-{num_round}r-{num_exp}e/arms.pkl', 'rb') as f:
         arms_dict = pickle.load(f)
@@ -712,18 +813,22 @@ if __name__ == '__main__':
     ligands = [(l,) for l in ligands]
     indexes = [reverse_arms_dict[l] for l in ligands]
 
-    plot_accuracy_best_arm(best_arm_indexes=indexes, fn_list=fn_list,
-                           legend_list=['TS Gaussian',
-                                        'TS Beta',
-                                        'ucb1-tuned',
-                                        'ucb1',
-                                        'Bayes ucb gaussian',
-                                        'Bayes ucb beta',
-                                        'random'],
-                           etc_baseline=False, etc_fp=f'{dd}etc.npy',
-                           ignore_first_rounds=0, title=f'Accuracy of identifying as optimal',
-                           legend_title='algorithm')
+    plot_accuracy_best_arm(best_arm_indexes=indexes,
+                           fn_list=fn_list,
+                           legend_list=legend_list,
+                           etc_baseline=True,
+                           etc_fp=f'{dd}etc.npy',
+                           shade_first_rounds=23,
+                           title=f'Accuracy of identifying optimal ligands',
+                           legend_title='algorithm',
+                           long_legend=True)
 
+    # plot_cumulative_reward(fn_list=fn_list,
+    #                        legend_list=legend_list,
+    #                        title='Cumulative reward',
+    #                        legend_title='algorithm',
+    #                        shade_first_rounds=23,
+    #                        long_legend=True)
     # plot_arm_counts('dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10, bar_errbar=True, plot='box', title='Average # of samples')
 
     # plot_arm_rewards(fp, d='dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10)

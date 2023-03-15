@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from glob import glob
 from utils import plot_info_file_path_match
 
+# check chem_analyze for more up to date functions
 
 def plot_probs_choosing_best_arm_all(folder_path=None):
     """

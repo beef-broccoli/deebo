@@ -1,9 +1,12 @@
 import pandas as pd
 import numpy as np
 import itertools
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.patches as mpatches
+import random
+
 
 
 def plot_all_results():
@@ -172,5 +175,41 @@ def plot_cutoff_heatmap(cutoff=60, solvent='EtOH'):
     return None
 
 
+def simulate_etc(max_sample=3, n_simulations=10000):
+    top_six = ['PPh2Cy', 'CX-PCy', 'PPh3', 'P(p-F-Ph)3', 'P(p-Anis)3', 'Cy-JohnPhos']
+
+    # fetch ground truth data
+    df = pd.read_csv(
+        'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/nib-etoh.csv', index_col=0)
+    df['yield'] = df['yield'].apply(lambda x: 0 if x<60 else 1)
+
+    percentages = []
+    gb = df.groupby(by=['ligand_name'])
+    for n_sample in tqdm(range(max_sample), desc='1st loop'):
+        count = 0
+        for i in tqdm(range(n_simulations), desc='2nd loop', leave=False):
+            sample = gb.sample(n_sample+1).groupby('ligand_name').mean(numeric_only=True)
+            # if sample['yield'].idxmax() in top_six:
+            #     count = count + 1
+            maxs = sample.loc[sample['yield']==sample['yield'].max()]
+            random_one = random.choice(list(maxs.index))
+            if random_one in top_six:
+                count = count+1
+        percentages.append(count/n_simulations)
+
+    print(percentages)
+    # with yield: [0.5971, 0.66, 0.7173]
+    # 60% cutoff binary, no max tie breaking: [0.388, 0.5382, 0.6154]
+    # 60% cutoff binary, with max tie breaking: [0.4301, 0.5488, 0.6136] (helps with sample 1 case, more ties)
+    return None
+
+
 if __name__ == '__main__':
-    plot_cutoff_heatmap()
+    ls = [0.0, 0.4301, 0.5488, 0.6136]
+    etc = []
+    for l in ls:
+        for i in range(23):
+            etc.append(l)
+
+    etc = np.array(etc)
+    np.save('etc.npy', etc)

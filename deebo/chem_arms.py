@@ -681,7 +681,8 @@ def simulate_propose_and_update(scope_dict,
                                                                                 cumulative_reward]
                     history_prefix_arr[sim * num_round * num_exp + r * num_exp + ii, :] = [sim, r, ii, r * num_exp + ii]
             else:  # this is where no exp is available and algorithm refuses to choose any other arms
-                pass  # TODO
+                pass  # TODO: fix? maybe, problem when it comes to analysis
+
 
             if predict:
                 scope.predict()  # update prediction models
