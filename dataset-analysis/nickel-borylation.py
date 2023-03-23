@@ -184,32 +184,36 @@ def simulate_etc(max_sample=3, n_simulations=10000):
     df['yield'] = df['yield'].apply(lambda x: 0 if x<60 else 1)
 
     percentages = []
+    avg_cumu_rewards = []
     gb = df.groupby(by=['ligand_name'])
     for n_sample in tqdm(range(max_sample), desc='1st loop'):
         count = 0
+        reward = 0
         for i in tqdm(range(n_simulations), desc='2nd loop', leave=False):
-            sample = gb.sample(n_sample+1).groupby('ligand_name').mean(numeric_only=True)
-            # if sample['yield'].idxmax() in top_six:
+            sample = gb.sample(n_sample+1).groupby('ligand_name')
+            sample_mean = sample.mean(numeric_only=True)
+            sample_sum = sample.sum(numeric_only=True).sum().values[0]
+            reward = reward+sample_sum
+            # if sample['yield'].idxmax() in top_six:  # no tie breaking when sampling 1 with yield cutoff
             #     count = count + 1
-            maxs = sample.loc[sample['yield']==sample['yield'].max()]
+            maxs = sample_mean.loc[sample_mean['yield']==sample_mean['yield'].max()]
             random_one = random.choice(list(maxs.index))
             if random_one in top_six:
                 count = count+1
         percentages.append(count/n_simulations)
+        avg_cumu_rewards.append(reward/n_simulations)
 
     print(percentages)
+    print(avg_cumu_rewards)
     # with yield: [0.5971, 0.66, 0.7173]
     # 60% cutoff binary, no max tie breaking: [0.388, 0.5382, 0.6154]
     # 60% cutoff binary, with max tie breaking: [0.4301, 0.5488, 0.6136] (helps with sample 1 case, more ties)
+    # 60% cutoff binary, cumulative reward: [7.1552, 14.3058, 21.4805]
     return None
 
 
 if __name__ == '__main__':
-    ls = [0.0, 0.4301, 0.5488, 0.6136]
-    etc = []
-    for l in ls:
-        for i in range(23):
-            etc.append(l)
 
-    etc = np.array(etc)
-    np.save('etc.npy', etc)
+    ls = np.array([0.0, 7.1552, 14.3058, 21.4805])
+    etc = np.repeat(ls, 23)
+    np.save('etc_cumu_reward.npy', etc)
