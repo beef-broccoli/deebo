@@ -519,7 +519,6 @@ def plot_accuracy_best_arm(best_arm_indexes,
     return None
 
 
-#TODO: baseline cumu reward with ETC
 def plot_cumulative_reward(fn_list,
                            legend_list,
                            fp='',
@@ -527,7 +526,9 @@ def plot_cumulative_reward(fn_list,
                            legend_title='',
                            ignore_first_rounds=0,
                            shade_first_rounds=0,
-                           long_legend=False):
+                           long_legend=False,
+                           etc_baseline=False,
+                           etc_fp=''):
 
     assert len(fn_list) == len(legend_list)
 
@@ -536,6 +537,7 @@ def plot_cumulative_reward(fn_list,
     plt.rcParams['savefig.dpi'] = 300
     fig, ax = plt.subplots()
 
+    max_time_horizon=0
     for i in range(len(fps)):
         fp = fps[i]
         df = pd.read_csv(fp)
@@ -548,6 +550,8 @@ def plot_cumulative_reward(fn_list,
         n_simulations = int(np.max(df['num_sims']))+1
         time_horizon = int(np.max(df['horizon']))+1
         all_rewards = np.zeros((n_simulations, time_horizon))
+        if time_horizon > max_time_horizon:
+            max_time_horizon = time_horizon
 
         for ii in range(int(n_simulations)):
             rewards = df.loc[df['num_sims'] == ii]['cumulative_reward'].to_numpy()
@@ -560,6 +564,14 @@ def plot_cumulative_reward(fn_list,
         ax.axvspan(0, shade_first_rounds, facecolor='lightgray', alpha=0.5, zorder=100)
         _, ymax = ax.get_ylim()
         ax.text(shade_first_rounds/2, ymax*0.75, 'exploration', verticalalignment='center', horizontalalignment='center', zorder=101)
+
+    if etc_baseline:
+        base = np.load(etc_fp)
+        plt.plot(np.arange(len(base))[ignore_first_rounds:max_time_horizon], base[ignore_first_rounds:max_time_horizon],
+                 color='black',
+                 label='explore-then-commit',
+                 lw=2,
+                 zorder=-100)
 
     ax.set_xlabel('time horizon')
     ax.set_ylabel('cumulative reward')
@@ -792,6 +804,7 @@ if __name__ == '__main__':
                 f'bayes_ucb_beta-{num_sims}s-{num_round}r-{num_exp}e',
                 f'eps_greedy_annealing-{num_sims}s-{num_round}r-{num_exp}e',
                 f'random-{num_sims}s-{num_round}r-{num_exp}e',
+                f'new_bayes_ucb_beta-{num_sims}s-{num_round}r-{num_exp}e',
                 ]]
     legend_list = ['TS Gaussian',
                    'TS Beta',
@@ -800,7 +813,8 @@ if __name__ == '__main__':
                    'Bayes ucb gaussian',
                    'Bayes ucb beta',
                    'ε-greedy',
-                   'pure exploration']
+                   'pure exploration',
+                   'new-bayes-ucb']
     fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/nib-etoh.csv'
     with open(f'{dd}ts_gaussian-{num_sims}s-{num_round}r-{num_exp}e/arms.pkl', 'rb') as f:
         arms_dict = pickle.load(f)
@@ -828,7 +842,10 @@ if __name__ == '__main__':
     #                        title='Cumulative reward',
     #                        legend_title='algorithm',
     #                        shade_first_rounds=23,
-    #                        long_legend=True)
+    #                        long_legend=True,
+    #                        etc_baseline=True,
+    #                        etc_fp=f'{dd}etc_cumu_reward.npy')
+
     # plot_arm_counts('dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10, bar_errbar=True, plot='box', title='Average # of samples')
 
     # plot_arm_rewards(fp, d='dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10)

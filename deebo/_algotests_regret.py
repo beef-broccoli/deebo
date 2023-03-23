@@ -223,7 +223,29 @@ def bayes_ucb_beta(scenario, n_sims, n_horizon, folder_name, c=2):
     return None
 
 
-def bayes_ucb_gaussian(scenario, n_sims, n_horizon, folder_name, c=2):
+def bayes_ucb_gaussian(scenario, n_sims, n_horizon, folder_name, c=2, assume_sd=0.5):
+
+    fp = folder_name + f'/scenario{scenario}/optim/'
+    output_dir = make_dir(fp)
+
+    means = means_from_scenario(scenario)
+    n_arms = len(means)
+    # sds = [0.5 for i in range(n_arms)]
+    # def build(x, y):
+    #     return NormalArmZeroToOne(x, y)
+    # arms = list(map(build, means, sds))
+    arms = list(map(lambda x: BernoulliArm(x), means))
+
+    algo = BayesUCBGaussian(n_arms, assumed_sd=assume_sd)
+    algo.reset(n_arms)
+    results = test_algorithm_regret(algo, arms, n_sims, n_horizon)
+    filename = f'{algo.__str__()}.csv'
+    results.to_csv(output_dir / filename)
+
+    return None
+
+
+def old_bayes_ucb_beta(scenario, n_sims, n_horizon, folder_name):
 
     fp = folder_name + f'/scenario{scenario}/optim'
     output_dir = make_dir(fp)
@@ -232,10 +254,10 @@ def bayes_ucb_gaussian(scenario, n_sims, n_horizon, folder_name, c=2):
     n_arms = len(means)
     arms = list(map(lambda x: BernoulliArm(x), means))
 
-    algo = BayesUCBGaussian(n_arms, c=c)
+    algo = BayesUCBBeta(n_arms, c=2)
     algo.reset(n_arms)
     results = test_algorithm_regret(algo, arms, n_sims, n_horizon)
-    filename = f'bayes_ucb_gaussian_c={c}.csv'
+    filename = f'bayes_ucb_beta_c=2.csv'
     results.to_csv(output_dir / filename)
 
     return None
@@ -392,21 +414,18 @@ def _test_batched_multialgo(scenario, n_sims, n_horizon, folder_name):
 
 def test_TS_gaussian(scenario, n_sims, n_horizon):
 
-    fp = f'./logs/normal arm/test3/'
+    fp = f'./logs/scenario{scenario}/TS'
     output_dir = make_dir(fp)
 
-    means = [0.1, 0.1, 0.1, 0.1, 0.2]
-    sds = [0.1, 0.3, 0.5, 0.2, 0.2]
+    means = means_from_scenario(scenario)
     n_arms = len(means)
+    arms = list(map(lambda x: BernoulliArm(x), means))
 
-    def build(x, y):
-        return NormalArmZeroToOne(x, y)
-    arms = list(map(build, means, sds))
-
-    # test for epsilon greedy
-    algo = AnnealingEpsilonGreedy(n_arms)
-    results = test_algorithm_regret(algo, arms, n_sims, n_horizon)
-    results.to_csv(output_dir/'annealing_eps_greedy.csv')
+    sds = [0.1, 0.25, 0.5, 0.75, 1]
+    for sd in sds:
+        algo = ThompsonSamplingGaussianFixedVar(n_arms, assumed_sd=sd)
+        results = test_algorithm_regret(algo, arms, n_sims, n_horizon)
+        results.to_csv(output_dir/f'TS_gaussian_assumed_sd_{str(sd)}.csv')
 
     return None
 
@@ -415,8 +434,10 @@ if __name__ == '__main__':
     #test_TS_gaussian(0, 1000, 250)
 
     #test_all(scenario=1, n_sims=50, n_horizon=100, folder_name='./logs/tests')
-    _test_batched_multialgo(2, 1000, 250, './logs/')
+    #_test_batched_multialgo(2, 1000, 250, './logs/')
     #_test_batched(1, 1000, 250, 'logs/')
     #etc(scenario=5, n_sims=1000, n_horizon=500, folder_name='./baseline_logs/')
 
     #test_eps_greedy(1, 3, 200, './test/')
+    for s in [0.1, 0.25, 0.5]:
+        bayes_ucb_gaussian(1, 1000, 250, './logs', assume_sd=s)

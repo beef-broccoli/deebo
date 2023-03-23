@@ -23,7 +23,7 @@ dummy best arm: most played arm for each algorihtm
 import random
 import math
 import numpy as np
-from scipy.stats import beta
+from scipy.stats import beta, norm
 from utils import zero_nor_one
 
 
@@ -361,7 +361,7 @@ class BayesUCBBeta(UCB1):
         return
 
     def __str__(self):
-        return 'bayes_ucb_beta'
+        return f'bayes_ucb_beta_c={self.c}'
 
     def reset(self, n_arms):
         UCB1.reset(self, n_arms)
@@ -382,8 +382,39 @@ class BayesUCBBeta(UCB1):
         self.ucbs = [m + s for m, s in zip(means, stds)]
 
 
-class BayesUCBGaussian(UCB1):
-    # assuming fixed var of 1, similar to TS with gaussian prior
+class NewBayesUCBBeta(UCB1):
+    # tracks better with paper proposal
+    # use Beta.ppf(1-1/t, alpha, beta)
+    # https://github.com/Ralami1859/Stochastic-Multi-Armed-Bandit/blob/master/Modules/BayesUCB_RecommendArm.m
+
+    def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None, alphas=None, betas=None, batch=False):
+        UCB1.__init__(self, n_arms, counts, emp_means, ucbs, batch)
+        self.alphas = alphas if alphas else [1.0 for col in range(n_arms)]
+        self.betas = betas if betas else [1.0 for col in range(n_arms)]
+        return
+
+    def __str__(self):
+        return 'new_bayes_ucb_beta'
+
+    def reset(self, n_arms):
+        UCB1.reset(self, n_arms)
+        self.alphas = [1.0 for col in range(n_arms)]
+        self.betas = [1.0 for col in range(n_arms)]
+        return
+
+    def update(self, chosen_arm, reward):
+        RegretAlgorithm.update(self, chosen_arm, reward)
+
+        # update α and β
+        self.alphas[chosen_arm] = self.alphas[chosen_arm] + reward
+        self.betas[chosen_arm] = self.betas[chosen_arm] + (1-reward)
+
+        # update UCB values
+        self.ucbs = [beta.ppf((1-1/sum(self.counts)), a, b) for a, b in zip(self.alphas, self.betas)]
+
+
+class BayesUCBGaussianSquared(UCB1):
+    # similar to TS squared, the posterior update is missing the square root
 
     def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None, c=2, batch=False):
         UCB1.__init__(self, n_arms, counts, emp_means, ucbs, batch)
@@ -392,7 +423,7 @@ class BayesUCBGaussian(UCB1):
         return
 
     def __str__(self):
-        return f'bayes_ucb_gaussian'
+        return f'bayes_ucb_gaussian_squared_c={self.c}'
 
     def update(self, chosen_arm, reward):
         RegretAlgorithm.update(self, chosen_arm, reward)
@@ -400,7 +431,40 @@ class BayesUCBGaussian(UCB1):
         self.ucbs = [m + s for m, s in zip(self.emp_means, stds)]
 
 
+class NewBayesUCBGaussian(UCB1):
+    # use the same posterior as TS gaussian fixed var, calculate probability as in BayesUCB paper
+
+    def __str__(self):
+        return f'new_bayes_ucb_gaussian'
+
+    def update(self, chosen_arm, reward):
+        RegretAlgorithm.update(self, chosen_arm, reward)
+        stds = [1 / math.sqrt(c + 1) for c in self.counts]
+        self.ucbs = [norm.ppf((1-1/sum(self.counts)), m, s) for m, s in zip(self.emp_means, stds)]
+
+
+class BayesUCBGaussian(UCB1):
+    # for ucb, use mean+c*posterior std/sqrt(N)
+    # https://www.davidsilver.uk/wp-content/uploads/2020/03/XX.pdf
+
+    def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None, c=2, assumed_sd=0.5, batch=False):
+        UCB1.__init__(self, n_arms, counts, emp_means, ucbs, batch)
+        self.c = c  # num of std's to consider as confidence bound
+        self.assumed_sd = assumed_sd
+        # c=1 is better for scenario 2, all others use c=2
+        return
+
+    def __str__(self):
+        return f'bayes_ucb_gaussian_c={self.c}_assumed_sd={self.assumed_sd}'
+
+    def update(self, chosen_arm, reward):
+        RegretAlgorithm.update(self, chosen_arm, reward)
+        stds = [self.c * self.assumed_sd/math.sqrt(cc+1e-7) for cc in self.counts]
+        self.ucbs = [m + s for m, s in zip(self.emp_means, stds)]
+
+
     # class KLUCB(UCB1):
+
 #
 #     # override
 #     def update(self, chosen_arm, reward):
@@ -571,11 +635,37 @@ class ThompsonSamplingGaussianFixedVar(RegretAlgorithm):
     # gaussian prior, assume fixed variance of 1
     # can also be used non-parametric stochastic MAB with log regret
 
+    def __init__(self, n_arms, counts=None, emp_means=None, assumed_sd=1):
+        RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
+        self.assumed_sd = assumed_sd
+        return
+
     def __str__(self):
         return 'ts_gaussian'
 
     def select_next_arm(self):
-        stds = [1/(c+1) for c in self.counts]
+        stds = [self.assumed_sd/math.sqrt(c+1) for c in self.counts]
+        rng = np.random.default_rng()
+        probs = rng.normal(self.emp_means, stds)
+        return np.argmax(probs)
+
+
+class ThompsonSamplingGaussianFixedVarSquared(RegretAlgorithm):
+    # TS for gaussian arms, assume unknown mean but known variance
+    # gaussian prior, assume fixed variance of 1, variance is squared
+    # this was a mistake when implemented, but actually works well
+    # can also be used non-parametric stochastic MAB with log regret
+
+    def __init__(self, n_arms, counts=None, emp_means=None, assumed_sd=1):
+        RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
+        self.assumed_sd = assumed_sd
+        return
+
+    def __str__(self):
+        return 'ts_gaussian_squared'
+
+    def select_next_arm(self):
+        stds = [self.assumed_sd/(c+1) for c in self.counts]
         rng = np.random.default_rng()
         probs = rng.normal(self.emp_means, stds)
         return np.argmax(probs)

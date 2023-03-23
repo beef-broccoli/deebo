@@ -116,7 +116,7 @@ def nickel_borylation():
                   'ligand_name': ligands,}
     arms_dict = {'ligand_name': ligands}
     # bayes ucb beta keeps picking the same arm with n_exp=100, but looks to be optimal
-    algos = [algos_regret.AnnealingEpsilonGreedy(len(ligands))]
+    algos = [algos_regret.NewBayesUCBBeta(len(ligands))]
     wkdir = './dataset_logs/nib/etoh-60cutoff/'
     num_sims = 500
     num_round = 75

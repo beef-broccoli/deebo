@@ -390,7 +390,12 @@ if __name__ == '__main__':
                   'softmax/tau_0.2',
                   'pursuit/lr_0.05',
                   'optim/ucb1_tuned',
-                  'optim/TS'
+                  'TS/TS_beta',
+                  'TS/TS_gaussian_squared',
+                  'optim/bayes_ucb_beta_c=2',
+                  'optim/new_bayes_ucb_beta',
+                  'optim/bayes_ucb_gaussian_c=2_squared',
+                  'optim/bayes_ucb_gaussian_c=2_assumed_sd=0.25',
                   ]
         fn_list = [f'{prefix}{n}.csv' for n in n_list]
         plot_probs_choosing_best_arm(
@@ -399,13 +404,19 @@ if __name__ == '__main__':
                          'softmax (tau=0.2)',
                          'pursuit (lr=0.05)',
                          'ucb1-tuned',
-                         'thompson sampling (beta prior)'],
+                         'thompson sampling (beta prior)',
+                         'thompson sampling (normal prior, squared)',
+                         'bayes ucb (beta prior, 2SD)',
+                         'bayes ucb (beta prior, ppf)',
+                         'bayes ucb (normal prior, squared)',
+                         'bayes ucb (normal prior, 2SD, 0.25)',
+                         ],
             etc_baseline=True,
             etc_fp=f'{prefix}baseline.npy',
             title='Accuracy of scenario 1 best performers',
             legend_title='algorithms',
             best_arm_index=4,
-            long_legend=False,
+            long_legend=True,
             ignore_first_rounds=5
         )
         return None
@@ -510,17 +521,29 @@ if __name__ == '__main__':
         )
         return None
 
-    plot_average_reward(
-        fn_list=['./logs/scenario1/batch/multialgo/UCB1Tuned-BayesUCBBeta-BayesUCBGaussian(c=1)-TSGaussianFixedVar.csv',
-                 './logs/scenario1/optim/ucb1_tuned.csv',
-                 './logs/scenario1/TS/TS_gaussian_var=1.csv',
-                 './logs/scenario1/optim/bayes_ucb_beta_c=2.csv',
-                 './logs/scenario1/optim/bayes_ucb_gaussian_c=1.csv',],
-        legend_list=['batched',
-                     'UCB1 tuned',
-                     'Thompson sampling (gaussian prior)',
-                     'Bayes UCB (beta prior, 2SD)',
-                     'Bayes UCB (gaussian prior, 1SD)'],
-        legend_title='Algorithms',
-        title='Test scenario 1, batched, average reward '
-    )
+    scenario1_best_perfomers()
+
+    # s = 1
+    # sd = 0.25
+    # plot_probs_choosing_best_arm(
+    #     fn_list=[f'./logs/normal arm/scenario1/BayesUCBGaussian/real_sd_{sd}/bayes_ucb_gaussian_c=2_assumed_sd=0.1.csv',
+    #              f'./logs/normal arm/scenario1/BayesUCBGaussian/real_sd_{sd}/bayes_ucb_gaussian_c=2_assumed_sd=0.25.csv',
+    #              f'./logs/normal arm/scenario1/BayesUCBGaussian/real_sd_{sd}/bayes_ucb_gaussian_c=2_assumed_sd=0.5.csv',
+    #              f'./logs/normal arm/scenario1/BayesUCBGaussian/real_sd_{sd}/bayes_ucb_gaussian_c=2_assumed_sd=0.75.csv',
+    #              f'./logs/normal arm/scenario1/BayesUCBGaussian/real_sd_{sd}/bayes_ucb_gaussian_c=2_assumed_sd=1.csv',
+    #              f'./logs/normal arm/scenario1/BayesUCBGaussian/real_sd_{sd}/bayes_ucb_gaussian_squared_c=2.csv',
+    #              f'./logs/normal arm/scenario1/BayesUCBGaussian/real_sd_{sd}/new_bayes_ucb_gaussian.csv',
+    #              ],
+    #     legend_list=['apporach 1, assume sd 0.1',
+    #                  'apporach 1, assume sd 0.25',
+    #                  'apporach 1, assume sd 0.5',
+    #                  'apporach 1, assume sd 0.75',
+    #                  'apporach 1, assume sd 1',
+    #                  '"squared"',
+    #                  'apporach 2 (ppf)'
+    #     ],
+    #     legend_title='confidence bound',
+    #     title=f'Actual SD={sd}',
+    #     best_arm_index=4,
+    #     ignore_first_rounds=5,
+    # )
