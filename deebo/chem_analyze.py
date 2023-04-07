@@ -412,7 +412,8 @@ def plot_accuracy_best_arm(best_arm_indexes,
                            legend_title='',
                            long_legend=False,
                            ignore_first_rounds=0,
-                           shade_first_rounds=0):
+                           shade_first_rounds=0,
+                           max_horizon_plot=0):
     """
     Accuracy up to each time point
     At each time point, consider all past experiments until this point, and pick the arm with the highest number of samples
@@ -446,6 +447,8 @@ def plot_accuracy_best_arm(best_arm_indexes,
         ignore the first n data points in the plot for all traces
     shade_first_rounds: int
         plot all data points, but vertically shade until x=n. And mark this area as "exploration"
+    max_horizon_plot: int
+        plot until this maximum time horizon
 
     Returns
     -------
@@ -490,7 +493,13 @@ def plot_accuracy_best_arm(best_arm_indexes,
         boo = visinfunc(best_arms)
         probs = boo.sum(axis=0)/n_simulations
 
-        ax.plot(np.arange(time_horizon)[ignore_first_rounds:], probs[ignore_first_rounds:], label=str(legend_list[i]))
+        if max_horizon_plot == 0:
+            ax.plot(np.arange(time_horizon)[ignore_first_rounds:], probs[ignore_first_rounds:], label=str(legend_list[i]))
+        else:
+            ax.plot(np.arange(time_horizon)[ignore_first_rounds:max_horizon_plot], probs[ignore_first_rounds:max_horizon_plot],
+                    label=str(legend_list[i]))
+    if max_horizon_plot != 0:
+        max_time_horizon = max_horizon_plot  # adjust max_time_horizon again before plotting ETC
 
     if etc_baseline:
         base = np.load(etc_fp)
@@ -503,9 +512,15 @@ def plot_accuracy_best_arm(best_arm_indexes,
     if shade_first_rounds != 0:
         ax.axvspan(0, shade_first_rounds, facecolor='lightgray', alpha=0.5, zorder=100)
         _, ymax = ax.get_ylim()
-        ax.text(shade_first_rounds/2, ymax*0.75, 'exploration', verticalalignment='center', horizontalalignment='center', zorder=101)
+        ax.text(shade_first_rounds/2, ymax*0.75, 'exploration', verticalalignment='center',
+                horizontalalignment='center', zorder=101, rotation=90)
 
-    ax.set_xlabel('time horizon')
+    ##custom text area
+    ax.text(37, 0.91, '1% of data', c='black', backgroundcolor='whitesmoke', fontstyle='italic', fontweight='semibold', ha='center', va='center')
+    ax.text(70, 0.96, '2% of data', c='black', backgroundcolor='whitesmoke', fontstyle='italic', fontweight='semibold', ha='center', va='center')
+    ##
+
+    ax.set_xlabel('time horizon (number of experiments)')
     ax.set_ylabel(f'Accuracy of identifying best arm: {best_arm_indexes}')
     ax.set_title(title)
     ax.grid(visible=True, which='both', alpha=0.5)
@@ -791,60 +806,168 @@ def make_heatmap_gif(plot_func, n_sim=0, max_n_round=100, binary=False, history_
 if __name__ == '__main__':
     import pickle
 
-    dd = 'dataset_logs/nib/etoh-60cutoff/'
-    num_sims = 500
-    num_round = 75
-    num_exp = 1
-    fn_list = [f'{dd}{n}/log.csv' for n in
-               [f'ts_gaussian-{num_sims}s-{num_round}r-{num_exp}e',
-                f'ts_beta-{num_sims}s-{num_round}r-{num_exp}e',
-                f'ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e',
-                f'ucb1-{num_sims}s-{num_round}r-{num_exp}e',
-                f'bayes_ucb_gaussian-{num_sims}s-{num_round}r-{num_exp}e',
-                f'bayes_ucb_beta-{num_sims}s-{num_round}r-{num_exp}e',
-                f'eps_greedy_annealing-{num_sims}s-{num_round}r-{num_exp}e',
-                f'random-{num_sims}s-{num_round}r-{num_exp}e',
-                f'new_bayes_ucb_beta-{num_sims}s-{num_round}r-{num_exp}e',
-                ]]
-    legend_list = ['TS Gaussian',
-                   'TS Beta',
-                   'ucb1-tuned',
-                   'ucb1',
-                   'Bayes ucb gaussian',
-                   'Bayes ucb beta',
-                   'ε-greedy',
-                   'pure exploration',
-                   'new-bayes-ucb']
-    fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/nib-etoh.csv'
-    with open(f'{dd}ts_gaussian-{num_sims}s-{num_round}r-{num_exp}e/arms.pkl', 'rb') as f:
-        arms_dict = pickle.load(f)
+    def nib():
+        dd = 'dataset_logs/nib/etoh-60cutoff/'
+        num_sims = 500
+        num_round = 75
+        num_exp = 1
+        fn_list = [f'{dd}{n}/log.csv' for n in
+                   [f'ts_gaussian_squared-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'ts_beta-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'ucb1-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'bayes_ucb_gaussian_squared_c=2-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'bayes_ucb_beta-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'new_bayes_ucb_beta-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'eps_greedy_annealing-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'random-{num_sims}s-{num_round}r-{num_exp}e',
+                    ]]
+        legend_list = ['TS (normal prior)',
+                       'TS (beta prior)',
+                       'ucb1-tuned',
+                       'ucb1',
+                       'Bayes ucb (normal prior)',
+                       'Bayes ucb (beta prior, 2SD)',
+                       'Bayes ucb (beta prior, ppf)',
+                       'ε-greedy',
+                       'pure exploration']
+        fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/nib-etoh.csv'
+        with open(f'{dd}random-{num_sims}s-{num_round}r-{num_exp}e/arms.pkl', 'rb') as f:
+            arms_dict = pickle.load(f)
 
-    reverse_arms_dict = {v: k for k, v in arms_dict.items()}
-    # ligands = ['Cy-BippyPhos', 'CgMe-PPh', 'Et-PhenCar-Phos', 'JackiePhos', 'tBPh-CPhos']
-    # ligands = ['Et-PhenCar-Phos', 'JackiePhos']
-    #ligands = [(b,) for b in bs]
-    ligands = ['PPh2Cy', 'CX-PCy', 'PPh3', 'P(p-F-Ph)3', 'P(p-Anis)3', 'Cy-JohnPhos']
-    ligands = [(l,) for l in ligands]
-    indexes = [reverse_arms_dict[l] for l in ligands]
+        reverse_arms_dict = {v: k for k, v in arms_dict.items()}
+        # ligands = ['Cy-BippyPhos', 'CgMe-PPh', 'Et-PhenCar-Phos', 'JackiePhos', 'tBPh-CPhos']
+        # ligands = ['Et-PhenCar-Phos', 'JackiePhos']
+        #ligands = [(b,) for b in bs]
+        ligands = ['PPh2Cy', 'CX-PCy', 'PPh3', 'P(p-F-Ph)3', 'P(p-Anis)3', 'Cy-JohnPhos']
+        ligands = [(l,) for l in ligands]
+        indexes = [reverse_arms_dict[l] for l in ligands]
 
-    plot_accuracy_best_arm(best_arm_indexes=indexes,
-                           fn_list=fn_list,
-                           legend_list=legend_list,
-                           etc_baseline=True,
-                           etc_fp=f'{dd}etc.npy',
-                           shade_first_rounds=23,
-                           title=f'Accuracy of identifying optimal ligands',
-                           legend_title='algorithm',
-                           long_legend=True)
+        # plot_accuracy_best_arm(best_arm_indexes=indexes,
+        #                        fn_list=fn_list,
+        #                        legend_list=legend_list,
+        #                        etc_baseline=True,
+        #                        etc_fp=f'{dd}etc.npy',
+        #                        shade_first_rounds=23,
+        #                        title=f'Accuracy of identifying optimal ligands',
+        #                        legend_title='algorithm',
+        #                        long_legend=True)
 
-    # plot_cumulative_reward(fn_list=fn_list,
-    #                        legend_list=legend_list,
-    #                        title='Cumulative reward',
-    #                        legend_title='algorithm',
-    #                        shade_first_rounds=23,
-    #                        long_legend=True,
-    #                        etc_baseline=True,
-    #                        etc_fp=f'{dd}etc_cumu_reward.npy')
+        plot_cumulative_reward(fn_list=fn_list,
+                               legend_list=legend_list,
+                               title='Cumulative reward',
+                               legend_title='algorithm',
+                               shade_first_rounds=23,
+                               long_legend=True,
+                               etc_baseline=True,
+                               etc_fp=f'{dd}etc_cumu_reward.npy')
+        return
+
+    def deoxyf():
+        dd = 'dataset_logs/deoxyf/combo/'
+        num_sims = 400
+        num_round = 150
+        num_exp = 1
+        fn_list = [f'{dd}{n}/log.csv' for n in
+                   [f'ts_gaussian_squared-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'ts_gaussian_assumed_sd_0.25-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'bayes_ucb_gaussian_squared_c=2-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-100r-{num_exp}e',
+                    f'eps_greedy_annealing-{num_sims}s-{num_round}r-{num_exp}e',
+                    ]]
+        legend_list = ['TS (squared)',
+                       'TS (fixed sd 0.25)',
+                       'ucb1-tuned',
+                       'Bayes ucb (2SD, squared)',
+                       'Bayes ucb (2SD, 0.25)',
+                       'ε-greedy',]
+        #f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-{num_round}r-{num_exp}e',
+        # 'Bayes ucb (2SD, 0.25)',
+        fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv'
+        with open(f'{dd}random-{num_sims}s-{num_round}r-{num_exp}e/arms.pkl', 'rb') as f:
+            arms_dict = pickle.load(f)
+
+        reverse_arms_dict = {v: k for k, v in arms_dict.items()}
+        # ligands = ['Cy-BippyPhos', 'CgMe-PPh', 'Et-PhenCar-Phos', 'JackiePhos', 'tBPh-CPhos']
+        # ligands = ['Et-PhenCar-Phos', 'JackiePhos']
+        #ligands = [(b,) for b in bs]
+        ligands = [('BTMG', 'PBSF'), ('BTPP', 'PBSF')]
+        indexes = [reverse_arms_dict[l] for l in ligands]
+
+        plot_accuracy_best_arm(best_arm_indexes=indexes,
+                               fn_list=fn_list,
+                               legend_list=legend_list,
+                               etc_baseline=True,
+                               etc_fp=f'{dd}etc/pbsf_btpp_btmg.npy',
+                               shade_first_rounds=20,
+                               title=f'Accuracy of identifying {ligands} as optimal',
+                               legend_title='algorithm',
+                               long_legend=False,
+                               max_horizon_plot=100)
+
+        # plot_cumulative_reward(fn_list=fn_list,
+        #                        legend_list=legend_list,
+        #                        title='Cumulative reward',
+        #                        legend_title='algorithm',
+        #                        shade_first_rounds=23,
+        #                        long_legend=True,
+        #                        etc_baseline=True,
+        #                        etc_fp=f'{dd}etc_cumu_reward.npy')
+        return
+
+    def cn():
+        dd = 'dataset_logs/cn/'
+        num_sims = 500
+        num_round = 100
+        num_exp = 1
+        fn_list = [f'{dd}{n}/log.csv' for n in
+                   [f'ts_gaussian_squared-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'ts_gaussian_assumed_sd_0.25-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'bayes_ucb_gaussian_squared_c=2-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-100r-{num_exp}e',
+                    f'eps_greedy_annealing-{num_sims}s-{num_round}r-{num_exp}e',
+                    ]]
+        legend_list = ['TS (squared)',
+                       'TS (fixed sd 0.25)',
+                       'ucb1-tuned',
+                       'Bayes ucb (2SD, squared)',
+                       'Bayes ucb (2SD, 0.25)',
+                       'ε-greedy',]
+        #f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-{num_round}r-{num_exp}e',
+        # 'Bayes ucb (2SD, 0.25)',
+        fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/cn-processed.csv'
+        with open(f'{dd}ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e/arms.pkl', 'rb') as f:
+            arms_dict = pickle.load(f)
+
+        reverse_arms_dict = {v: k for k, v in arms_dict.items()}
+        # ligands = ['Cy-BippyPhos', 'CgMe-PPh', 'Et-PhenCar-Phos', 'JackiePhos', 'tBPh-CPhos']
+        # ligands = ['Et-PhenCar-Phos', 'JackiePhos']
+        #ligands = [(b,) for b in bs]
+        ligands = [('MTBD', 'tBuXPhos'),
+                   ('MTBD', 'tBuBrettPhos'),
+                   ('MTBD', 'AdBrettPhos')]
+        # ligands = [('MTBD', 'tBuXPhos'),
+        #            ('MTBD', 'tBuBrettPhos')]
+        # ligands = [('MTBD', 'tBuXPhos'),]
+        indexes = [reverse_arms_dict[l] for l in ligands]
+
+        plot_accuracy_best_arm(best_arm_indexes=indexes,
+                               fn_list=fn_list,
+                               legend_list=legend_list,
+                               etc_baseline=False,
+                               etc_fp=f'{dd}/etc/top3.npy',
+                               shade_first_rounds=12,
+                               ignore_first_rounds=12,
+                               title=f'Accuracy of identifying {ligands} as optimal',
+                               legend_title='algorithm',
+                               long_legend=False,
+                               max_horizon_plot=100,
+                               vlines=[36, 72],
+                               hlines=[0.96])
+
+    cn()
 
     # plot_arm_counts('dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10, bar_errbar=True, plot='box', title='Average # of samples')
 

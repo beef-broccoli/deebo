@@ -26,11 +26,12 @@ def deoxyf():
                   'fluoride_name': fluorides,
                   'substrate_name': substrates}
     arms_dict = {'base_name': bases,
-                 'fluoride_name': fluorides,}
-    algo = algos_regret.ETC(len(bases), explore_limit=2)
+                 'fluoride_name': fluorides}
+    #algo = algos_regret.ThompsonSamplingGaussianFixedVar(len(bases)*len(fluorides), assumed_sd=0.25)
+    algo = algos_regret.BayesUCBGaussian(len(bases)*len(fluorides), assumed_sd=0.25)
     wkdir = './dataset_logs/deoxyf/combo/'
-    num_sims = 1
-    num_round = 73
+    num_sims = 400
+    num_round = 100
     num_exp = 1
     propose_mode = 'random'
 #######################################################################################################################
@@ -116,10 +117,10 @@ def nickel_borylation():
                   'ligand_name': ligands,}
     arms_dict = {'ligand_name': ligands}
     # bayes ucb beta keeps picking the same arm with n_exp=100, but looks to be optimal
-    algos = [algos_regret.NewBayesUCBBeta(len(ligands))]
+    algos = [algos_regret.BayesUCBGaussian(len(ligands))]
     wkdir = './dataset_logs/nib/etoh-60cutoff/'
     num_sims = 500
-    num_round = 75
+    num_round = 55
     num_exp = 1
     propose_mode = 'random'
     #######################################################################################################################
@@ -136,5 +137,56 @@ def nickel_borylation():
     return
 
 
+def cn():
+    # fetch ground truth data
+    ground_truth = pd.read_csv(
+        'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/cn-processed.csv')
+
+    ground_truth['yield'] = ground_truth['yield'].apply(utils.scaler)
+    ground_truth = ground_truth[['base_name',
+                                 'ligand_name',
+                                 'substrate_id',
+                                 'additive_id',
+                                 'yield']]
+
+    bases = ground_truth['base_name'].unique()
+    ligands = ground_truth['ligand_name'].unique()
+    additives = ground_truth['additive_id'].unique()
+    substrates = ground_truth['substrate_id'].unique()
+
+    #######################################################################################################################
+    # build dictionary for acquisition
+    scope_dict = {'base_name': bases,
+                  'ligand_name': ligands,
+                  'additive_id': additives,
+                  'substrate_id': substrates}
+    arms_dict = {'base_name': bases,
+                 'ligand_name': ligands}
+    n_arms = len(bases)*len(ligands)
+    algos = [algos_regret.UCB1Tuned(n_arms),
+             algos_regret.UCB1(n_arms),
+             algos_regret.AnnealingEpsilonGreedy(n_arms),
+             algos_regret.ThompsonSamplingGaussianFixedVar(n_arms, assumed_sd=0.25),
+             algos_regret.ThompsonSamplingGaussianFixedVarSquared(n_arms),
+             algos_regret.BayesUCBGaussian(n_arms, assumed_sd=0.25, c=2),
+             algos_regret.BayesUCBGaussianSquared(n_arms, c=2),
+             algos_regret.Random(n_arms)]
+    # algo = algos_regret.ThompsonSamplingGaussianFixedVar(len(bases)*len(fluorides), assumed_sd=0.25)
+    wkdir = './dataset_logs/cn/'
+    num_sims = 500
+    num_round = 100
+    num_exp = 1
+    propose_mode = 'random'
+    #######################################################################################################################
+    for algo in algos:
+        dir_name = f'{wkdir}{algo.__str__()}-{num_sims}s-{num_round}r-{num_exp}e/'
+        p = pathlib.Path(dir_name)
+        p.mkdir(parents=True)
+
+        simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo,
+                                    dir=dir_name, num_sims=num_sims,
+                                    num_round=num_round, num_exp=num_exp, propose_mode=propose_mode)
+
+
 if __name__ == '__main__':
-    nickel_borylation()
+    cn()

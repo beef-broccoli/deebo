@@ -408,7 +408,7 @@ if __name__ == '__main__':
                          'thompson sampling (normal prior, squared)',
                          'bayes ucb (beta prior, 2SD)',
                          'bayes ucb (beta prior, ppf)',
-                         'bayes ucb (normal prior, squared)',
+                         'bayes ucb (normal prior, 2SD, squared)',
                          'bayes ucb (normal prior, 2SD, 0.25)',
                          ],
             etc_baseline=True,
@@ -423,22 +423,25 @@ if __name__ == '__main__':
 
     def scenario2_best_perfomers():
         prefix = 'logs/scenario2/'
-        n_list = ['eps_greedy/annealing',
-                  'softmax/tau_0.05',
-                  'pursuit/lr_0.05',
-                  'rc/rc_alpha_0.01_beta_0.4',
-                  'optim/ucb1_tuned',
-                  'optim/TS'
+        n_list = ['optim/ucb1_tuned',
+                  'TS/TS_beta',
+                  'TS/TS_gaussian_squared',
+                  'optim/bayes_ucb_beta_c=1',
+                  'optim/new_bayes_ucb_beta',
+                  'optim/bayes_ucb_gaussian_c=1_squared',
+                  'optim/bayes_ucb_gaussian_c=2_assumed_sd=0.25',
                   ]
         fn_list = [f'{prefix}{n}.csv' for n in n_list]
         plot_probs_choosing_best_arm(
             fn_list=fn_list,
-            legend_list=['eps greedy(annealing)',
-                         'softmax (τ=0.05)',
-                         'pursuit (lr=0.05)',
-                         'reinforcement comparison (α=0.01, β=0.4)',
-                         'ucb1-tuned',
-                         'thompson sampling (beta prior)'],
+            legend_list=['ucb1-tuned',
+                         'TS (beta prior)',
+                         'TS (normal prior, squared)',
+                         'bayes ucb (beta prior, 1SD)',
+                         'bayes ucb (beta prior, ppf)',
+                         'bayes ucb (normal prior, 1SD, squared)',
+                         'bayes ucb (normal prior, 2SD, 0.25)',
+                         ],
             etc_baseline=True,
             etc_fp=f'{prefix}baseline.npy',
             title='Accuracy of scenario 2 best performers',
@@ -451,18 +454,25 @@ if __name__ == '__main__':
 
     def scenario3_best_perfomers():
         prefix = 'logs/scenario3/'
-        n_list = ['eps_greedy/annealing',
-                  'pursuit/lr_0.05',
-                  'optim/ucb1_tuned',
-                  'optim/TS'
+        n_list = ['optim/ucb1_tuned',
+                  'TS/TS_beta',
+                  'TS/TS_gaussian_squared',
+                  'optim/bayes_ucb_beta_c=2',
+                  'optim/new_bayes_ucb_beta',
+                  'optim/bayes_ucb_gaussian_c=2_squared',
+                  'optim/bayes_ucb_gaussian_c=2_assumed_sd=0.25',
                   ]
         fn_list = [f'{prefix}{n}.csv' for n in n_list]
         plot_probs_choosing_best_arm(
             fn_list=fn_list,
-            legend_list=['eps greedy(annealing)',
-                         'pursuit (lr=0.05)',
-                         'ucb1-tuned',
-                         'thompson sampling (beta prior)'],
+            legend_list=['ucb1-tuned',
+                         'TS (beta prior)',
+                         'TS (normal prior, squared)',
+                         'bayes ucb (beta prior, 2SD)',
+                         'bayes ucb (beta prior, ppf)',
+                         'bayes ucb (normal prior, 2SD, squared)',
+                         'bayes ucb (normal prior, 2SD, 0.25)',
+                         ],
             etc_baseline=True,
             etc_fp=f'{prefix}baseline.npy',
             title='Accuracy of scenario 3 best performers',
@@ -521,7 +531,35 @@ if __name__ == '__main__':
         )
         return None
 
-    scenario1_best_perfomers()
+    def normal_scenario1_best_performers(sd=0.5):
+        prefix = 'logs/normal arm/scenario1/'
+        n_list = [f'eps_greedy_annealing_real_sd_{sd}',
+                  f'ucb1tuned_real_sd_{sd}',
+                  f'TS/real_sd_{sd}/assume_sd_0.25',
+                  f'TS/TS_squared/realsd_{sd}',
+                  f'BayesUCBGaussian/real_sd_{sd}/bayes_ucb_gaussian_c=2_assumed_sd=0.25',
+                  f'BayesUCBGaussian/real_sd_{sd}/bayes_ucb_gaussian_squared_c=2',
+                  ]
+        fn_list = [f'{prefix}{n}.csv' for n in n_list]
+        plot_probs_choosing_best_arm(
+            fn_list=fn_list,
+            legend_list=['eps greedy (annealing)',
+                         'ucb1-tuned',
+                         'TS (fixed sd 0.25)',
+                         'TS (squared)',
+                         'bayes ucb (normal prior, 2SD, 0.25)',
+                         'bayes ucb (normal prior, 2SD, squared)',
+                         ],
+            etc_baseline=False,
+            etc_fp=f'{prefix}baseline.npy',
+            title='Accuracy of normal reward testing, best performers',
+            legend_title='algorithms',
+            best_arm_index=4,
+            long_legend=False,
+            ignore_first_rounds=5
+        )
+
+    normal_scenario1_best_performers()
 
     # s = 1
     # sd = 0.25

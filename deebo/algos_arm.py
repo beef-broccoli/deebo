@@ -8,7 +8,7 @@ Implemented algorithms for best arm identification in multi-armed bandit problem
     Basically the emp. average of (k)th and the (k+1)th best arms have to be two confidence intervals apart
     But a lot of cases the differences in true average are too small to make this work.
     Maybe i didn't choose the right confidence interval?
-
+- Sequential halving
 
 Did not implement:
 Exponential-gap elimination: requires repeated sampling of one arm, way too many experiments needed

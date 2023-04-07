@@ -223,23 +223,23 @@ def bayes_ucb_beta(scenario, n_sims, n_horizon, folder_name, c=2):
     return None
 
 
-def bayes_ucb_gaussian(scenario, n_sims, n_horizon, folder_name, c=2, assume_sd=0.5):
+def ucb1tunednormal(scenario, n_sims, n_horizon, folder_name, c=2, assume_sd=0.5):
 
-    fp = folder_name + f'/scenario{scenario}/optim/'
+    fp = folder_name + f'/scenario{scenario}/TS/TS_squared/'
     output_dir = make_dir(fp)
 
     means = means_from_scenario(scenario)
     n_arms = len(means)
-    # sds = [0.5 for i in range(n_arms)]
-    # def build(x, y):
-    #     return NormalArmZeroToOne(x, y)
-    # arms = list(map(build, means, sds))
-    arms = list(map(lambda x: BernoulliArm(x), means))
+    sds = [0.25 for i in range(n_arms)]
+    def build(x, y):
+        return NormalArmZeroToOne(x, y)
+    arms = list(map(build, means, sds))
+    # arms = list(map(lambda x: BernoulliArm(x), means))
 
-    algo = BayesUCBGaussian(n_arms, assumed_sd=assume_sd)
+    algo = ThompsonSamplingGaussianFixedVarSquared(n_arms)
     algo.reset(n_arms)
     results = test_algorithm_regret(algo, arms, n_sims, n_horizon)
-    filename = f'{algo.__str__()}.csv'
+    filename = 'realsd_0.25.csv'
     results.to_csv(output_dir / filename)
 
     return None
@@ -439,5 +439,5 @@ if __name__ == '__main__':
     #etc(scenario=5, n_sims=1000, n_horizon=500, folder_name='./baseline_logs/')
 
     #test_eps_greedy(1, 3, 200, './test/')
-    for s in [0.1, 0.25, 0.5]:
-        bayes_ucb_gaussian(1, 1000, 250, './logs', assume_sd=s)
+    # for s in [0.1, 0.25, 0.5]:
+    ucb1tunednormal(1, 1000, 250, './logs/normal arm/')

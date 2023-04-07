@@ -276,7 +276,7 @@ class Scope:
         """
         if self.arms:
             exit('Arms already exist, call clear_arms() first before building')
-        assert set(d.keys()).issubset(set(list(self.data.columns))), 'some labels do not exist in this scope'
+        assert set(d.keys()).issubset(set(list(self.data.columns))), 'some requested component do not exist in this scope'
         for component in d.keys():
             if not set(d[component]).issubset(set(self.data_dic[component])):
                 exit('attempting to build arms with components not present in current scope.')
@@ -671,6 +671,9 @@ def simulate_propose_and_update(scope_dict,
                 rewards = ground_truth_query(ground_truth, to_query)  # ground truth returns all yields
                 proposed_experiments['yield'] = rewards  # mimic user behavior and fill proposed experiments with yield
                 history = pd.concat([history, proposed_experiments], ignore_index=True)
+                # TODO: above; will create bug, need to leave space for empty experiments before concat
+                # because log uses indexes to directly set values, this needs to match that as well
+                # which means figure out the number of blank lines, and then concat
 
                 for ii in range(len(rewards)):  # update cumulative_reward, scope, algo and log results
                     cumulative_reward = cumulative_reward + rewards[ii]
@@ -681,8 +684,7 @@ def simulate_propose_and_update(scope_dict,
                                                                                 cumulative_reward]
                     history_prefix_arr[sim * num_round * num_exp + r * num_exp + ii, :] = [sim, r, ii, r * num_exp + ii]
             else:  # this is where no exp is available and algorithm refuses to choose any other arms
-                pass  # TODO: fix? maybe, problem when it comes to analysis
-
+                exit()  #TODO: fix? maybe, problem when it comes to analysis
 
             if predict:
                 scope.predict()  # update prediction models

@@ -161,7 +161,10 @@ def plot_cutoff_heatmap(cutoff=60, solvent='EtOH'):
     # this one substrate is x axis
     x_pos = np.arange(len(substrates))
     ax.set_xticks(x_pos, labels=substrates, rotation=90)
-    ax.set_yticks(np.arange(len(ligands)), labels=ligands)
+    ylabels = [f'{l} ({str(c)})' for l, c in zip(ligands, data.sum(axis=1))]  # this adds counts to ligand
+    ax.set_yticks(np.arange(len(ligands)), labels=ylabels)
+    for x in np.argsort(data.sum(axis=1))[-6:]:  # red the top n ligands
+        ax.get_yticklabels()[x].set_color('red')
 
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
@@ -213,7 +216,4 @@ def simulate_etc(max_sample=3, n_simulations=10000):
 
 
 if __name__ == '__main__':
-
-    ls = np.array([0.0, 7.1552, 14.3058, 21.4805])
-    etc = np.repeat(ls, 23)
-    np.save('etc_cumu_reward.npy', etc)
+    plot_cutoff_heatmap()

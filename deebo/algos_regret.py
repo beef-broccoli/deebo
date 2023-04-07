@@ -87,13 +87,33 @@ class ETC(RegretAlgorithm):  # explore then commit
             return self.best_arm
 
 
-class Random(RegretAlgorithm):  # random selection of arms
+class Random(RegretAlgorithm):
+    # random selection of arms
+    # or pure exploration
 
     def __str__(self):
         return 'random'
 
     def select_next_arm(self):
         return random.randrange(len(self.emp_means))
+
+
+class Exploit(RegretAlgorithm):
+
+    # exploit algorithms, always choose the highest
+    # or pure greedy
+
+    def __init__(self, n_arms, counts=None, emp_means=None):
+        RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
+        # set all initial emp_means to 2.0, so all arms are at least select once
+        self.emp_means = emp_means if emp_means else [2.0 for col in range(n_arms)]
+        return
+
+    def __str__(self):
+        return 'exploit'
+
+    def select_next_arm(self):
+        return np.random.choice(np.flatnonzero(np.array(self.emp_means) == max(self.emp_means)))
 
 
 class EpsilonGreedy(RegretAlgorithm):
@@ -351,6 +371,8 @@ class MOSS(UCB1):
 
 
 class BayesUCBBeta(UCB1):
+    # Bayes UCB algorithm with beta prior
+    # Implementation 1: simply use standard deviations (with parameter c) as confidence bound
 
     def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None, alphas=None, betas=None, c=2, batch=False):
         UCB1.__init__(self, n_arms, counts, emp_means, ucbs, batch)
@@ -383,8 +405,9 @@ class BayesUCBBeta(UCB1):
 
 
 class NewBayesUCBBeta(UCB1):
-    # tracks better with paper proposal
-    # use Beta.ppf(1-1/t, alpha, beta)
+    # Bayes UCB algorithm with beta prior
+    # Implementation 2: use a percent point function to compare posteriors for different arms. From original paper
+    # scipy.Beta.ppf(1-1/t, alpha, beta)
     # https://github.com/Ralami1859/Stochastic-Multi-Armed-Bandit/blob/master/Modules/BayesUCB_RecommendArm.m
 
     def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None, alphas=None, betas=None, batch=False):
@@ -414,7 +437,9 @@ class NewBayesUCBBeta(UCB1):
 
 
 class BayesUCBGaussianSquared(UCB1):
-    # similar to TS squared, the posterior update is missing the square root
+    # Bayes UCB algorithm with a gaussian prior, similar to ThompsonSamplingGaussianFixedVarSquared
+    # the posterior update is missing the square root, but this is also effective
+    # see testing for more details
 
     def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None, c=2, batch=False):
         UCB1.__init__(self, n_arms, counts, emp_means, ucbs, batch)
@@ -432,7 +457,7 @@ class BayesUCBGaussianSquared(UCB1):
 
 
 class NewBayesUCBGaussian(UCB1):
-    # use the same posterior as TS gaussian fixed var, calculate probability as in BayesUCB paper
+    # same as NewBayesUCBBeta, but uses a gaussian prior with fixed variance
 
     def __str__(self):
         return f'new_bayes_ucb_gaussian'
@@ -447,7 +472,7 @@ class BayesUCBGaussian(UCB1):
     # for ucb, use mean+c*posterior std/sqrt(N)
     # https://www.davidsilver.uk/wp-content/uploads/2020/03/XX.pdf
 
-    def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None, c=2, assumed_sd=0.5, batch=False):
+    def __init__(self, n_arms, counts=None, emp_means=None, ucbs=None, c=2, assumed_sd=0.25, batch=False):
         UCB1.__init__(self, n_arms, counts, emp_means, ucbs, batch)
         self.c = c  # num of std's to consider as confidence bound
         self.assumed_sd = assumed_sd
@@ -631,17 +656,17 @@ class ThompsonSamplingBeta(RegretAlgorithm):
 
 
 class ThompsonSamplingGaussianFixedVar(RegretAlgorithm):
-    # TS for gaussian arms, assume unknown mean but known variance
-    # gaussian prior, assume fixed variance of 1
+    # TS for gaussian arms with gaussian prior, assume unknown mean but known variance
     # can also be used non-parametric stochastic MAB with log regret
+    # assume_sd (int, float): assumed standard deviation for the gaussian prior
 
-    def __init__(self, n_arms, counts=None, emp_means=None, assumed_sd=1):
+    def __init__(self, n_arms, counts=None, emp_means=None, assumed_sd=0.25):
         RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
         self.assumed_sd = assumed_sd
         return
 
     def __str__(self):
-        return 'ts_gaussian'
+        return f'ts_gaussian_assumed_sd_{self.assumed_sd}'
 
     def select_next_arm(self):
         stds = [self.assumed_sd/math.sqrt(c+1) for c in self.counts]
@@ -651,10 +676,10 @@ class ThompsonSamplingGaussianFixedVar(RegretAlgorithm):
 
 
 class ThompsonSamplingGaussianFixedVarSquared(RegretAlgorithm):
-    # TS for gaussian arms, assume unknown mean but known variance
-    # gaussian prior, assume fixed variance of 1, variance is squared
-    # this was a mistake when implemented, but actually works well
-    # can also be used non-parametric stochastic MAB with log regret
+    # TS for gaussian arms with gaussian prior, assume unknown mean but known variance
+    # Assume a fixed variance of 1, but the variance is squared
+    # ***this was a mistake when implemented, but actually works well
+    # this can be used for Bernoulli bandits; see testing results for details
 
     def __init__(self, n_arms, counts=None, emp_means=None, assumed_sd=1):
         RegretAlgorithm.__init__(self, n_arms, counts, emp_means)
@@ -662,7 +687,7 @@ class ThompsonSamplingGaussianFixedVarSquared(RegretAlgorithm):
         return
 
     def __str__(self):
-        return 'ts_gaussian_squared'
+        return f'ts_gaussian_squared'
 
     def select_next_arm(self):
         stds = [self.assumed_sd/(c+1) for c in self.counts]
