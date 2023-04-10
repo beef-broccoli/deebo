@@ -181,7 +181,7 @@ def plot_cutoff_heatmap(cutoff=60, solvent='EtOH', topn=8):
     ax.spines['bottom'].set_visible(False)
     ax.spines['left'].set_visible(False)
 
-    zero_patch = mpatches.Patch(color=(0,0,2/255), label='<50%')
+    zero_patch = mpatches.Patch(color=(0, 0, 2/255), label='<50%')
     one_patch = mpatches.Patch(color=(235/255, 148/255, 60/255), label='>=50%')
     plt.legend(handles=[one_patch, zero_patch], title='yield threshold', bbox_to_anchor=(1.02, 1), loc="upper left")
 

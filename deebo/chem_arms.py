@@ -216,24 +216,59 @@ class Scope:
         self.data.loc[index, 'yield'] = y
         return
 
-    def predict(self):
+    def predict(self, model='rf', encoding_dict=None):
         """
         Build regression model to predict for all experiments in scope
+
+        Parameters
+        ----------
+        model: str
+            what model to use. {'rf',}
+        encoding_dict: dict
+            nested dictionary for encodings.
+            First level of keys match column names in scope.
+            Second level of keys match individual values for each component.
+            If there are any column names missing, ohe will be used to encode those.
+            {'component_a': {
+                'a1': [1,2,3],
+                'a2': [4,5,6]},
+            'component_b': {
+                'b1': [7,8,9]
+            }}
 
         Returns
         -------
 
         """
+
         ys = self.data['yield']
         train_mask = ys.notna()  # training data mask: index of experiments that have been run
         ys_train = ys[train_mask].to_numpy()
+        df = self.data.drop(['yield', 'prediction'], axis=1)
 
-        Xs = self.data.drop(['yield'], axis=1)
-        Xs = OHE().fit_transform(Xs).toarray()
+        if not encoding_dict:   # user did not specify encoding, use OHE
+            Xs = OHE().fit_transform(df).toarray()
+        else:
+            Xs_list = []
+            for c in encoding_dict.keys():
+                if c not in self.data.columns:
+                    exit('Error for encoding dictionary: dict keys must match column names in scope.')
+                try:
+                    Xs_list.append(np.stack(df[c].apply(lambda x: encoding_dict[c][x]).values))
+                except KeyError:
+                    exit('Error for encoding dictionary: some reaction components are missing encodings')
+                df = df.drop([c], axis=1)
+            Xs_list.append(OHE().fit_transform(df).toarray())  # the remaining columns are encoded by OHE
+            Xs = np.hstack(Xs_list)
+
+        # use data collected as train test, reactions without yield as test
         Xs_train = Xs[train_mask, :]
         Xs_test = Xs[~train_mask, :]
 
-        model = RFR()
+        if model == 'rf':
+            model = RFR()
+        else:
+            exit()
         model.fit(Xs_train, ys_train)
         if Xs_train.shape[0] > 2:  # to suppress sklearn warning when calculating R2 score with <2 samples
             self.pre_accuracy = model.score(Xs_train, ys_train)
@@ -724,9 +759,29 @@ if __name__ == '__main__':
           'component_c': 'c2',
           'yield': 96}
 
+    d2 = {'component_a': 'a3',
+          'component_b': 'b2',
+          'component_c': 'c4',
+          'yield': 32}
+
     scope.update_with_dict(d1)
-    scope.expand_scope(z)
-    print(scope.data)
+    scope.update_with_dict(d2)
+
+    e = {
+        'component_a': {
+            'a1': [1,2,],
+            'a2': [3,4],
+            'a3': [5,6]},
+        'component_b': {
+            'b1': [77],
+            'b2': [88]
+        }
+    }
+
+    scope.predict(encoding_dict=e)
+
+    # scope.expand_scope(z)
+    # print(scope.data)
 
 
     # algo = algos_regret.EpsilonGreedy(4, 0.5)
