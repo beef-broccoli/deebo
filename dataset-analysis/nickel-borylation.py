@@ -96,15 +96,18 @@ def plot_all_results():
     return None
 
 
-def plot_cutoff_heatmap(cutoff=60, solvent='EtOH'):
+def plot_cutoff_heatmap(cutoff=60, solvent='EtOH', topn=8):
     """
     
     Parameters
     ----------
-    cutoff
+    cutoff: float or int
+        cutoff for yield, 0-100
     solvent: str
         {'MeOH', 'EtOH', 'both'}
         if both, cutoff threshold has to be satisfied for both solvents
+    topn: int
+        label the top n ligands names in red
 
     Returns
     -------
@@ -152,26 +155,39 @@ def plot_cutoff_heatmap(cutoff=60, solvent='EtOH'):
     newlist = []
     for n in np.argsort(data.sum(axis=1)):
         newlist.append(ligands[n])
-    print(newlist)
 
     plt.rcParams['savefig.dpi'] = 300
     fig, ax = plt.subplots()
-    im = ax.imshow(data, cmap='inferno', vmin=0, vmax=2)
+    im = ax.imshow(data, cmap='inferno', vmin=0, vmax=1.5)
 
     # this one substrate is x axis
     x_pos = np.arange(len(substrates))
     ax.set_xticks(x_pos, labels=substrates, rotation=90)
     ylabels = [f'{l} ({str(c)})' for l, c in zip(ligands, data.sum(axis=1))]  # this adds counts to ligand
     ax.set_yticks(np.arange(len(ligands)), labels=ylabels)
-    for x in np.argsort(data.sum(axis=1))[-6:]:  # red the top n ligands
-        ax.get_yticklabels()[x].set_color('red')
+    for x in np.argsort(data.sum(axis=1))[-topn:]:  # red the top n ligands
+        ax.get_yticklabels()[x].set_color('navy')
+        ax.get_yticklabels()[x].set_fontweight('bold')
+
+    for ii in range(len(substrates)):
+        for jj in range(len(ligands)):
+            ax.add_patch(
+                Rectangle((ii - 0.5, jj - 0.5), 1, 1, fill=False, edgecolor='white', lw=0.5)
+            )
+
 
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['bottom'].set_visible(False)
     ax.spines['left'].set_visible(False)
 
-    plt.title(f'{solvent}, {cutoff}% cutoff')
+    zero_patch = mpatches.Patch(color=(0,0,2/255), label='<50%')
+    one_patch = mpatches.Patch(color=(235/255, 148/255, 60/255), label='>=50%')
+    plt.legend(handles=[one_patch, zero_patch], title='yield threshold', bbox_to_anchor=(1.02, 1), loc="upper left")
+
+    plt.xlabel('substrates')
+    plt.ylabel('ligands')
+    plt.title(f'{solvent}, {cutoff}% cutoff, top{topn}')
     plt.tight_layout()
     plt.show()
 
@@ -216,4 +232,4 @@ def simulate_etc(max_sample=3, n_simulations=10000):
 
 
 if __name__ == '__main__':
-    plot_cutoff_heatmap()
+    plot_cutoff_heatmap(solvent='EtOH', cutoff=50, topn=3)
