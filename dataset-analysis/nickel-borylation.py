@@ -8,7 +8,6 @@ import matplotlib.patches as mpatches
 import random
 
 
-
 def plot_all_results():
     DF = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/NiB/rxns/inchi_23l.csv')
 
@@ -182,7 +181,7 @@ def plot_cutoff_heatmap(cutoff=60, solvent='EtOH', topn=8):
     ax.spines['left'].set_visible(False)
 
     zero_patch = mpatches.Patch(color=(0, 0, 2/255), label='<50%')
-    one_patch = mpatches.Patch(color=(235/255, 148/255, 60/255), label='>=50%')
+    one_patch = mpatches.Patch(color=(228/255, 131/255, 68/255), label='>=50%')
     plt.legend(handles=[one_patch, zero_patch], title='yield threshold', bbox_to_anchor=(1.02, 1), loc="upper left")
 
     plt.xlabel('substrates')
@@ -196,11 +195,13 @@ def plot_cutoff_heatmap(cutoff=60, solvent='EtOH', topn=8):
 
 def simulate_etc(max_sample=3, n_simulations=10000):
     top_six = ['PPh2Cy', 'CX-PCy', 'PPh3', 'P(p-F-Ph)3', 'P(p-Anis)3', 'Cy-JohnPhos']
+    top_three = ['Cy-JohnPhos', 'P(p-Anis)3', 'PPh2Cy']
+    top_eight = ['PPh2Cy', 'CX-PCy', 'PPh3', 'P(p-F-Ph)3', 'P(p-Anis)3', 'Cy-JohnPhos', 'A-paPhos', 'Cy-PhenCar-Phos']
 
     # fetch ground truth data
     df = pd.read_csv(
         'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/nib-etoh.csv', index_col=0)
-    df['yield'] = df['yield'].apply(lambda x: 0 if x<60 else 1)
+    df['yield'] = df['yield'].apply(lambda x: 0 if x<50 else 1)
 
     percentages = []
     avg_cumu_rewards = []
@@ -217,7 +218,7 @@ def simulate_etc(max_sample=3, n_simulations=10000):
             #     count = count + 1
             maxs = sample_mean.loc[sample_mean['yield']==sample_mean['yield'].max()]
             random_one = random.choice(list(maxs.index))
-            if random_one in top_six:
+            if random_one in top_eight:
                 count = count+1
         percentages.append(count/n_simulations)
         avg_cumu_rewards.append(reward/n_simulations)
@@ -228,8 +229,16 @@ def simulate_etc(max_sample=3, n_simulations=10000):
     # 60% cutoff binary, no max tie breaking: [0.388, 0.5382, 0.6154]
     # 60% cutoff binary, with max tie breaking: [0.4301, 0.5488, 0.6136] (helps with sample 1 case, more ties)
     # 60% cutoff binary, cumulative reward: [7.1552, 14.3058, 21.4805]
+
+    # 50% cutoff binary top three: accuracy: [0.2263, 0.3055, 0.3833]; cumu reward [9.7952, 19.6476, 29.4682]
+    # 50% cutoff binary top eight: accur: [0.5371, 0.6623, 0.7558]  cumu: [9.8194, 19.6467, 29.4898]
     return None
 
 
 if __name__ == '__main__':
-    plot_cutoff_heatmap(solvent='EtOH', cutoff=50, topn=3)
+    a = [0.0, 0.2263, 0.3055, 0.3833]
+    a = np.array(a).repeat(23)
+    b = [0.0, 0.5371, 0.6623, 0.7558]
+    b = np.array(b).repeat(23)
+    np.save('top3.npy', a)
+    np.save('top8.npy', b)

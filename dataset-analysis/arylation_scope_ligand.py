@@ -23,6 +23,7 @@ from rdkit.Chem import rdMolDescriptors, DataStructs
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from scipy import interpolate
+import yaml
 
 classic_blue_hex = '#0f4c81'
 coral_essence_hex = '#f26b5b'
@@ -229,16 +230,19 @@ def plot_one_ligand_result():  # heatmap for one ligand, with numerical yield
     return None
 
 
-def plot_best_ligand_with_diff_metric():  # 6 bar plots, each with top 5 ligands, and their performance wrt metric
+def plot_best_ligand_with_diff_metric(n_largest=5):  # 6 bar plots, each with top 5 ligands, and their performance wrt metric
+
+    with open('colors.yml', 'r') as file:
+        COLORS = yaml.safe_load(file)
 
     stats = df.groupby(by=['ligand_name']).describe()
-    twentyfive = stats.loc[:, ('yield', '25%')].nlargest(5)  # 1st quantile top 5
-    median = stats.loc[:, ('yield', '50%')].nlargest(5)  # 2nd quantile
-    seventyfive = stats.loc[:, ('yield', '75%')].nlargest(5)  # 3rd quantile
-    mean = stats.loc[:, ('yield', 'mean')].nlargest(5)  # average
+    twentyfive = stats.loc[:, ('yield', '25%')].nlargest(n_largest)  # 1st quantile top 5
+    median = stats.loc[:, ('yield', '50%')].nlargest(n_largest)  # 2nd quantile
+    seventyfive = stats.loc[:, ('yield', '75%')].nlargest(n_largest)  # 3rd quantile
+    mean = stats.loc[:, ('yield', 'mean')].nlargest(n_largest)  # average
 
-    overtwenty = df.loc[df['yield'] > 20].groupby(by='ligand_name').size().nlargest(5)  # top 5, over 20%, count
-    overeighty = df.loc[df['yield'] > 80].groupby(by='ligand_name').size().nlargest(5)  # top 5, over 80%, count
+    overtwenty = df.loc[df['yield'] > 20].groupby(by='ligand_name').size().nlargest(n_largest)  # top 5, over 20%, count
+    overeighty = df.loc[df['yield'] > 80].groupby(by='ligand_name').size().nlargest(n_largest)  # top 5, over 80%, count
 
     # make color dictionary, one color for one ligand
     all_top_ligands = []
@@ -250,7 +254,10 @@ def plot_best_ligand_with_diff_metric():  # 6 bar plots, each with top 5 ligands
     # for i in range(len(all_top_ligands)):
     #     colors[all_top_ligands[i]] = colormap[i]
 
-    color_list = [cornhusk_hex, stucco_hex,  peach_quartz_hex, baby_blue_hex, monument_hex, provence_hex, pink_tint_hex]
+    color_list = [COLORS['coral_essence'], COLORS['cornhusk'], COLORS['stucco'], COLORS['peach_quartz'],
+                  COLORS['baby_blue'], COLORS['monument'], COLORS['provence'], COLORS['pink_tint'],
+                  COLORS['classic_blue'], COLORS['lime_punch'], COLORS['pirate_black'], COLORS['jasmine_green'],
+                  COLORS['red_violet']]
     colors = {}
     if len(all_top_ligands) > len(color_list):
         raise RuntimeError('not enough colors for all top ligands. {0} colors, {1} ligands'.format(len(color_list), len(all_top_ligands)))
@@ -849,7 +856,7 @@ if __name__ == '__main__':
     #     # prob=0.4407793748978305
     #     # prob = 0.5019138732379659
     #     # prob=0.5573620957756842
-    plot_calculated_sampling_results()
+    plot_best_ligand_with_diff_metric(10)
 
 
 
