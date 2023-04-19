@@ -1,6 +1,7 @@
 import itertools
 import pathlib
 import pickle
+import copy
 import json
 import pandas as pd
 import numpy as np
@@ -92,7 +93,7 @@ class Scope:
                 d[col] = list(set(new_val))
         self.data_dic = d
         self.data['yield'] = np.nan
-        self.data['prediction'] = np.nan
+        self.data['prediction'] = np.ones(len(self.data))
 
         return
 
@@ -737,37 +738,32 @@ def simulate_propose_and_update(scope_dict,
     return
 
 
-if __name__ == '__main__':
+def simulate_propose_and_update_interpolation(scope_dict,
+                                              arms_dict,
+                                              encoding_dict,
+                                              ground_truth,
+                                              algo,
+                                              dir='./test/',
+                                              n_sims=10,
+                                              n_horizon=20,
+                                              batch_size=2,
+                                              propose_mode='random',
+                                              ):
+    """
+    Similar to simulate_propose_and_update, but use prediction result interpolation to do batch optimization
+    Algorithm proposes one experiment, uses predicted result for that experiment to update itself.
+    After all experiments in one batch are proposed, all experiments are queried together and algorithm is updated with real results
+    In this method, batch size refers to the number of experiments in each round. But algorithm should propose experiments
+        one at a time.
 
-    # scope
-    x = {'component_a': ['a1', 'a2', 'a3'],
-         'component_b': ['b1', 'b2'],
-         'component_c': ['c1', 'c2', 'c3', 'c4']}
-
-    y = {'component_a': ['a1', 'a3'],
-         'component_b': ['b1', 'b2']}
-
-    z = {'component_b': ['b5', 'b6'],
-         'component_c': ['c5', 'c6']}
-
-    scope = Scope()
-    scope.build_scope(x)
-    scope.build_arms(y)
-
-    d1 = {'component_a': 'a1',
-          'component_b': 'b1',
-          'component_c': 'c2',
-          'yield': 96}
-
-    d2 = {'component_a': 'a3',
-          'component_b': 'b2',
-          'component_c': 'c4',
-          'yield': 32}
-
-    scope.update_with_dict(d1)
-    scope.update_with_dict(d2)
-
-    e = {
+    Parameters
+    ----------
+    scope_dict: dict
+    arms_dict: dict
+    encoding_dict: dict
+        dict of encodings for reaction components
+        e.g.,
+        e = {
         'component_a': {
             'a1': [1,2,],
             'a2': [3,4],
@@ -777,8 +773,217 @@ if __name__ == '__main__':
             'b2': [88]
         }
     }
+    ground_truth: pd.DataFrame
+    algo: algo
+    dir: str
+        directory to save files into
+    n_sims: int
+        number of simulations
+    n_horizon: int
+        number of experiments for the scope object
+    batch_size: int
+        number of rounds
+    propose_mode: str
+        how to propose experiments (choosing from substrates)
 
-    scope.predict(encoding_dict=e)
+    Returns
+    -------
+
+    """
+    # TODO: does this handle batch size 1?
+    THRESHOLD = 100
+
+    n_rounds = n_horizon // int(batch_size)  # num of complete rounds
+    n_residual = n_horizon % int(batch_size)  # residual experiments that need to be handled
+
+    ground_truth_cols = set(ground_truth.columns)
+    ground_truth_cols.remove('yield')
+    assert set(scope_dict.keys()) == ground_truth_cols, \
+        'ground truth and scope do not have the same fields'
+
+    # numpy array for acquisition log
+    log_cols = ['num_sims', 'round', 'experiment', 'horizon', 'chosen_arm', 'reward', 'cumulative_reward']
+    log_arr = np.zeros((n_sims * n_horizon, len(log_cols)))
+
+    # numpy array for experimental history. This is just the prefix
+    history_prefix_cols = ['num_sims', 'round', 'experiment', 'horizon']
+    history_prefix_arr = np.zeros((n_sims * n_horizon, len(history_prefix_cols)))
+    history = None  # actual experimental history
+
+    def ground_truth_query(ground_truth, to_query):
+        """
+        helper function to query ground truth dataset for yield result
+
+        Parameters
+        ----------
+        ground_truth: dataframe with all components + yield
+        to_query: list of dictionaries of component name/values to be queried
+
+        Returns
+        -------
+        a list of yields after query
+
+        """
+
+        # adapted from Scope.query()
+        names = set(list(ground_truth.columns))
+        names.remove('yield')  # remove yield from column labels, then match
+        component_names = sorted(to_query[0])  # only need one list of component names from dict; they are all the same
+
+        ground_truth = ground_truth.sort_index(axis=1)  # important to sort here with column name also
+        ground_truth_np = ground_truth.to_numpy(copy=False)
+        ys = []
+        for d in to_query:
+            assert ground_truth.shape[1] - 1 == len(d.items()), f'Missing reaction components when querying {d}'
+            assert names == set(d.keys()), f'labels not fully matched for {d}, cannot query'
+            values = [d[c] for c in component_names]
+            y = ground_truth[np.equal.outer(ground_truth_np, values).any(axis=1).all(axis=1)]['yield']
+            if y.empty or np.isnan(list(y)[0]):
+                print(f'something went wrong for {d}, no results found')
+            else:
+                assert len(list(y)) == 1, f'multiple result exist for query {d}'
+                ys.append(list(y)[0])
+        return ys
+
+    # initialize scope object
+    scope = Scope()
+    scope.build_scope(scope_dict)
+    scope.build_arms(arms_dict)
+
+    # write arm dictionary into file
+    # example: {<arm_index1>: <arm_name1>, <arm_index2>: <arm_name2>}
+    d = dict(zip(np.arange(len(scope.arms)), scope.arms))
+    with open(f'{dir}arms.pkl', 'wb') as f:
+        pickle.dump(d, f)
+
+    # simulation starts
+    for sim in tqdm(range(n_sims), desc='simulations'):
+
+        # reset scope and algo; arm settings are kept
+        scope.reset()
+        algo.reset(len(scope.arms))
+        cumulative_reward = 0
+
+        for r in tqdm(range(n_rounds+1), leave=False, desc='rounds'):
+            # last round only has n_residual experiments
+            if r == n_rounds:
+                n = n_residual  # last round, using residual experiments
+                if n == 0:
+                    break
+            else:
+                n = batch_size  # first n_rounds rounds, each batch has n_exps exps
+
+            chosen_arms = []  # all chosen arms for this round
+            to_queries = []  # all dicts representing experiments that need to be queried afterwards
+            scope_idxs = []  # keep track of all experiment idxs proposed. For ease of updating
+            all_proposed = pd.DataFrame()  # all proposed experiments, this is needed for logging
+            algo_copy = copy.deepcopy(algo)  # make a copy of algo for fake update with prediction
+            scope_copy = copy.deepcopy(scope)
+
+            for _ in range(n):
+                chosen_arm = algo_copy.select_next_arm()
+                chosen_arms.append(chosen_arm)  # proposed arm added to list
+                proposed_experiments = scope_copy.propose_experiment(chosen_arm, num_exp=1, mode=propose_mode)  # scope proposes experiment
+                if proposed_experiments is None:
+                    threshold = 0
+                    print(
+                        f'[simulation {sim}, round {r}]: no experiments available for arm {chosen_arm}: {scope.arms[chosen_arm]}. Trying to find new experiments')
+                    while proposed_experiments is None:
+                        if threshold > THRESHOLD:
+                            print(f'[simulation {sim}, round {r}]: no experiments available for arm {chosen_arm}: {scope.arms[chosen_arm]} after '
+                                  f'{THRESHOLD} attempts; it might be the best arm')
+                            break
+                        algo.update(chosen_arm, algo.emp_means[chosen_arm])
+                        new_chosen_arm = algo.select_next_arm()
+                        if new_chosen_arm == chosen_arm:
+                            threshold = threshold + 1
+                            continue
+                        else:
+                            chosen_arm = new_chosen_arm
+                            proposed_experiments = scope.propose_experiment(chosen_arm, num_exp=1, mode=propose_mode)
+
+                if proposed_experiments is not None:
+                    scope_idxs.append(scope_copy.current_experiment_index)
+                    all_proposed = pd.concat([all_proposed, proposed_experiments])
+                    to_queries = to_queries + proposed_experiments[scope_dict.keys()].to_dict('records') # generate a list of dicts to query
+                    # to_dict() should generate a list
+                else:  # this is where no exp is available and algorithm refuses to choose any other arms
+                    exit()  #TODO: fix? maybe, problem when it comes to analysia
+                algo_copy.update(chosen_arm, proposed_experiments['prediction'].values[0])  # update with prediction for proposed experiment; only proposing one at a time
+                scope_copy.update_with_index(scope_copy.current_experiment_index[0], -1)  # update scope with a fake yield just to block this experiemnt
+
+            # now all experiments in this round are proposed, query all and update
+            assert len(chosen_arms) == len(to_queries)
+            assert len(chosen_arms) == len(scope_idxs)
+
+            # here use the real algo and scope to update; algo_copy and scope_copy were discarded
+            rewards = ground_truth_query(ground_truth, to_queries)  # ground truth returns all yields
+            all_proposed['yield'] = rewards  # mimic user behavior and fill proposed experiments with yield
+            history = pd.concat([history, all_proposed], ignore_index=True)
+            # TODO: above; will create bug, need to leave space for empty experiments before concat
+            # because log uses indexes to directly set values, this needs to match that as well
+            # which means figure out the number of blank lines, and then concat
+
+            for ii in range(len(rewards)):  # update cumulative_reward, scope, algo and log results
+                cumulative_reward = cumulative_reward + rewards[ii]
+                scope.update_with_index(scope_idxs[ii], rewards[ii])
+                algo.update(chosen_arms[ii], rewards[ii])
+                log_arr[sim * n_horizon + r * batch_size + ii, :] = [sim, r, ii,  r * batch_size + ii, chosen_arms[ii], rewards[ii], cumulative_reward]
+                history_prefix_arr[sim * n_horizon + r * batch_size + ii, :] = [sim, r, ii, r * batch_size + ii]
+
+            scope.predict(encoding_dict=encoding_dict)  # update prediction models
+
+    log_df = pd.DataFrame(log_arr, columns=log_cols)
+    history_df = pd.concat([pd.DataFrame(history_prefix_arr, columns=history_prefix_cols), history], axis=1)
+    history_df.to_csv(f'{dir}history.csv')
+    log_df.to_csv(f'{dir}log.csv')
+
+    return
+
+
+if __name__ == '__main__':
+
+    pass
+    # # scope
+    # x = {'component_a': ['a1', 'a2', 'a3'],
+    #      'component_b': ['b1', 'b2'],
+    #      'component_c': ['c1', 'c2', 'c3', 'c4']}
+    #
+    # y = {'component_a': ['a1', 'a3'],
+    #      'component_b': ['b1', 'b2']}
+    #
+    # z = {'component_b': ['b5', 'b6'],
+    #      'component_c': ['c5', 'c6']}
+    #
+    # scope = Scope()
+    # scope.build_scope(x)
+    # scope.build_arms(y)
+    #
+    # d1 = {'component_a': 'a1',
+    #       'component_b': 'b1',
+    #       'component_c': 'c2',
+    #       'yield': 96}
+    #
+    # d2 = {'component_a': 'a3',
+    #       'component_b': 'b2',
+    #       'component_c': 'c4',
+    #       'yield': 32}
+    #
+    # scope.update_with_dict(d1)
+    # scope.update_with_dict(d2)
+    #
+    # e = {
+    #     'component_a': {
+    #         'a1': [1,2,],
+    #         'a2': [3,4],
+    #         'a3': [5,6]},
+    #     'component_b': {
+    #         'b1': [77],
+    #         'b2': [88]
+    #     }
+    # }
+    #
+    # scope.predict(encoding_dict=e)
 
     # scope.expand_scope(z)
     # print(scope.data)
