@@ -904,6 +904,8 @@ if __name__ == '__main__':
             ligands = [(l,) for l in top_three]
         elif top == 8:
             ligands = [(l,) for l in top_eight]
+        else:
+            exit()
         indexes = [reverse_arms_dict[l] for l in ligands]
 
         plot_accuracy_best_arm(best_arm_indexes=indexes,
@@ -1016,7 +1018,6 @@ if __name__ == '__main__':
         #                        legend_title='algorithm',
         #                        long_legend=False,)
 
-
     def cn():
         dd = 'dataset_logs/cn/'
         num_sims = 500
@@ -1119,8 +1120,8 @@ if __name__ == '__main__':
         plot_accuracy_best_arm(best_arm_indexes=indexes,
                                fn_list=fn_list,
                                legend_list=legend_list,
-                               etc_baseline=False,
-                               etc_fp=f'{dd}/etc/top3.npy',
+                               etc_baseline=True,
+                               etc_fp=f'{dd}/etc/top{top}.npy',
                                shade_first_rounds=24,
                                ignore_first_rounds=0,
                                title=f'Accuracy of identifying top {top} optimal ligands',
@@ -1130,7 +1131,14 @@ if __name__ == '__main__':
 
 
     def amidation(top=1, combo=True):
-        dd = 'dataset_logs/amidation/combo/'
+        if combo:
+            dd = 'dataset_logs/amidation/combo/'
+            shade_n = 32
+            what = 'activator/base'  # for title of the plot
+        else:
+            dd = 'dataset_logs/amidation/activator/'
+            shade_n = 8
+            what = 'activator'
         num_sims = 500
         num_round = 96
         num_exp = 1
@@ -1186,11 +1194,11 @@ if __name__ == '__main__':
         plot_accuracy_best_arm(best_arm_indexes=indexes,
                                fn_list=fn_list,
                                legend_list=legend_list,
-                               etc_baseline=False,
-                               etc_fp=f'{dd}/etc/top3.npy',
-                               shade_first_rounds=32,
+                               etc_baseline=True,
+                               etc_fp=f'{dd}/etc/top{top}.npy',
+                               shade_first_rounds=shade_n,
                                ignore_first_rounds=0,
-                               title=f'Accuracy of identifying top {top} activator/base',
+                               title=f'Accuracy of identifying top {top} {what}',
                                legend_title='algorithm',
                                long_legend=True,)
 

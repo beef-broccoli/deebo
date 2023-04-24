@@ -4,7 +4,8 @@ import itertools
 import yaml
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
-
+from tqdm import tqdm
+import random
 
 def plot_all_results(single_component='activator'):
     """
@@ -407,5 +408,84 @@ def plot_best_with_diff_metric(nlargest=8, which_dimension='activator'):  # 6 ba
     plt.show()
 
 
+def simulate_etc_activator(top=1, max_sample=3, n_simulations=10000):
+    top1 = ['DPPCl']
+    top3 = ['DPPCl', 'BOP-Cl', 'TCFH']
+
+    if top == 1:
+        top = top1
+    elif top == 3:
+        top = top3
+    else:
+        exit()
+
+    # fetch ground truth data
+    df = pd.read_csv(
+        'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/ami.csv')
+
+    percentages = []
+    #avg_cumu_rewards = []
+    gb = df.groupby(by=['activator_name'])
+    for n_sample in tqdm(range(max_sample), desc='1st loop'):
+        count = 0
+        reward = 0
+        for _ in tqdm(range(n_simulations), desc='2nd loop', leave=False):
+            sample = gb.sample(n_sample+1).groupby('activator_name')
+            sample_mean = sample.mean(numeric_only=True)
+            sample_sum = sample.sum(numeric_only=True).sum().values[0]
+            reward = reward+sample_sum
+            # if sample['yield'].idxmax() in top_six:  # no tie breaking when sampling 1 with yield cutoff
+            #     count = count + 1
+            maxs = sample_mean.loc[sample_mean['yield']==sample_mean['yield'].max()]
+            random_one = random.choice(list(maxs.index))
+            if random_one in top:
+                count = count+1
+        percentages.append(count/n_simulations)
+        #avg_cumu_rewards.append(reward/n_simulations)
+    print(percentages)
+    # top1 [0.0, 0.2334, 0.2772, 0.3188, 0.3513, 0.3749, 0.4077, 0.4324, 0.4465, 0.4732, 0.4998, 0.5069, 0.5252]
+    # top3 [0.0, 0.5395, 0.6302, 0.6601, 0.6981, 0.7379, 0.7682, 0.7814, 0.8033, 0.8163, 0.8403, 0.8482, 0.862]
+
+
+def simulate_etc_combo(top=1, max_sample=3, n_simulations=10000):
+    top1 = [('DPPCl', 'N-methylmorpholine')]
+    top2 = [('DPPCl', 'N-methylmorpholine'),
+            ('DPPCl', 'Diisopropylethylamine')]
+
+    if top == 1:
+        top = top1
+    elif top == 2:
+        top = top2
+    else:
+        exit()
+
+    # fetch ground truth data
+    df = pd.read_csv(
+        'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/ami.csv')
+
+    percentages = []
+    #avg_cumu_rewards = []
+    gb = df.groupby(by=['activator_name', 'base_name'])
+    for n_sample in tqdm(range(max_sample), desc='1st loop'):
+        count = 0
+        reward = 0
+        for _ in tqdm(range(n_simulations), desc='2nd loop', leave=False):
+            sample = gb.sample(n_sample+1).groupby(by=['activator_name', 'base_name'])
+            sample_mean = sample.mean(numeric_only=True)
+            sample_sum = sample.sum(numeric_only=True).sum().values[0]
+            reward = reward+sample_sum
+            # if sample['yield'].idxmax() in top_six:  # no tie breaking when sampling 1 with yield cutoff
+            #     count = count + 1
+            maxs = sample_mean.loc[sample_mean['yield']==sample_mean['yield'].max()]
+            random_one = random.choice(list(maxs.index))
+            if random_one in top:
+                count = count+1
+        percentages.append(count/n_simulations)
+        #avg_cumu_rewards.append(reward/n_simulations)
+    print(percentages)
+    # top1 [0.0, 0.1214, 0.1757, 0.2109]
+    # top2 [0.0, 0.2031, 0.2934, 0.3476]
+
+
 if __name__ == '__main__':
-    plot_best_with_diff_metric(nlargest=13, which_dimension='combo')
+    pass

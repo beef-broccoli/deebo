@@ -284,6 +284,7 @@ def plot_best_with_diff_metric(nlargest=5, which_dimension='combo'):  # 6 bar pl
 
     plt.show()
 
+
 if __name__ == '__main__':
     # make_heatmap_gif(plot_acquisition_history_heatmap_cn,
     #                  0,

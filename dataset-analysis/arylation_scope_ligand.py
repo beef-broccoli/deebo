@@ -24,6 +24,7 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from scipy import interpolate
 import yaml
+import random
 
 classic_blue_hex = '#0f4c81'
 coral_essence_hex = '#f26b5b'
@@ -841,6 +842,58 @@ def _categorical_bar(labels, data, category_names, title=None, ylabel=None):
     return fig, ax
 
 
+def simulate_etc(top=1, max_sample=3, n_simulations=10000):
+    top1 = ['Cy-BippyPhos']
+    top5 = ['Cy-BippyPhos', 'Et-PhenCar-Phos', 'tBPh-CPhos', 'CgMe-PPh', 'JackiePhos']
+    top9 = ['Cy-BippyPhos', 'Et-PhenCar-Phos', 'tBPh-CPhos', 'CgMe-PPh', 'JackiePhos',
+            'Cy-vBRIDP', 'Cy-DavePhos', 'X-Phos', 'CX-PICy']
+
+    if top == 1:
+        top = top1
+    elif top == 5:
+        top = top5
+    elif top == 9:
+        top = top9
+    else:
+        exit()
+
+    # fetch ground truth data
+    df = pd.read_csv(
+        'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv')
+
+    percentages = []
+    #avg_cumu_rewards = []
+    gb = df.groupby(by=['ligand_name'])
+    for n_sample in tqdm(range(max_sample), desc='1st loop'):
+        count = 0
+        reward = 0
+        for _ in tqdm(range(n_simulations), desc='2nd loop', leave=False):
+            sample = gb.sample(n_sample+1).groupby('ligand_name')
+            sample_mean = sample.mean(numeric_only=True)
+            sample_sum = sample.sum(numeric_only=True).sum().values[0]
+            reward = reward+sample_sum
+            # if sample['yield'].idxmax() in top_six:  # no tie breaking when sampling 1 with yield cutoff
+            #     count = count + 1
+            maxs = sample_mean.loc[sample_mean['yield']==sample_mean['yield'].max()]
+            random_one = random.choice(list(maxs.index))
+            if random_one in top:
+                count = count+1
+        percentages.append(count/n_simulations)
+        #avg_cumu_rewards.append(reward/n_simulations)
+
+    print(percentages)
+    #print(avg_cumu_rewards)
+    # with yield: [0.5971, 0.66, 0.7173]
+    # 60% cutoff binary, no max tie breaking: [0.388, 0.5382, 0.6154]
+    # 60% cutoff binary, with max tie breaking: [0.4301, 0.5488, 0.6136] (helps with sample 1 case, more ties)
+    # 60% cutoff binary, cumulative reward: [7.1552, 14.3058, 21.4805]
+
+    # 50% cutoff binary top three: accuracy: [0.2263, 0.3055, 0.3833]; cumu reward [9.7952, 19.6476, 29.4682]
+    # 50% cutoff binary top eight: accur: [0.5371, 0.6623, 0.7558]  cumu: [9.8194, 19.6467, 29.4898]
+    return None
+
+
+
 if __name__ == '__main__':
 
     #plot_all_results()
@@ -856,9 +909,6 @@ if __name__ == '__main__':
     #     # prob=0.4407793748978305
     #     # prob = 0.5019138732379659
     #     # prob=0.5573620957756842
-    plot_best_ligand_with_diff_metric(10)
-
-
 
 
 def _calculate_random_sampling_deprecated():
