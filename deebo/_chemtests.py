@@ -305,6 +305,51 @@ def arylation():
                                     predict=False)
 
 
+def arylation_expansion():
+    # fetch ground truth data
+    ground_truth = pd.read_csv(
+        'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv')
+
+
+    ground_truth['yield'] = ground_truth['yield'].apply(utils.scaler)
+    ground_truth = ground_truth[['ligand_name',
+                                 'electrophile_id',
+                                 'nucleophile_id',
+                                 'yield']]
+
+    ligands = ground_truth['ligand_name'].unique()
+    elecs = ground_truth['electrophile_id'].unique()
+    nucs = ground_truth['nucleophile_id'].unique()
+
+    #######################################################################################################################
+    # build dictionary for acquisition
+    scope_dict = {'nucleophile_id': ['nA', 'nB', 'nC', 'nD'],
+                  'electrophile_id': ['e1', 'e2', 'e3', 'e4'],
+                  'ligand_name': ligands}
+    expansion_dict ={50: {'nucleophile_id': ['nE', 'nF', 'nG', 'nI']},
+                     100: {'electrophile_id': ['e5', 'e7', 'e9', 'e10']}}
+    arms_dict = {'ligand_name': ligands}
+    n_arms = len(ligands)
+    algos = [algos_regret.ThompsonSamplingGaussianFixedVar(n_arms, assumed_sd=0.25),]
+             #algos_regret.BayesUCBGaussian(n_arms, assumed_sd=0.25, c=2),]
+    wkdir = './dataset_logs/aryl-scope-ligand/expansion/'
+    num_sims = 500
+    num_round = 150
+    num_exp = 1
+    propose_mode = 'random'
+    #######################################################################################################################
+
+    for algo in algos:
+        dir_name = f'{wkdir}{algo.__str__()}-{num_sims}s-{num_round}r-{num_exp}e/'
+        p = pathlib.Path(dir_name)
+        p.mkdir(parents=True)
+
+        simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo,
+                                    dir=dir_name, num_sims=num_sims,
+                                    num_round=num_round, num_exp=num_exp, propose_mode=propose_mode,
+                                    expansion_dict=expansion_dict)
+
+
 def amidation():
     # fetch ground truth data
     ground_truth = pd.read_csv(
@@ -362,4 +407,4 @@ def amidation():
 
 
 if __name__ == '__main__':
-    amidation()
+    arylation_expansion()

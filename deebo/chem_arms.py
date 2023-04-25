@@ -41,19 +41,26 @@ class Scope:
     def __str__(self):
         return str(self.data_dic)
 
-    def reset(self):
+    def reset(self, scope_dict):
         """
-        For simulations, reset the scope object. Keep all arm parameters, but remove all data
+        For simulations, reset the scope object. Keep all arm parameters, but remove all data.
+        This function is updated to use an externally supplied scope.
+        In case the scope is expanded, the parameters in the expansion need to be cleared also
+
+        Parameters
+        ----------
+        scope_dict: dictionary used to build the scope
+
         Returns
         -------
 
         """
-        d = self.data_dic
+        self.data_dic = None
         self.data = None
-        self.build_scope(d)
         self.pre_accuracy = None
         self.current_experiment_index = None
         self.current_arms = None
+        self.build_scope(scope_dict)
         return
 
     def build_scope(self, d):
@@ -91,7 +98,7 @@ class Scope:
                 new_val = [col+' '+str(v) for v in list(self.data[col])]
                 self.data[col] = new_val
                 d[col] = list(set(new_val))
-        self.data_dic = d
+        self.data_dic = copy.deepcopy(d)  # important that this is copy, otherwise will create reference to dict
         self.data['yield'] = np.nan
         self.data['prediction'] = np.ones(len(self.data))
 
@@ -126,7 +133,7 @@ class Scope:
             expand_combinations = itertools.product(*(data_dic[d] for d in data_dic.keys()))
             expand_df = pd.DataFrame(expand_combinations, columns=data_dic.keys())
             expand_df['yield'] = np.nan
-            expand_df['prediction'] = np.nan
+            expand_df['prediction'] = np.ones(len(expand_df))
             self.data = pd.concat([self.data, expand_df])  # add the expansion df to self.data
             self.data_dic[e] = list(self.data_dic[e]) + list(expand_d[e])  # update self.data_dic
 
@@ -677,7 +684,7 @@ def simulate_propose_and_update(scope_dict,
     for sim in tqdm(range(num_sims), desc='simulations'):
 
         # reset scope and algo; arm settings are kept
-        scope.reset()
+        scope.reset(scope_dict)
         algo.reset(len(scope.arms))
         cumulative_reward = 0
 
@@ -860,7 +867,7 @@ def simulate_propose_and_update_interpolation(scope_dict,
     for sim in tqdm(range(n_sims), desc='simulations'):
 
         # reset scope and algo; arm settings are kept
-        scope.reset()
+        scope.reset(scope_dict)
         algo.reset(len(scope.arms))
         cumulative_reward = 0
 
