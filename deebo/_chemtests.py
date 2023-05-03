@@ -46,7 +46,7 @@ def deoxyf():
                                 num_round=num_round, num_exp=num_exp, propose_mode=propose_mode)
 
 
-def deoxyf_adversarial():
+def deoxyf_adversarial(): #TODO
     # fetch ground truth data
     ground_truth = pd.read_csv(
         'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv')
@@ -322,19 +322,18 @@ def arylation_expansion():
     nucs = ground_truth['nucleophile_id'].unique()
 
     #######################################################################################################################
-    # build dictionary for acquisition
     scope_dict = {'nucleophile_id': ['nA', 'nB', 'nC', 'nD'],
                   'electrophile_id': ['e1', 'e2', 'e3', 'e4'],
                   'ligand_name': ligands}
-    expansion_dict ={50: {'nucleophile_id': ['nE', 'nF', 'nG', 'nI']},
-                     100: {'electrophile_id': ['e5', 'e7', 'e9', 'e10']}}
+    expansion_dict = {50: {'nucleophile_id': ['nE', 'nF', 'nG', 'nI']},
+                      100: {'electrophile_id': ['e5', 'e7', 'e9', 'e10']}}
     arms_dict = {'ligand_name': ligands}
     n_arms = len(ligands)
-    algos = [algos_regret.ThompsonSamplingGaussianFixedVar(n_arms, assumed_sd=0.25),]
-             #algos_regret.BayesUCBGaussian(n_arms, assumed_sd=0.25, c=2),]
-    wkdir = './dataset_logs/aryl-scope-ligand/expansion/'
+    algos = [algos_regret.UCB1Tuned(n_arms),
+             algos_regret.UCB1(n_arms)]
+    wkdir = './dataset_logs/aryl-scope-ligand/expansion/scenario1/'
     num_sims = 500
-    num_round = 150
+    num_round = 300
     num_exp = 1
     propose_mode = 'random'
     #######################################################################################################################

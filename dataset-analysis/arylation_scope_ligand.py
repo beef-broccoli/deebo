@@ -74,11 +74,13 @@ elec_names = list(df['electrophile_id'].unique())
 
 def plot_all_results(binary=0, cutoff=80):  # heatmap for all results, grouped by ligand
     l = []
+    averages = []
 
     for ligand in ligand_names:
         tempdf = df.loc[df['ligand_name'] == ligand]
         tempdf = tempdf.drop(['ligand_name'], axis=1)
         a = np.array(tempdf.groupby(['electrophile_id'], sort=True)['yield'].apply(list).to_list())
+        averages.append(np.average(a))
         # each row is a electrophile, each column is a nucleophile
         l.append(a)
 
@@ -92,20 +94,40 @@ def plot_all_results(binary=0, cutoff=80):  # heatmap for all results, grouped b
         a = a>cutoff
 
     fig, ax = plt.subplots()
-    im = ax.imshow(a, cmap='inferno', vmin=0, vmax=110)
     if binary:
         im = ax.imshow(a, cmap='inferno', vmin=0, vmax=2)
-    if not binary:
         text_kwargs = dict(ha='center', va='center', fontsize=10, color='white')
+        text_kwargs_fs9 = dict(ha='center', va='center', fontsize=9, color='white')
+        text_kwargs_fs8 = dict(ha='center', va='center', fontsize=8, color='white')
     else:
+        im = ax.imshow(a, cmap='inferno', vmin=0, vmax=110)
         text_kwargs = dict(ha='center', va='center', fontsize=10, color='white')
+        text_kwargs_fs9 = dict(ha='center', va='center', fontsize=9, color='white')
+        text_kwargs_fs8 = dict(ha='center', va='center', fontsize=8, color='white')
     ii = 0
     for i in range(4):
         for j in range(6):
             ax.add_patch(Rectangle((8*j-0.5, 8*i-0.5), 8, 8, fill=False, edgecolor='white', lw=2))
-            plt.text(8*j+3.5, 8*i+3.5, ligand_names[ii], **text_kwargs)
+            if len(ligand_names[ii])<11:
+                plt.text(8 * j + 3.5, 8 * i + 2.5, ligand_names[ii], **text_kwargs)
+            elif len(ligand_names[ii])<13:
+                plt.text(8 * j + 3.5, 8 * i + 2.5, ligand_names[ii], **text_kwargs_fs9)
+            else:
+                plt.text(8 * j + 3.5, 8 * i + 2.5, ligand_names[ii], **text_kwargs_fs8)
+            plt.text(8 * j + 3.5, 8 * i + 4.5, str(round(averages[ii],2)), **text_kwargs)
             ii = ii+1
-    plt.axis('off')
+
+    ax.set_yticks(np.arange(8), labels=['1', '2', '3', '4', '5', '7', '9', '10'], fontsize=8)
+    ax_t = ax.secondary_xaxis('top')
+    ax_t.set_xticks(np.arange(8), labels=['A', 'B', 'C', 'D', 'E', 'F', 'G', 'I'], fontsize=8)
+    ax.set_xticks([], [])
+
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax_t.spines['top'].set_visible(False)
+
     if not binary:
         cbar = plt.colorbar(im)
         cbar.ax.set_ylabel('yield (%)', rotation=270)
@@ -893,12 +915,96 @@ def simulate_etc(top=1, max_sample=3, n_simulations=10000):
     return None
 
 
+def plot_ligand_perf_expansion(scenario=1, nlargest=5):
+
+    with open('colors.yml', 'r') as file:
+        COLORS = yaml.safe_load(file)
+
+    df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv')
+    if scenario == 1:
+        nlist = ['nA', 'nB', 'nC', 'nD']
+        elist = ['e1', 'e2', 'e3', 'e4']  # these two are the initial lists of nucleophiles and electrophiles
+        # then expand nucleophiles first, then electrophiles
+        list_1 = df.loc[(df['nucleophile_id'].isin(nlist)) & (df['electrophile_id'].isin(elist))].groupby(['ligand_name']).mean(numeric_only=True).nlargest(nlargest, ['yield'])
+        list_2 = df.loc[df['electrophile_id'].isin(elist)].groupby(['ligand_name']).mean(numeric_only=True).nlargest(nlargest, ['yield'])
+        list_3 = df.groupby(['ligand_name']).mean(numeric_only=True).nlargest(nlargest, ['yield'])
+    elif scenario == 2:
+        nlist = ['nE', 'nF', 'nG', 'nI']
+        elist = ['e5', 'e7', 'e9', 'e10']  # these two are the initial lists of nucleophiles and electrophiles
+        # then expand nucleophiles first, then electrophiles
+        list_1 = df.loc[(df['nucleophile_id'].isin(nlist)) & (df['electrophile_id'].isin(elist))].groupby(['ligand_name']).mean(numeric_only=True).nlargest(nlargest, ['yield'])
+        list_2 = df.loc[df['electrophile_id'].isin(elist)].groupby(['ligand_name']).mean(numeric_only=True).nlargest(nlargest, ['yield'])
+        list_3 = df.groupby(['ligand_name']).mean(numeric_only=True).nlargest(nlargest, ['yield'])
+    elif scenario == 3:
+        nlist = ['nE', 'nF', 'nG', 'nI']
+        elist = ['e1', 'e2', 'e3', 'e4']  # these two are the initial lists of nucleophiles and electrophiles
+        # then expand nucleophiles first, then electrophiles
+        list_1 = df.loc[(df['nucleophile_id'].isin(nlist)) & (df['electrophile_id'].isin(elist))].groupby(['ligand_name']).mean(numeric_only=True).nlargest(nlargest, ['yield'])
+        list_2 = df.loc[df['electrophile_id'].isin(elist)].groupby(['ligand_name']).mean(numeric_only=True).nlargest(nlargest, ['yield'])
+        list_3 = df.groupby(['ligand_name']).mean(numeric_only=True).nlargest(nlargest, ['yield'])
+
+
+    all_top_ligands = list(list_1.index) + list(list_2.index) + list(list_3.index)
+    all_top_ligands = list(set(all_top_ligands))
+    color_list = [COLORS['coral_essence'], COLORS['cornhusk'], COLORS['stucco'], COLORS['peach_quartz'],
+                  COLORS['baby_blue'], COLORS['monument'], COLORS['provence'], COLORS['pink_tint'],
+                  COLORS['classic_blue'], COLORS['lime_punch'], COLORS['pirate_black'], COLORS['jasmine_green'],
+                  COLORS['red_violet']]
+    colors = {}
+    if len(all_top_ligands) > len(color_list):
+        raise RuntimeError('not enough colors for all top ligands. {0} colors, {1} ligands'.format(len(color_list), len(all_top_ligands)))
+    for i in range(len(all_top_ligands)):
+        colors[all_top_ligands[i]] = color_list[i]
+
+    # colors here match the accuracy plot
+    colors = {
+        'Cy-BippyPhos': '#1f77b4',
+        'Et-PhenCar-Phos': '#ff7f0e',
+        'tBPh-CPhos': '#2ca02c',
+        'CgMe-PPh': '#d62728',
+        'JackiePhos': '#9467bd',
+    }
+
+    figsize = (10,6)
+    kwargs = {'aa': True, 'width': 0.5}
+    plt.rcParams['savefig.dpi'] = 300
+    figs, axs = plt.subplots(3, 1, figsize=figsize, constrained_layout=True)
+
+    def trim(ll):  # trim the long ligand names
+        return [s[:10] for s in ll]
+
+    def get_colors(ll):  # for a list of names, get their color from overall color dict
+        out = []
+        for l in ll:
+            out.append(colors[l])
+        return out
+
+    def ax_plot(ax_x, df, title, y_label=None):
+        x = trim(list(df.index))
+        y = list(df['yield'].values)
+        axs[ax_x].bar(x, y, color=get_colors(list(df.index)), **kwargs)
+        for i in range(len(x)):  # plot value
+            axs[ax_x].text(i, y[i]+0.5, round(y[i], 2), ha='center')
+        axs[ax_x].set_title(title)  # title
+        if y_label:  # y label
+            axs[ax_x].set_ylabel(y_label)
+        axs[ax_x].set_ylim(top=axs[ax_x].get_ylim()[1] + 5)  # adjust ylim top so value text fits
+
+    ax_plot(0, list_1, title='initial scope (1/4 dataset)', y_label='yield (%)')
+    ax_plot(1, list_2, title='expansion 1 (half dataset)', y_label='yield (%)')
+    ax_plot(2, list_3, title='expansion 2 (full dataset)', y_label='yield (%)')
+
+    plt.show()
+
+
+
 
 if __name__ == '__main__':
 
     #plot_all_results()
 
     names = ['Cy-BippyPhos', 'Et-PhenCar-Phos', 'tBPh-CPhos', 'CgMe-PPh', 'JackiePhos']
+    plot_all_results()
 
     # # calculate random sampling accuracy
     # for n in range(4):

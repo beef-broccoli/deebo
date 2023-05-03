@@ -534,6 +534,179 @@ def plot_accuracy_best_arm(best_arm_indexes,
     return None
 
 
+def plot_accuracy_best_arm_scope_expansion(arm_indexes,
+                                           legend_list,
+                                           baseline_arm_indexes,
+                                           fp='',
+                                           baseline_fp='',
+                                           hlines=None,
+                                           vlines=None,
+                                           etc_baseline=False,
+                                           etc_fp='',
+                                           title='',
+                                           legend_title='',
+                                           long_legend=False,
+                                           ignore_first_rounds=0,
+                                           shade_first_rounds=0,
+                                           max_horizon_plot=0):
+    """
+    Accuracy up to each time point
+    At each time point, consider all past experiments until this point, and pick the arm with the highest number of samples
+    Accuracy = (# of times best empirical arm is in best_arm_indexes) / (# of simulations)
+    Modified for scope expansion results with arylation data, top-1 accuracy for different ligands from the same data
+
+    Parameters
+    ----------
+    arm_indexes: Collection
+        list of indexes for all the arms to be plotted
+    legend_list: Collection
+        list of labels used in legend, list of ligands in this case
+    baseline_arm_indexes: Collection
+        list of indexes for arms to be plotted from baseline file
+    fp: str
+        file path of the data file
+    baseline_fp: str
+        file path of the data file where baseline is plotted. In this case it's optimization with the full scope
+    hlines: Collection
+        list of y axis locations to draw horizontal lines
+    vlines: Collection
+        list of x axis locations to draw horizontal lines
+    etc_baseline: bool
+        draw the explore-then-commit baseline or not
+    etc_fp: str
+        filepath of .npy file that stores numpy array with etc baseline
+    title: str
+        title of plot
+    legend_title: str
+        title of legend
+    long_legend: bool
+        if the legend is long, will move the legend outside of the plot
+    ignore_first_rounds: int
+        ignore the first n data points in the plot for all traces
+    shade_first_rounds: int
+        plot all data points, but vertically shade until x=n. And mark this area as "exploration"
+    max_horizon_plot: int
+        plot until this maximum time horizon
+
+    Returns
+    -------
+
+    """
+
+    assert len(arm_indexes) == len(legend_list)
+
+    plt.rcParams['savefig.dpi'] = 300
+    fig, ax = plt.subplots()
+
+    if hlines is not None:
+        for hline in hlines:
+            plt.axhline(y=hline, xmin=0, xmax=1, linestyle='dashed', color='black', label='baseline', alpha=0.5)
+    if vlines is not None:
+        for vline in vlines:
+            plt.axvline(x=vline, ymin=0, ymax=1, linestyle='dashed', color='black', alpha=0.5)
+
+    max_time_horizon = 0  # etc baseline cuts off at this time horizon
+
+    # this plots accuracies for multiple arms from the data log with scope expansion
+    df = pd.read_csv(fp)
+    df = df[['num_sims', 'horizon', 'chosen_arm']]
+
+    n_simulations = int(np.max(df['num_sims'])) + 1
+    time_horizon = int(np.max(df['horizon'])) + 1
+    if time_horizon > max_time_horizon:
+        max_time_horizon = time_horizon
+
+    best_arms = np.zeros((n_simulations, time_horizon))  # each time point will have a best arm up to that point
+
+    # calculate best arms for all time points
+    for n in range(int(n_simulations)):
+        data = np.array(list(df.loc[df['num_sims'] == n]['chosen_arm']))
+        for t in range(len(data)):
+            u, counts = np.unique(data[:t + 1], return_counts=True)
+            best_arms[n, t] = u[np.random.choice(np.flatnonzero(counts == max(counts)))]
+
+    for i in range(len(arm_indexes)):
+        isinfunc = lambda x: x == arm_indexes[i]
+        visinfunc = np.vectorize(isinfunc)
+        boo = visinfunc(best_arms)
+        probs = boo.sum(axis=0) / n_simulations
+
+        if max_horizon_plot == 0:
+            ax.plot(np.arange(time_horizon)[ignore_first_rounds:], probs[ignore_first_rounds:],
+                    label=str(legend_list[i]))
+        else:
+            ax.plot(np.arange(time_horizon)[ignore_first_rounds:max_horizon_plot],
+                    probs[ignore_first_rounds:max_horizon_plot],
+                    label=str(legend_list[i]))
+
+    # this plots a baseline, where the same algorithm picks the overall top-1 arm with all the data
+    df = pd.read_csv(baseline_fp)
+    df = df[['num_sims', 'horizon', 'chosen_arm']]
+
+    n_simulations = int(np.max(df['num_sims'])) + 1
+    time_horizon = int(np.max(df['horizon'])) + 1
+    if time_horizon > max_time_horizon:
+        max_time_horizon = time_horizon
+
+    best_arms = np.zeros((n_simulations, time_horizon))  # each time point will have a best arm up to that point
+
+    # calculate best arms for all time points
+    for n in range(int(n_simulations)):
+        data = np.array(list(df.loc[df['num_sims'] == n]['chosen_arm']))
+        for t in range(len(data)):
+            u, counts = np.unique(data[:t + 1], return_counts=True)
+            best_arms[n, t] = u[np.random.choice(np.flatnonzero(counts == max(counts)))]
+
+    for i in range(len(baseline_arm_indexes)):
+        isinfunc = lambda x: x == baseline_arm_indexes[i]
+        visinfunc = np.vectorize(isinfunc)
+        boo = visinfunc(best_arms)
+        probs = boo.sum(axis=0) / n_simulations
+
+        if max_horizon_plot == 0:
+            ax.plot(np.arange(time_horizon)[ignore_first_rounds:], probs[ignore_first_rounds:],
+                    label=f'{legend_list[0]} (full scope)', alpha=0.5, lw=2, c='#1f77b4')
+        else:
+            ax.plot(np.arange(time_horizon)[ignore_first_rounds:max_horizon_plot],
+                    probs[ignore_first_rounds:max_horizon_plot],
+                    label=f'{legend_list[0]} (full scope)', alpha=0.5, lw=2, c='#1f77b4')
+
+    if max_horizon_plot != 0:
+        max_time_horizon = max_horizon_plot  # adjust max_time_horizon again before plotting ETC
+
+    if etc_baseline:
+        base = np.load(etc_fp)
+        plt.plot(np.arange(len(base))[ignore_first_rounds:max_time_horizon], base[ignore_first_rounds:max_time_horizon],
+                 color='black',
+                 label='explore-then-commit',
+                 lw=2,
+                 zorder=-100)
+
+    if shade_first_rounds != 0:
+        ax.axvspan(0, shade_first_rounds, facecolor='lightgray', alpha=0.5, zorder=100)
+        _, ymax = ax.get_ylim()
+        ax.text(shade_first_rounds / 2, ymax * 0.75, 'exploration', verticalalignment='center',
+                horizontalalignment='center', zorder=101, rotation=90)
+
+    # ##custom text area
+    # ax.text(37, 0.91, '1% of data', c='black', backgroundcolor='whitesmoke', fontstyle='italic', fontweight='semibold', ha='center', va='center')
+    # ax.text(70, 0.96, '2% of data', c='black', backgroundcolor='whitesmoke', fontstyle='italic', fontweight='semibold', ha='center', va='center')
+    # ##
+
+    ax.set_xlabel('time horizon (number of experiments)')
+    ax.set_ylabel(f'Accuracy of identifying best arm')
+    ax.set_title(title)
+    ax.grid(visible=True, which='both', alpha=0.5)
+    if long_legend:
+        ax.legend(title=legend_title, bbox_to_anchor=(1.02, 1), loc="upper left")
+        plt.tight_layout()
+    else:
+        ax.legend(title=legend_title)
+
+    plt.show()
+    return None
+
+
 def plot_cumulative_reward(fn_list,
                            legend_list,
                            fp='',
@@ -1129,7 +1302,6 @@ if __name__ == '__main__':
                                long_legend=True,
                                max_horizon_plot=150,)
 
-
     def amidation(top=1, combo=True):
         if combo:
             dd = 'dataset_logs/amidation/combo/'
@@ -1202,7 +1374,6 @@ if __name__ == '__main__':
                                legend_title='algorithm',
                                long_legend=True,)
 
-
     def aryl_sampling_mode_from_legacy(top=1):
         dd = 'dataset_logs/aryl-scope-ligand-legacy/'
         num_sims = 400
@@ -1251,7 +1422,45 @@ if __name__ == '__main__':
                                long_legend=True,
                                max_horizon_plot=150,)
 
-    aryl_sampling_mode_from_legacy(1)
+    def aryl_scope_expansion():
+        num_sims = 500
+        num_round = 300
+        num_exp = 1
+        dd = f'./dataset_logs/aryl-scope-ligand/expansion/scenario1/ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e/'
+        log_fp = f'{dd}log.csv'
+        legend_list = ['Cy-BippyPhos', 'Et-PhenCar-Phos', 'tBPh-CPhos', 'CgMe-PPh', 'JackiePhos']
+        #f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-{num_round}r-{num_exp}e',
+        # 'Bayes ucb (2SD, 0.25)',
+        fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv'
+        with open(f'{dd}arms.pkl', 'rb') as f:
+            arms_dict = pickle.load(f)
+
+        reverse_arms_dict = {v: k for k, v in arms_dict.items()}
+        # ligands = ['Cy-BippyPhos', 'CgMe-PPh', 'Et-PhenCar-Phos', 'JackiePhos', 'tBPh-CPhos']
+        # ligands = ['Et-PhenCar-Phos', 'JackiePhos']
+        #ligands = [(b,) for b in bs]
+        top1 = ['Cy-BippyPhos']
+        top5 = ['Cy-BippyPhos', 'Et-PhenCar-Phos', 'tBPh-CPhos', 'CgMe-PPh', 'JackiePhos']
+        top9 = ['Cy-BippyPhos', 'Et-PhenCar-Phos', 'tBPh-CPhos', 'CgMe-PPh', 'JackiePhos',
+                'Cy-vBRIDP', 'Cy-DavePhos', 'X-Phos', 'CX-PICy']
+
+        indexes = [reverse_arms_dict[(l,)] for l in legend_list]
+        baseline_indexes = [reverse_arms_dict[('Cy-BippyPhos',)]]
+        baseline_fp = '/Users/mac/Desktop/project deebo/deebo/deebo/dataset_logs/aryl-scope-ligand/ucb1tuned-500s-200r-1e/log.csv'
+
+        plot_accuracy_best_arm_scope_expansion(arm_indexes=indexes,
+                                               fp=log_fp,
+                                               baseline_fp=baseline_fp,
+                                               baseline_arm_indexes=baseline_indexes,
+                                               legend_list=legend_list,
+                                               shade_first_rounds=24,
+                                               ignore_first_rounds=0,
+                                               title=f'Accuracy of identifying ligand as optimal',
+                                               legend_title='ligand',
+                                               long_legend=True,
+                                               max_horizon_plot=200,
+                                               vlines=[50, 100])
+    aryl_scope_expansion()
 
     # plot_arm_counts('dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10, bar_errbar=True, plot='box', title='Average # of samples')
 
