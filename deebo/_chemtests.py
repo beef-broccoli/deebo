@@ -187,7 +187,7 @@ def nickel_borylation():
              ]
     wkdir = './dataset_logs/nib/etoh-50cutoff/'
     num_sims = 500
-    num_round = 75
+    num_round = 100
     num_exp = 1
     propose_mode = 'random'
     #######################################################################################################################
@@ -405,5 +405,55 @@ def amidation():
                                     predict=False)
 
 
+def cn_maldi():
+    # fetch ground truth data
+    ground_truth = pd.read_csv(
+        'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/maldi-amine.csv')
+    eic_max = ground_truth['EIC(+)[M+H] Product Area'].max()
+    ground_truth['yield'] = ground_truth['EIC(+)[M+H] Product Area'] / eic_max  # being naughty here, "yield"
+
+    ground_truth = ground_truth[['substrate_id',
+                                 'condition',
+                                 'yield',]]
+
+    conditions = ground_truth['condition'].unique()
+    substrates = ground_truth['substrate_id'].unique()
+
+    #######################################################################################################################
+    # build dictionary for acquisition
+    scope_dict = {'condition': conditions,
+                  'substrate_id': substrates}
+    arms_dict = {'condition': conditions}
+    n_arms = len(conditions)
+    # algos = [algos_regret.UCB1Tuned(n_arms),
+    #          algos_regret.UCB1(n_arms),
+    #          algos_regret.AnnealingEpsilonGreedy(n_arms),
+    #          algos_regret.ThompsonSamplingGaussianFixedVar(n_arms, assumed_sd=0.25),
+    #          algos_regret.ThompsonSamplingGaussianFixedVarSquared(n_arms),
+    #          algos_regret.BayesUCBGaussian(n_arms, assumed_sd=0.25, c=2),
+    #          algos_regret.BayesUCBGaussianSquared(n_arms, c=2),
+    #          algos_regret.Random(n_arms)]
+    algos = [algos_regret.ThompsonSamplingGaussianFixedVar(n_arms, assumed_sd=0.25),
+             algos_regret.ThompsonSamplingGaussianFixedVarSquared(n_arms),
+             algos_regret.BayesUCBGaussian(n_arms, assumed_sd=0.25, c=2),
+             algos_regret.BayesUCBGaussianSquared(n_arms, c=2),
+             algos_regret.Random(n_arms)]
+    # algo = algos_regret.ThompsonSamplingGaussianFixedVar(len(bases)*len(fluorides), assumed_sd=0.25)
+    wkdir = './dataset_logs/merck-maldi/amine/'
+    num_sims = 500
+    num_round = 190
+    num_exp = 1
+    propose_mode = 'random'
+    #######################################################################################################################
+    for algo in algos:
+        dir_name = f'{wkdir}{algo.__str__()}-{num_sims}s-{num_round}r-{num_exp}e/'
+        p = pathlib.Path(dir_name)
+        p.mkdir(parents=True)
+
+        simulate_propose_and_update(scope_dict, arms_dict, ground_truth, algo,
+                                    dir=dir_name, num_sims=num_sims,
+                                    num_round=num_round, num_exp=num_exp, propose_mode=propose_mode)
+
+
 if __name__ == '__main__':
-    arylation_expansion()
+    nickel_borylation()

@@ -409,6 +409,7 @@ def plot_accuracy_best_arm(best_arm_indexes,
                            etc_baseline=False,
                            etc_fp='',
                            title='',
+                           xlabel='time horizon (number of experiments)',
                            legend_title='',
                            long_legend=False,
                            ignore_first_rounds=0,
@@ -520,7 +521,7 @@ def plot_accuracy_best_arm(best_arm_indexes,
     # ax.text(70, 0.96, '2% of data', c='black', backgroundcolor='whitesmoke', fontstyle='italic', fontweight='semibold', ha='center', va='center')
     # ##
 
-    ax.set_xlabel('time horizon (number of experiments)')
+    ax.set_xlabel(xlabel)
     ax.set_ylabel(f'Accuracy of identifying best arm: {best_arm_indexes}')
     ax.set_title(title)
     ax.grid(visible=True, which='both', alpha=0.5)
@@ -976,6 +977,30 @@ def make_heatmap_gif(plot_func, n_sim=0, max_n_round=100, binary=False, history_
     return None
 
 
+def figure_dimensionality():
+    nib = [0.0, 0.0, 0.0, 0.0, 0.19, 0.214, 0.136, 0.108, 0.118, 0.102, 0.104, 0.078, 0.074, 0.062, 0.052, 0.06, 0.114, 0.088, 0.164, 0.172, 0.148, 0.138, 0.136, 0.052, 0.094, 0.166, 0.2, 0.236, 0.284, 0.32, 0.332, 0.366, 0.398, 0.392, 0.392, 0.4, 0.43, 0.446, 0.452, 0.452, 0.456, 0.474, 0.496, 0.496, 0.506, 0.522, 0.532, 0.54, 0.536, 0.548, 0.548, 0.56, 0.572, 0.566, 0.582, 0.578, 0.592, 0.608, 0.616, 0.624, 0.63, 0.636, 0.63, 0.638, 0.632, 0.638, 0.64, 0.642, 0.65, 0.646, 0.648, 0.654, 0.656, 0.676, 0.678, 0.682, 0.676, 0.682, 0.682, 0.688, 0.708, 0.704, 0.702, 0.702, 0.708, 0.716, 0.722, 0.724, 0.724, 0.736, 0.728, 0.734, 0.734, 0.738, 0.736, 0.752, 0.758, 0.758, 0.75, 0.766]
+    deoxyf = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0575, 0.055, 0.055, 0.055, 0.055, 0.0975, 0.21, 0.2125, 0.1775, 0.2275, 0.26, 0.2375, 0.26, 0.2625, 0.295, 0.31, 0.3, 0.3275, 0.325, 0.34, 0.375, 0.395, 0.4025, 0.4075, 0.4175, 0.4225, 0.42, 0.435, 0.4375, 0.4225, 0.4375, 0.4375, 0.4475, 0.45, 0.465, 0.4625, 0.4825, 0.495, 0.505, 0.5, 0.5175, 0.51, 0.53, 0.5175, 0.525, 0.53, 0.54, 0.5475, 0.55, 0.5525, 0.545, 0.54, 0.545, 0.5575, 0.5875, 0.585, 0.6025, 0.5975, 0.6025, 0.59, 0.6075, 0.5975, 0.615, 0.62, 0.6175, 0.635, 0.6275, 0.635, 0.6375, 0.635, 0.645, 0.6475, 0.655, 0.655, 0.6575, 0.6625, 0.665, 0.675, 0.68, 0.675, 0.685, 0.685, 0.7125, 0.715, 0.715, 0.7275]
+    maldi = [0.0, 0.0, 0.338, 0.248, 0.486, 0.336, 0.302, 0.338, 0.512, 0.442, 0.47, 0.512, 0.552, 0.508, 0.556, 0.592, 0.59, 0.61, 0.606, 0.658, 0.664, 0.636, 0.658, 0.684, 0.7, 0.71, 0.73, 0.732, 0.74, 0.742, 0.76, 0.754, 0.768, 0.774, 0.774, 0.786, 0.79, 0.816, 0.8, 0.81, 0.8, 0.804, 0.814, 0.824, 0.832, 0.832, 0.85, 0.844, 0.862, 0.86, 0.864, 0.878, 0.88, 0.89, 0.898, 0.886, 0.9, 0.91, 0.906, 0.91, 0.924, 0.914, 0.9, 0.922, 0.936, 0.93, 0.926, 0.928, 0.93, 0.944, 0.938, 0.944, 0.948, 0.952, 0.96, 0.956, 0.952, 0.946, 0.944, 0.956, 0.95, 0.946, 0.954, 0.954, 0.956, 0.952, 0.95, 0.942, 0.952, 0.95, 0.954, 0.956, 0.958, 0.956, 0.96, 0.956, 0.962, 0.966, 0.966, 0.97, 0.964, 0.972, 0.968, 0.97, 0.97, 0.972, 0.972, 0.976, 0.974, 0.972, 0.972, 0.974, 0.972, 0.974, 0.976, 0.974, 0.974, 0.974, 0.976, 0.978, 0.98, 0.978, 0.98, 0.98, 0.98, 0.98, 0.978, 0.982, 0.984, 0.98, 0.984, 0.984, 0.982, 0.984, 0.986, 0.982, 0.986, 0.986, 0.986, 0.986, 0.988, 0.988, 0.99, 0.99, 0.99, 0.99, 0.992, 0.99, 0.992, 0.992, 0.992, 0.992, 0.992, 0.994, 0.994, 0.994, 0.994, 0.992, 0.992, 0.994, 0.992, 0.992, 0.994, 0.992, 0.994, 0.996, 0.996, 0.994, 0.994, 0.992, 0.994, 0.994, 0.994, 0.994, 0.996, 0.996, 0.996, 0.996, 0.996, 0.996, 0.996, 0.996, 0.996, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994]
+
+    legends = [
+        'Nickel borylation, top-3 accuracy, Bayes UCB (beta prior)',
+        'Deoxyfluorination, top-2 accuracy, Bayes UCB (gaussian prior)',
+        'C-N cross-coupling, top-1 accuracy, UCB1'
+    ]
+
+    plt.rcParams['savefig.dpi'] = 300
+    for p, l in zip([nib, deoxyf, maldi], legends):
+        plt.plot(p[:100], label=l)
+    plt.grid(visible=True, which='both', alpha=0.5)
+    plt.legend(title='dataset, metric, algorithm', bbox_to_anchor=(0.5, -0.2), loc="upper center", fancybox=True)
+    plt.xlabel('number of experiments')
+    plt.ylabel('top-n accuracy')
+    plt.title('Accuracy of identifying top general conditions for 3 datasets')
+    plt.tight_layout()
+    plt.show()
+    pass
+
+
 if __name__ == '__main__':
     import pickle
 
@@ -1181,6 +1206,7 @@ if __name__ == '__main__':
                                shade_first_rounds=20,
                                title=f'Accuracy of identifying {ligands} as optimal',
                                legend_title='batch size',
+                               xlabel='number of experiments',
                                long_legend=False,
                                max_horizon_plot=100)
 
@@ -1190,6 +1216,78 @@ if __name__ == '__main__':
         #                        title=f'Cumu reward of identifying {ligands} as optimal',
         #                        legend_title='algorithm',
         #                        long_legend=False,)
+
+    def deoxyf_batch_real_time():
+        # being lazy. data here are extracted when the original accuracy plotting function was used.
+        one = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.07, 0.0675, 0.0675, 0.0375, 0.06,
+         0.1075, 0.2275, 0.2, 0.23, 0.2325, 0.2275, 0.2225, 0.255, 0.235, 0.26, 0.2525, 0.28, 0.28, 0.3025, 0.325, 0.33,
+         0.3275, 0.305, 0.325, 0.3725, 0.325, 0.3525, 0.345, 0.3475, 0.3575, 0.365, 0.3475, 0.3775, 0.35, 0.385, 0.365,
+         0.3875, 0.3825, 0.3975, 0.41, 0.4125, 0.4075, 0.42, 0.41, 0.4225, 0.4225, 0.415, 0.44, 0.43, 0.4475, 0.46,
+         0.46, 0.4425, 0.46, 0.455, 0.475, 0.4525, 0.465, 0.48, 0.495, 0.4875, 0.5125, 0.495, 0.495, 0.52, 0.53, 0.545,
+         0.5325, 0.535, 0.51, 0.5525, 0.545, 0.55, 0.5625, 0.55, 0.5625, 0.5575, 0.565, 0.565, 0.58, 0.5825, 0.58,
+         0.6075, 0.58, 0.585, 0.585, 0.5975, 0.615, 0.6125, 0.6075, 0.6175, 0.62, 0.6125, 0.6375, 0.63, 0.64, 0.63,
+         0.63, 0.65, 0.6375, 0.65, 0.6425, 0.65, 0.6475, 0.6375, 0.6475, 0.6475, 0.655, 0.66, 0.6575, 0.6575, 0.6675,
+         0.6825, 0.675, 0.6675, 0.685, 0.6775, 0.6725, 0.6675, 0.685, 0.68, 0.6875, 0.6725, 0.6975, 0.7025, 0.6925, 0.7,
+         0.7075, 0.71, 0.7225, 0.72, 0.7075, 0.7175, 0.705, 0.725, 0.7175]
+        one = one[:100]
+
+        two = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.055, 0.065, 0.08, 0.065, 0.08, 0.095,
+         0.165, 0.195, 0.185, 0.2, 0.17, 0.205, 0.17, 0.22, 0.235, 0.265, 0.26, 0.25, 0.265, 0.265, 0.28, 0.27, 0.27,
+         0.305, 0.305, 0.305, 0.3, 0.305, 0.315, 0.31, 0.36, 0.325, 0.335, 0.33, 0.38, 0.395, 0.305, 0.355, 0.32, 0.38,
+         0.415, 0.38, 0.385, 0.39, 0.405, 0.43, 0.41, 0.41, 0.4, 0.385, 0.4, 0.39, 0.41, 0.38, 0.4, 0.415, 0.41, 0.425,
+         0.44, 0.415, 0.445, 0.435, 0.44, 0.435, 0.445, 0.47, 0.47, 0.46, 0.485, 0.485, 0.475, 0.5, 0.495, 0.525, 0.51,
+         0.53, 0.52, 0.51, 0.53, 0.535, 0.52, 0.55, 0.53, 0.55, 0.55, 0.595]
+
+        three = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06, 0.06, 0.065, 0.04, 0.07, 0.125,
+         0.12, 0.195, 0.21, 0.24, 0.225, 0.23, 0.235, 0.265, 0.26, 0.275, 0.31, 0.31, 0.34, 0.33, 0.295, 0.32, 0.33,
+         0.295, 0.335, 0.365, 0.335, 0.385, 0.355, 0.34, 0.34, 0.365, 0.375, 0.39, 0.395, 0.43, 0.42, 0.48, 0.43, 0.445,
+         0.43, 0.47, 0.47, 0.44, 0.465, 0.465, 0.485, 0.5, 0.47, 0.495, 0.485, 0.495, 0.5, 0.49, 0.515, 0.53, 0.545,
+         0.5, 0.565, 0.535, 0.555, 0.535, 0.54, 0.545, 0.57, 0.53, 0.565, 0.57, 0.59, 0.595, 0.585, 0.57, 0.585, 0.595,
+         0.6, 0.605, 0.625, 0.62, 0.59, 0.61, 0.62, 0.6, 0.61, 0.62, 0.645, 0.6]
+
+        four = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.065, 0.095, 0.08, 0.03, 0.06, 0.09,
+         0.18, 0.165, 0.16, 0.215, 0.17, 0.24, 0.235, 0.295, 0.27, 0.295, 0.3, 0.305, 0.225, 0.265, 0.265, 0.295, 0.27,
+         0.27, 0.305, 0.27, 0.29, 0.275, 0.305, 0.345, 0.325, 0.34, 0.32, 0.315, 0.34, 0.365, 0.345, 0.355, 0.37, 0.39,
+         0.41, 0.415, 0.4, 0.415, 0.405, 0.395, 0.42, 0.405, 0.415, 0.4, 0.415, 0.4, 0.4, 0.385, 0.415, 0.41, 0.415,
+         0.43, 0.42, 0.43, 0.415, 0.42, 0.465, 0.445, 0.43, 0.43, 0.445, 0.44, 0.435, 0.43, 0.455, 0.465, 0.46, 0.44,
+         0.47, 0.48, 0.48, 0.505, 0.485, 0.485, 0.52, 0.5, 0.52, 0.53, 0.51, 0.54]
+
+        five = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.09, 0.055, 0.045, 0.035, 0.04, 0.115,
+         0.245, 0.215, 0.195, 0.22, 0.205, 0.235, 0.26, 0.255, 0.3, 0.265, 0.285, 0.29, 0.34, 0.34, 0.325, 0.34, 0.37,
+         0.36, 0.4, 0.37, 0.375, 0.385, 0.425, 0.46, 0.44, 0.46, 0.475, 0.48, 0.475, 0.47, 0.41, 0.45, 0.43, 0.465,
+         0.45, 0.465, 0.475, 0.465, 0.475, 0.445, 0.49, 0.485, 0.5, 0.51, 0.49, 0.495, 0.49, 0.52, 0.48, 0.52, 0.55,
+         0.505, 0.55, 0.56, 0.52, 0.525, 0.54, 0.53, 0.535, 0.515, 0.52, 0.55, 0.585, 0.57, 0.57, 0.585, 0.565, 0.56,
+         0.56, 0.585, 0.62, 0.6, 0.62, 0.605, 0.6, 0.625, 0.635, 0.635, 0.63, 0.645]
+
+        six = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.045, 0.045, 0.04, 0.045, 0.03, 0.12,
+         0.105, 0.16, 0.125, 0.115, 0.17, 0.22, 0.235, 0.25, 0.255, 0.265, 0.3, 0.345, 0.365, 0.35, 0.335, 0.34, 0.355,
+         0.33, 0.365, 0.385, 0.38, 0.355, 0.375, 0.37, 0.405, 0.395, 0.41, 0.39, 0.375, 0.455, 0.45, 0.435, 0.45, 0.45,
+         0.425, 0.46, 0.475, 0.455, 0.435, 0.45, 0.45, 0.46, 0.435, 0.46, 0.46, 0.445, 0.47, 0.465, 0.465, 0.465, 0.465,
+         0.475, 0.475, 0.47, 0.485, 0.495, 0.49, 0.47, 0.48, 0.515, 0.5, 0.505, 0.51, 0.505, 0.515, 0.535, 0.53, 0.57,
+         0.575, 0.55, 0.59, 0.59, 0.585, 0.6, 0.575, 0.61, 0.605, 0.6, 0.62, 0.615]
+
+        def highest_every_n_element(n, arr):
+            # for an array, find the highest value every n element
+            n_round = len(arr) // n
+            n_residual = len(arr) % n
+            maxes = []
+            for ii in range(n_round):
+                maxes.append(max(arr[ii*n:(ii+1)*n]))
+            if n_residual != 0:
+                maxes.append(max(arr[-n_residual:]))
+            return maxes
+
+        batch_sizes = [1,2,3,4,5,6]
+        data = [one, two, three, four, five, six]
+        d = dict(zip(batch_sizes, data))
+        for b in batch_sizes:
+            plt.plot(highest_every_n_element(b, d[b]))
+        plt.legend(batch_sizes, title='batch size')
+        plt.grid(visible=True, which='both', alpha=0.5)
+        plt.title('Accuracy of identifying [(\'BTMG\', \'PBSF\'), (\'BTPP\', \'PBSF\')] as optimal')
+        plt.ylabel('Accuracy of identifying best arm: [14, 19]')
+        plt.xlabel('Actual time horizon (number of rounds)')
+        plt.show()
 
     def cn():
         dd = 'dataset_logs/cn/'
@@ -1460,8 +1558,64 @@ if __name__ == '__main__':
                                                long_legend=True,
                                                max_horizon_plot=200,
                                                vlines=[50, 100])
-    aryl_scope_expansion()
 
+    def maldi():
+        name = 'amine'
+        dd = f'dataset_logs/merck-maldi/{name}/'
+        num_sims = 500
+        num_round = 200
+        num_exp = 1
+        fn_list = [f'{dd}{n}/log.csv' for n in
+                   [f'ts_gaussian_squared-{num_sims}s-190r-{num_exp}e',
+                    f'ts_gaussian_assumed_sd_0.25-{num_sims}s-190r-{num_exp}e',
+                    f'ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'ucb1-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'bayes_ucb_gaussian_squared_c=2-{num_sims}s-190r-{num_exp}e',
+                    f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-190r-{num_exp}e',
+                    f'eps_greedy_annealing-{num_sims}s-{num_round}r-{num_exp}e',
+                    ]]
+        legend_list = ['TS (squared)',
+                       'TS (fixed sd 0.25)',
+                       'ucb1-tuned',
+                       'ucb1',
+                       'Bayes ucb (2SD, squared)',
+                       'Bayes ucb (2SD, 0.25)',
+                       'ε-greedy',]
+        #f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-{num_round}r-{num_exp}e',
+        # 'Bayes ucb (2SD, 0.25)',
+        fp = f'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/maldi-{name}.csv'
+        with open(f'{dd}ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e/arms.pkl', 'rb') as f:
+            arms_dict = pickle.load(f)
+
+        reverse_arms_dict = {v: k for k, v in arms_dict.items()}
+        # ligands = ['Cy-BippyPhos', 'CgMe-PPh', 'Et-PhenCar-Phos', 'JackiePhos', 'tBPh-CPhos']
+        # ligands = ['Et-PhenCar-Phos', 'JackiePhos']
+        #ligands = [(b,) for b in bs]
+        if name == 'bromide':
+            ligands = [('Cu',)]
+        elif name == 'amine':
+            ligands = [('Pd',)]
+        else:
+            exit()
+        # ligands = [('MTBD', 'tBuXPhos'),
+        #            ('MTBD', 'tBuBrettPhos')]
+        # ligands = [('MTBD', 'tBuXPhos'),]
+        indexes = [reverse_arms_dict[l] for l in ligands]
+
+        plot_accuracy_best_arm(best_arm_indexes=indexes,
+                               fn_list=fn_list,
+                               legend_list=legend_list,
+                               etc_baseline=False,
+                               etc_fp=f'{dd}/etc/top3.npy',
+                               ignore_first_rounds=4,
+                               title=f'Accuracy of identifying optimal conditions for {name}',
+                               legend_title='algorithm',
+                               long_legend=False,
+                               max_horizon_plot=200,
+                               vlines=None,
+                               hlines=None)
+
+    deoxyf_batch_real_time()
     # plot_arm_counts('dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10, bar_errbar=True, plot='box', title='Average # of samples')
 
     # plot_arm_rewards(fp, d='dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10)

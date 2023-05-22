@@ -322,7 +322,7 @@ class Scope:
         assert set(d.keys()).issubset(set(list(self.data.columns))), 'some requested component do not exist in this scope'
         for component in d.keys():
             if not set(d[component]).issubset(set(self.data_dic[component])):
-                exit('attempting to build arms with components not present in current scope.')
+                exit(f'some values of requested component {component} not present in current scope.')
 
         self.arm_labels = list(sorted(d.keys()))
         self.arms = list(itertools.product(*(d[c] for c in self.arm_labels)))
@@ -344,8 +344,34 @@ class Scope:
         arm = list(self.arms[int(arm_index)])
         return dict(zip(self.arm_labels, arm))
 
+    def sort_results_with_arms(self):
+        """
+        sort current results into lists based on current arms.
+        with all existing data, it queries with current arm values
+        all experimental results that match with current arm will be included into a list
+        if no result available for a certain arm, it's an empty list
+
+        Returns
+        -------
+        results: a nested list with all results sorted based on current arm values
+
+        """
+        if self.arms is None:
+            exit('no arms in this scope. Create arm with scope.build_arms() first.')
+
+        existing_data = self.data[self.data['yield'].notna()]
+        results = []
+        for arm in self.arms:
+            query_dic = dict(zip(self.arm_labels, arm))
+            query = existing_data.loc[(existing_data[list(query_dic)] == pd.Series(query_dic)).all(axis=1)]
+            results.append(list(query['yield']))
+        assert len(results) == len(self.arms), 'something went wrong when sorting results based on arms'
+
+        return results
+
     def clear_arms(self):
         self.arms = None
+        self.arm_labels = None
 
     def propose_experiment(self, arm_index, mode='random', num_exp=1):
         """
@@ -950,50 +976,49 @@ def simulate_propose_and_update_interpolation(scope_dict,
 
 if __name__ == '__main__':
 
-    pass
-    # # scope
-    # x = {'component_a': ['a1', 'a2', 'a3'],
-    #      'component_b': ['b1', 'b2'],
-    #      'component_c': ['c1', 'c2', 'c3', 'c4']}
-    #
-    # y = {'component_a': ['a1', 'a3'],
-    #      'component_b': ['b1', 'b2']}
-    #
-    # z = {'component_b': ['b5', 'b6'],
-    #      'component_c': ['c5', 'c6']}
-    #
-    # scope = Scope()
-    # scope.build_scope(x)
-    # scope.build_arms(y)
-    #
-    # d1 = {'component_a': 'a1',
-    #       'component_b': 'b1',
-    #       'component_c': 'c2',
-    #       'yield': 96}
-    #
-    # d2 = {'component_a': 'a3',
-    #       'component_b': 'b2',
-    #       'component_c': 'c4',
-    #       'yield': 32}
-    #
-    # scope.update_with_dict(d1)
-    # scope.update_with_dict(d2)
-    #
-    # e = {
-    #     'component_a': {
-    #         'a1': [1,2,],
-    #         'a2': [3,4],
-    #         'a3': [5,6]},
-    #     'component_b': {
-    #         'b1': [77],
-    #         'b2': [88]
-    #     }
-    # }
-    #
-    # scope.predict(encoding_dict=e)
 
-    # scope.expand_scope(z)
-    # print(scope.data)
+    # scope
+    x = {'component_a': ['a1', 'a2', 'a3'],
+         'component_b': ['b1', 'b2'],
+         'component_c': ['c1', 'c2', 'c3', 'c4']}
+
+    y = {'component_a': ['a1', 'a3'],
+         'component_b': ['b1', 'b2']}
+
+    z = {'component_a': ['a1', 'a2'],
+         'component_c': ['c1', 'c2']}
+
+    scope = Scope()
+    scope.build_scope(x)
+    scope.build_arms(y)
+
+    d1 = {'component_a': 'a1',
+          'component_b': 'b1',
+          'component_c': 'c2',
+          'yield': 96}
+
+    d2 = {'component_a': 'a3',
+          'component_b': 'b2',
+          'component_c': 'c4',
+          'yield': 32}
+
+    d3 = {'component_a': 'a2',
+          'component_b': 'b1',
+          'component_c': 'c1',
+          'yield': 65}
+    d4 = {'component_a': 'a1',
+          'component_b': 'b2',
+          'component_c': 'c2',
+          'yield': 23}
+
+    scope.update_with_dict(d1)
+    scope.update_with_dict(d2)
+    scope.update_with_dict(d3)
+    scope.update_with_dict(d4)
+
+    scope.clear_arms()
+    scope.build_arms(z)
+    print(scope.sort_results_with_arms())
 
 
     # algo = algos_regret.EpsilonGreedy(4, 0.5)
