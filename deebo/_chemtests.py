@@ -137,7 +137,7 @@ def deoxyf_interpolation():
     num_round = 100
     num_exp = 1
     propose_mode = 'random'
-    batch_size = 6
+    batch_size = 10
     #######################################################################################################################
 
     dir_name = f'{wkdir}{algo.__str__()}-{num_sims}s-{num_round}r-{batch_size}b/'
@@ -456,4 +456,4 @@ def cn_maldi():
 
 
 if __name__ == '__main__':
-    nickel_borylation()
+    deoxyf_interpolation()
