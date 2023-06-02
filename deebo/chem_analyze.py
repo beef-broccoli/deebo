@@ -1229,7 +1229,8 @@ if __name__ == '__main__':
         fn_list = [f'{dd}/../ucb1tuned-400s-150r-1e/log.csv'] + fn_list
         legend_list = [1]+batch_sizes
         #f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-{num_round}r-{num_exp}e',
-        # 'Bayes ucb (2SD, 0.25)',
+        # 'Bayes ucb (2SD, 0.25)'
+
         fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv'
         with open(f'/Users/mac/Desktop/project deebo/deebo/deebo/dataset_logs/deoxyf/combo/ucb1tuned-400s-150r-1e/arms.pkl', 'rb') as f:
             arms_dict = pickle.load(f)
@@ -1689,7 +1690,7 @@ if __name__ == '__main__':
                                vlines=None,
                                hlines=None)
 
-    deoxyf_batch_real_time()
+    deoxyf_batch_interpolation()
     # plot_arm_counts('dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10, bar_errbar=True, plot='box', title='Average # of samples')
 
     # plot_arm_rewards(fp, d='dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10)

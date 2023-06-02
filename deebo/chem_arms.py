@@ -682,7 +682,7 @@ def propose_initial_experiments_interpolation(scope_dict, arms_dict, algo, dir='
     algo_copy = copy.deepcopy(algo)  # make a copy of algo for fake update with prediction
     scope_copy = copy.deepcopy(scope)  # make a copy of scope for fake update with prediction
 
-    for _ in range(num_exp):
+    for ii in range(num_exp):
         chosen_arm = algo_copy.select_next_arm()
         proposed_experiments = scope_copy.propose_experiment(chosen_arm, num_exp=1, mode=propose_mode)  # propose exp
 
@@ -708,6 +708,9 @@ def propose_initial_experiments_interpolation(scope_dict, arms_dict, algo, dir='
                     proposed_experiments = scope_copy.propose_experiment(chosen_arm, num_exp=1, mode=propose_mode)
 
         if proposed_experiments is not None:
+            # add some prefixes to proposed experiments; since this is initial propose method, can set round to 0.
+            # proposed_experiments_prefix = pd.DataFrame([0, ii, ii], columns=['round', 'experiment', 'horizon'])
+            # proposed_experiments = pd.concat([proposed_experiments_prefix, proposed_experiments], axis=1)
             chosen_arms.append(chosen_arm)  # proposed arm added to list
             scope_idxs.append(scope_copy.current_experiment_index)
             all_proposed = pd.concat([all_proposed, proposed_experiments])
@@ -737,7 +740,7 @@ def propose_initial_experiments_interpolation(scope_dict, arms_dict, algo, dir='
     return None
 
 
-def update_and_propose_interpolation(dir='./test/', num_exp=2, propose_mode='random', encoding_dict=None):
+def update_and_propose_interpolation(dir='./test/', num_exp=2, propose_mode='random', encoding_dict=None, update_only=False, propose_only=False):
 
     """
     After user filled out experimental result, load the result and update scope and algoritm, propose next experiments
@@ -769,6 +772,8 @@ def update_and_propose_interpolation(dir='./test/', num_exp=2, propose_mode='ran
 
     THRESHOLD = 100  # threshold for how many experiments to wait for algo to output a different arm to evaluate
 
+    assert not (update_only and propose_only), 'only one of update_only and propose_only can be true at a time'
+
     # load all cached variables
     with open(f'{dir}cache/algo.pkl', 'rb') as f:
         algo = pickle.load(f)
@@ -779,108 +784,128 @@ def update_and_propose_interpolation(dir='./test/', num_exp=2, propose_mode='ran
     with open(f'{dir}cache/scope_idxs.pkl', 'rb') as f:
         scope_idxs = pickle.load(f)
 
-    exps = pd.read_csv(f'{dir}proposed_experiments.csv', index_col=0)  # proposed experiments with results input from user
-    try:
-        log = pd.read_csv(f'{dir}log.csv')  # acquisition log for algorithm
-    except FileNotFoundError:  # first time update
-        log = None
-    try:
-        history = pd.read_csv(f'{dir}history.csv', index_col=0)  # experiment history
-    except FileNotFoundError:  # first time update
-        history = None
+    if not propose_only:  # normal workflow; if propose_only=True, this will be skipped since no update is needed
+        try:
+            log = pd.read_csv(f'{dir}log.csv')  # acquisition log for algorithm
+        except FileNotFoundError:  # first time update
+            log = None
+        try:
+            history = pd.read_csv(f'{dir}history.csv', index_col=0)  # experiment history
+        except FileNotFoundError:  # first time update
+            history = None
 
-    # get results from user for proposed experiments
-    rewards = np.array(list(exps['yield']))
-    if np.isnan(rewards).any():
-        exit('need to fill in yield')
-    if ((rewards > 1).any()) or ((rewards < 0).any()):
-        exit('adjust yield to be between 0 and 1')
+        # get results from user for proposed experiments
+        exps = pd.read_csv(f'{dir}proposed_experiments.csv', index_col=0)
+        rewards = np.array(list(exps['yield']))
+        if np.isnan(rewards).any():
+            exit('need to fill in yield')
+        if ((rewards > 1).any()) or ((rewards < 0).any()):
+            exit('adjust yield to be between 0 and 1')
 
-    # get current horizon, cumu reward from logs
-    if log is not None:
-        horizon = log['horizon'].iloc[-1] + 1
-        cumulative_reward = log['cumulative_reward'].iloc[-1]
-    else:  # first time logging
-        horizon = 0
-        cumulative_reward = 0.0
+        # get current horizon, cumu reward from logs
+        if log is not None:
+            horizon = log['horizon'].iloc[-1] + 1
+            round = log['round'].iloc[-1] + 1
+            cumulative_reward = log['cumulative_reward'].iloc[-1]
+        else:  # first time logging
+            horizon = 0
+            round = 0
+            cumulative_reward = 0.0
 
-    # set up horizons, chosen_arms, reward and cumulative reward and update log
-    cumulative_rewards = []
-    current = cumulative_reward
-    for ii in range(len(rewards)):
-        current = current + rewards[ii]
-        cumulative_rewards.append(current)
-    horizons = list(np.arange(horizon, horizon+len(rewards)))
-    new_log = pd.DataFrame(list(zip(horizons, chosen_arms, rewards, cumulative_rewards)),
-                           columns=['horizon', 'chosen_arm', 'reward', 'cumulative_reward'])  # chosen arms directly loaded from cache
-    log = pd.concat([log, new_log])
+        # set up horizons, chosen_arms, reward and cumulative reward and update log
+        cumulative_rewards = []
+        current = cumulative_reward
+        for ii in range(len(rewards)):
+            current = current + rewards[ii]
+            cumulative_rewards.append(current)
+        horizons = list(np.arange(horizon, horizon+len(rewards)))
+        rounds = list(np.repeat(round, len(rewards)))  # basically just repeat the round number
+        experiments = list(np.arange(len(rewards)))
+        new_log = pd.DataFrame(list(zip(rounds, experiments, horizons, chosen_arms, rewards, cumulative_rewards)),
+                               columns=['round', 'experiment', 'horizon', 'chosen_arm', 'reward', 'cumulative_reward'])  # chosen arms directly loaded from cache
+        log = pd.concat([log, new_log])
 
-    # update scope, algo, history
-    for ii in range(len(rewards)):
-        scope.update_with_index(scope_idxs[ii], rewards[ii])
-        algo.update(chosen_arms[ii], rewards[ii])
-    scope.predict(encoding_dict=encoding_dict)
-    new_history = pd.concat([history, exps])
+        # update scope, algo
+        for ii in range(len(rewards)):
+            scope.update_with_index(scope_idxs[ii], rewards[ii])
+            algo.update(chosen_arms[ii], rewards[ii])
+        scope.predict(encoding_dict=encoding_dict)
 
-    # now try to propose again
-    chosen_arms = []  # all chosen arms for this round
-    to_queries = []  # all dicts representing experiments that need to be queried afterwards
-    scope_idxs = []  # keep track of all experiment idxs proposed. For ease of updating
-    all_proposed = pd.DataFrame()  # all proposed experiments, this is needed for logging
+        # update history
+        exps.insert(0, column='horizon', value=horizons)
+        new_history = pd.concat([history, exps])
 
-    algo_copy = copy.deepcopy(algo)  # make a copy of algo for fake update with prediction
-    scope_copy = copy.deepcopy(scope)  # make a copy of scope for fake update with prediction
+        # save history and log again
+        new_history.to_csv(f'{dir}history.csv')
+        log.to_csv(f'{dir}log.csv', index=False)  # save acquisition log
 
-    for _ in range(num_exp):
-        chosen_arm = algo_copy.select_next_arm()
-        proposed_experiments = scope_copy.propose_experiment(chosen_arm, num_exp=1, mode=propose_mode)  # propose exp
+    if not update_only:
+        # now try to propose again
+        chosen_arms = []  # all chosen arms for this round
+        to_queries = []  # all dicts representing experiments that need to be queried afterwards
+        scope_idxs = []  # keep track of all experiment idxs proposed. For ease of updating
+        all_proposed = pd.DataFrame()  # all proposed experiments, this is needed for logging
 
-        if proposed_experiments is None:
-            threshold = 0
-            print(
-                f'No experiments available for arm {chosen_arm}: {scope_copy.arms[chosen_arm]}. '
-                f'Trying to find new experiments.')
-            while proposed_experiments is None:
-                if threshold > THRESHOLD:
-                    print(
-                        f'No experiments available for arm {chosen_arm}: {scope_copy.arms[chosen_arm]} after '
-                        f'{THRESHOLD} attempts; it might be the best arm.')
-                    break
-                algo_copy.update(chosen_arm, algo_copy.emp_means[chosen_arm])
-                new_chosen_arm = algo_copy.select_next_arm()
-                if new_chosen_arm == chosen_arm:
-                    threshold = threshold + 1
-                    continue
-                else:
-                    chosen_arm = new_chosen_arm
-                    proposed_experiments = scope_copy.propose_experiment(chosen_arm, num_exp=1, mode=propose_mode)
+        algo_copy = copy.deepcopy(algo)  # make a copy of algo for fake update with prediction
+        scope_copy = copy.deepcopy(scope)  # make a copy of scope for fake update with prediction
 
-        if proposed_experiments is not None:
-            chosen_arms.append(chosen_arm)  # proposed arm added to list
-            scope_idxs.append(scope_copy.current_experiment_index)
-            all_proposed = pd.concat([all_proposed, proposed_experiments])
-            # to_dict() should generate a list
-        else:  # this is where no exp is available and algorithm refuses to choose any other arms
-            exit()  # TODO: fix? maybe, problem when it comes to analysis
-        algo_copy.update(chosen_arm, proposed_experiments['prediction'].values[0])  # update with prediction for proposed experiment; only proposing one at a time
-        scope_copy.update_with_index(scope_copy.current_experiment_index[0], -1)  # update scope with a fake yield just to block this experiemnt
+        for _ in range(num_exp):
+            chosen_arm = algo_copy.select_next_arm()
+            proposed_experiments = scope_copy.propose_experiment(chosen_arm, num_exp=1, mode=propose_mode)  # propose exp
 
-    assert len(chosen_arms) == len(scope_idxs), 'number of chosen arms and indexes to update in scope should be the same'
+            if proposed_experiments is None:
+                threshold = 0
+                print(
+                    f'No experiments available for arm {chosen_arm}: {scope_copy.arms[chosen_arm]}. '
+                    f'Trying to find new experiments.')
+                while proposed_experiments is None:
+                    if threshold > THRESHOLD:
+                        print(
+                            f'No experiments available for arm {chosen_arm}: {scope_copy.arms[chosen_arm]} after '
+                            f'{THRESHOLD} attempts; it might be the best arm.')
+                        break
+                    algo_copy.update(chosen_arm, algo_copy.emp_means[chosen_arm])
+                    new_chosen_arm = algo_copy.select_next_arm()
+                    if new_chosen_arm == chosen_arm:
+                        threshold = threshold + 1
+                        continue
+                    else:
+                        chosen_arm = new_chosen_arm
+                        proposed_experiments = scope_copy.propose_experiment(chosen_arm, num_exp=1, mode=propose_mode)
 
-    # save files and objects again
-    new_history.to_csv(f'{dir}history.csv')
-    log.to_csv(f'{dir}log.csv', index=False)  # save acquisition log
-    all_proposed.to_csv(f'{dir}proposed_experiments.csv')  # save proposed experiments
+            if proposed_experiments is not None:
+                chosen_arms.append(chosen_arm)  # proposed arm added to list
+                scope_idxs.append(scope_copy.current_experiment_index)
+                all_proposed = pd.concat([all_proposed, proposed_experiments])
+                # to_dict() should generate a list
+            else:  # this is where no exp is available and algorithm refuses to choose any other arms
+                exit()  # fix? maybe, problem when it comes to analysis
+            algo_copy.update(chosen_arm, proposed_experiments['prediction'].values[0])  # update with prediction for proposed experiment; only proposing one at a time
+            scope_copy.update_with_index(scope_copy.current_experiment_index[0], -1)  # update scope with a fake yield just to block this experiemnt
 
-    # cache some variables that need to be used later
-    with open(f'{dir}cache/algo.pkl', 'wb') as f:
-        pickle.dump(algo, f)  # save algo object
-    with open(f'{dir}cache/scope.pkl', 'wb') as f:
-        pickle.dump(scope, f)  # save scope object
-    with open(f'{dir}cache/scope_idxs.pkl', 'wb') as f:
-        pickle.dump(scope_idxs, f)  # save the indexes of current experiments
-    with open(f'{dir}cache/chosen_arms.pkl', 'wb') as f:
-        pickle.dump(chosen_arms, f)
+        assert len(chosen_arms) == len(scope_idxs), 'number of chosen arms and indexes to update in scope should be the same'
+
+        all_proposed.to_csv(f'{dir}proposed_experiments.csv')  # save proposed experiments
+
+        # cache some variables that need to be used later
+        with open(f'{dir}cache/algo.pkl', 'wb') as f:
+            pickle.dump(algo, f)  # save algo object
+        with open(f'{dir}cache/scope.pkl', 'wb') as f:
+            pickle.dump(scope, f)  # save scope object
+        with open(f'{dir}cache/scope_idxs.pkl', 'wb') as f:
+            pickle.dump(scope_idxs, f)  # save the indexes of current experiments
+        with open(f'{dir}cache/chosen_arms.pkl', 'wb') as f:
+            pickle.dump(chosen_arms, f)
+    else:  # update only
+        # ignore some of the warnings here. If the update part is skipped, this will not run.
+        pd.DataFrame().to_csv(f'{dir}proposed_experiments.csv')
+        new_history.to_csv(f'{dir}history.csv')
+        log.to_csv(f'{dir}log.csv', index=False)  # save acquisition log
+        with open(f'{dir}cache/algo.pkl', 'wb') as f:
+            pickle.dump(algo, f)  # save algo object
+        with open(f'{dir}cache/scope.pkl', 'wb') as f:
+            pickle.dump(scope, f)  # save scope object
+
     return None
 
 

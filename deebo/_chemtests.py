@@ -29,9 +29,9 @@ def deoxyf():
     arms_dict = {'base_name': bases,
                  'fluoride_name': fluorides}
     #algo = algos_regret.ThompsonSamplingGaussianFixedVar(len(bases)*len(fluorides), assumed_sd=0.25)
-    algo = algos_regret.BayesUCBGaussian(len(bases)*len(fluorides), assumed_sd=0.25)
-    wkdir = './dataset_logs/deoxyf/combo/'
-    num_sims = 400
+    algo = algos_regret.UCB1(len(bases)*len(fluorides))
+    wkdir = './dataset_logs/deoxyf/test/'
+    num_sims = 5
     num_round = 100
     num_exp = 1
     propose_mode = 'random'
@@ -132,12 +132,12 @@ def deoxyf_interpolation():
                  'fluoride_name': fluorides}
     # algo = algos_regret.ThompsonSamplingGaussianFixedVar(len(bases)*len(fluorides), assumed_sd=0.25)
     algo = algos_regret.UCB1Tuned(len(bases) * len(fluorides))
-    wkdir = './dataset_logs/deoxyf/combo/interpolation/'
+    wkdir = './dataset_logs/deoxyf/combo/test/'
     num_sims = 200
     num_round = 100
     num_exp = 1
     propose_mode = 'random'
-    batch_size = 10
+    batch_size = 6
     #######################################################################################################################
 
     dir_name = f'{wkdir}{algo.__str__()}-{num_sims}s-{num_round}r-{batch_size}b/'
@@ -456,4 +456,4 @@ def cn_maldi():
 
 
 if __name__ == '__main__':
-    deoxyf_interpolation()
+    deoxyf()
