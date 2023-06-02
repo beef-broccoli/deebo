@@ -275,7 +275,7 @@ class UCB1(RegretAlgorithm):
 
     def select_next_arm(self):
         if not self.batch:
-            if sum(self.counts) < len(self.counts):  # run a first pass through all arms
+            if 0 in self.counts:  # run a first pass through all arms
                 for arm in range(len(self.counts)):
                     if self.counts[arm] == 0:
                         return arm
@@ -321,7 +321,7 @@ class UCB1Tuned(RegretAlgorithm):  # seems like V value are a lot bigger than 1/
 
     def select_next_arm(self):
         if not self.batch:  # not batch mode, with exploration round
-            if sum(self.counts) < len(self.counts):  # run a first pass through all arms
+            if 0 in self.counts:  # run a first pass through all arms
                 for arm in range(len(self.counts)):
                     if self.counts[arm] == 0:
                         return arm
@@ -540,7 +540,7 @@ class UCBV(RegretAlgorithm):
         return
 
     def select_next_arm(self):
-        if sum(self.counts) < len(self.counts):  # run a first pass through all arms
+        if 0 in self.counts: # run a first pass through all arms
             for arm in range(len(self.counts)):
                 if self.counts[arm] == 0:
                     return arm
@@ -604,7 +604,7 @@ class UCB2(RegretAlgorithm):
         return
 
     def select_next_arm(self):
-        if sum(self.counts) < len(self.counts):  # run a first pass through all arms
+        if 0 in self.counts:  # run a first pass through all arms
             for arm in range(len(self.counts)):
                 if self.counts[arm] == 0:
                     return arm
@@ -763,7 +763,7 @@ class DMED(RegretAlgorithm):
         return
 
     def select_next_arm(self):
-        if sum(self.counts) < len(self.counts):  # run a first pass through all arms
+        if 0 in self.counts:  # run a first pass through all arms
             for arm in range(len(self.counts)):
                 if self.counts[arm] == 0:
                     return arm

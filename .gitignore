@@ -162,3 +162,4 @@ cython_debug/
 /deebo/test/
 /deebo/dataset_logs/
 /deebo/burke_comparison.py
+/deebo/single_run_logs/
