@@ -4,7 +4,7 @@ import pandas as pd
 
 from chem_arms import Scope
 from chem_arms import propose_initial_experiments_interpolation, update_and_propose_interpolation
-from algos_regret import UCB1Tuned
+import algos_regret
 import utils
 
 
@@ -40,10 +40,7 @@ def deoxyf(dir='./single_run_logs/deoxyf/'):
     arms_dict_2 = {'fluoride_name': fluorides}
     arms_dict_3 = {'base_name': bases,
                    'fluoride_name': fluorides}
-    algo = UCB1Tuned(len(bases))
-
-    # propose initial experiments
-    propose_initial_experiments_interpolation(scope_dict, arms_dict, algo, dir=dir, num_exp=3)
+    algo = algos_regret.BayesUCBGaussian(len(bases), assumed_sd=0.25, c=2)
 
     def query_and_fill(lookup_dict, workdir):
         proposed = pd.read_csv(f'{workdir}proposed_experiments.csv', index_col=0)
@@ -53,25 +50,35 @@ def deoxyf(dir='./single_run_logs/deoxyf/'):
         proposed.to_csv(f'{workdir}proposed_experiments.csv')
         return None
 
-    rounds = 15
+    # propose initial experiments
+    propose_initial_experiments_interpolation(scope_dict, arms_dict, algo, dir=dir, num_exp=3)
+
+    rounds = 10
+    num_exp = 3
     for i in range(rounds):
         query_and_fill(ys_lookup_dict, dir)
         if i == rounds-1:
-            update_and_propose_interpolation(dir=dir, num_exp=3, encoding_dict=encodings, update_only=True)
+            update_and_propose_interpolation(dir=dir, num_exp=num_exp, encoding_dict=encodings, update_only=True)
         else:
-            update_and_propose_interpolation(dir=dir, num_exp=3, encoding_dict=encodings)
+            update_and_propose_interpolation(dir=dir, num_exp=num_exp, encoding_dict=encodings)
 
     with open('./single_run_logs/deoxyf/cache/scope.pkl', 'rb') as f:
         scope = pickle.load(f)
+    with open('./single_run_logs/deoxyf/cache/algo.pkl', 'rb') as f:
+        algo = pickle.load(f)
 
-    # now trying to change arms
+    ranks = algo.ranking
     old_arms = scope.arms
     old_arm_labels = scope.arm_labels
+    print(f'rankings for {old_arm_labels}:')
+    print(f'{[old_arms[r] for r in ranks]}')
+    print(f'counts: {[algo.counts[r] for r in ranks]}\n')
+
+    # now trying to change arms, change scope, initialize new algo and update, and save
     scope.clear_arms()
     scope.build_arms(arms_dict_3)
-    new_algo = UCB1Tuned(n_arms=len(scope.arms))
+    new_algo = algos_regret.BayesUCBGaussian(len(scope.arms), assumed_sd=0.25, c=2)
     results_for_new_arms = scope.sort_results_with_arms()
-    print(results_for_new_arms)
 
     for ii in range(len(results_for_new_arms)):
         results = results_for_new_arms[ii]
@@ -83,24 +90,39 @@ def deoxyf(dir='./single_run_logs/deoxyf/'):
     with open('./single_run_logs/deoxyf/cache/algo.pkl', 'wb') as f:
         pickle.dump(new_algo, f)
 
+    # now run optimization.
     # the only not so great thing here is the log. arm index will mean different things after pivoting arms
-    update_and_propose_interpolation(dir, 2, encoding_dict=encodings, propose_only=True)
-    rounds = 20
+    rounds = 25
+    num_exp = 3
+    update_and_propose_interpolation(dir, num_exp, encoding_dict=encodings, propose_only=True)
     for i in range(rounds):
         query_and_fill(ys_lookup_dict, dir)
         if i == rounds-1:
-            update_and_propose_interpolation(dir=dir, num_exp=2, encoding_dict=encodings, update_only=True)
+            update_and_propose_interpolation(dir=dir, num_exp=num_exp, encoding_dict=encodings, update_only=True)
         else:
-            update_and_propose_interpolation(dir=dir, num_exp=2, encoding_dict=encodings)
+            update_and_propose_interpolation(dir=dir, num_exp=num_exp, encoding_dict=encodings)
+
+    with open('./single_run_logs/deoxyf/cache/scope.pkl', 'rb') as f:
+        scope = pickle.load(f)
+    with open('./single_run_logs/deoxyf/cache/algo.pkl', 'rb') as f:
+        algo = pickle.load(f)
+
+    ranks = algo.ranking
+    old_arms = scope.arms
+    old_arm_labels = scope.arm_labels
+    print(f'rankings for {old_arm_labels}:')
+    print(f'{[old_arms[r] for r in ranks]}')
+    print(f'counts: {[algo.counts[r] for r in ranks]}\n')
+
 
 
 
 if __name__ == '__main__':
-    #deoxyf()
-    with open('./single_run_logs/deoxyf/cache/algo.pkl', 'rb') as f:
-        a = pickle.load(f)
-    with open('./single_run_logs/deoxyf/cache/scope.pkl', 'rb') as f:
-        s = pickle.load(f)
-    print(s.sort_results_with_arms())
-    print(sum(a.counts))
-    print(a.emp_means)
+    deoxyf()
+    # with open('./single_run_logs/deoxyf/cache/algo.pkl', 'rb') as f:
+    #     a = pickle.load(f)
+    # with open('./single_run_logs/deoxyf/cache/scope.pkl', 'rb') as f:
+    #     s = pickle.load(f)
+    # print(s.sort_results_with_arms())
+    # print(sum(a.counts))
+    # print(a.emp_means)
