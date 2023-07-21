@@ -49,7 +49,7 @@ def plot_all_results():
     ax.spines['left'].set_visible(False)
     cbar = plt.colorbar(im)
     cbar.ax.tick_params(labelsize=13)
-    cbar.ax.set_ylabel('yield (%)', rotation=270, fontsize=14, labelpad=25)
+    cbar.ax.set_ylabel('Yield (%)', rotation=270, fontsize=14, labelpad=25)
     plt.rcParams['savefig.dpi'] = 300
 
     plt.show()
@@ -97,7 +97,7 @@ def plot_one_combination():
 
     plt.show()
 
-@gif.frame
+#@gif.frame
 def plot_acquisition_history_heatmap_cn(history_fp='./test/history.csv', sim=0, roun=0, binary=False,
                                                      cutoff=80):
     """
@@ -124,6 +124,8 @@ def plot_acquisition_history_heatmap_cn(history_fp='./test/history.csv', sim=0, 
     df = df[['base_name', 'ligand_name', 'substrate_id', 'additive_id', 'yield']]
 
     LS = df['ligand_name'].unique()
+    label_d = {'XPhos': 'L1', 'tBuXPhos': 'L2', 'tBuBrettPhos': 'L3', 'AdBrettPhos': 'L4'}
+    labels = [label_d[l] for l in LS]
     BS = df['base_name'].unique()
 
     ground_truth = df[['base_name', 'ligand_name', 'substrate_id', 'additive_id']].to_numpy()
@@ -180,7 +182,7 @@ def plot_acquisition_history_heatmap_cn(history_fp='./test/history.csv', sim=0, 
     for i in range(1):
         for j in range(1):
             ax.set_xticks([9.5, 29.5, 49.5], BS, fontsize=14)
-            ax.set_yticks([7, 22, 37, 52], LS, fontsize=14)
+            ax.set_yticks([7, 22, 37, 52], labels, fontsize=14)
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
@@ -188,10 +190,10 @@ def plot_acquisition_history_heatmap_cn(history_fp='./test/history.csv', sim=0, 
     cbar = plt.colorbar(im)
     cbar.ax.tick_params(labelsize=13)
     cbar.ax.set_ylabel('yield (%)', rotation=270, fontsize=14, labelpad=25)
-    plt.title(f't={roun}', fontsize=14)
+    plt.title(f'n={roun}', fontsize=14)
     plt.tight_layout()
     plt.rcParams['savefig.dpi'] = 300
-    #plt.show()
+    plt.show()
 
 
 def make_heatmap_gif(plot_func, n_sim=0, max_n_round=100, binary=False, history_fp='', save_fp=''):
@@ -292,4 +294,5 @@ if __name__ == '__main__':
     #                  history_fp='/Users/mac/Desktop/project deebo/deebo/deebo/dataset_logs/cn/bayes_ucb_gaussian_c=2_assumed_sd=0.25-500s-100r-1e/history.csv',
     #                  save_fp='test.gif')
 
-    plot_best_with_diff_metric()
+    plot_acquisition_history_heatmap_cn('/Users/mac/Desktop/project deebo/deebo/deebo/dataset_logs/cn/bayes_ucb_gaussian_c=2_assumed_sd=0.25-500s-100r-1e/history.csv',
+                                        roun=99)

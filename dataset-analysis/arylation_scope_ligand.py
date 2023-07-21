@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 plt.rcParams['savefig.dpi'] = 600
 from matplotlib.patches import Rectangle
 import matplotlib.patches as mpatches
+import matplotlib as mpl
 from collections import Counter
 from tqdm import tqdm
 from rdkit import Chem
@@ -94,16 +95,14 @@ def plot_all_results(binary=0, cutoff=80):  # heatmap for all results, grouped b
         a = a>cutoff
 
     fig, ax = plt.subplots()
+    text_kwargs = dict(ha='center', va='center', fontsize=10, color='white')
+    text_kwargs_fs9 = dict(ha='center', va='center', fontsize=9, color='white')
+    text_kwargs_fs8 = dict(ha='center', va='center', fontsize=8, color='white')
+    text_kwargs_fs7 = dict(ha='center', va='center', fontsize=7, color='white')
     if binary:
         im = ax.imshow(a, cmap='inferno', vmin=0, vmax=2)
-        text_kwargs = dict(ha='center', va='center', fontsize=10, color='white')
-        text_kwargs_fs9 = dict(ha='center', va='center', fontsize=9, color='white')
-        text_kwargs_fs8 = dict(ha='center', va='center', fontsize=8, color='white')
     else:
         im = ax.imshow(a, cmap='inferno', vmin=0, vmax=110)
-        text_kwargs = dict(ha='center', va='center', fontsize=10, color='white')
-        text_kwargs_fs9 = dict(ha='center', va='center', fontsize=9, color='white')
-        text_kwargs_fs8 = dict(ha='center', va='center', fontsize=8, color='white')
     ii = 0
     for i in range(4):
         for j in range(6):
@@ -111,9 +110,9 @@ def plot_all_results(binary=0, cutoff=80):  # heatmap for all results, grouped b
             if len(ligand_names[ii])<11:
                 plt.text(8 * j + 3.5, 8 * i + 2.5, ligand_names[ii], **text_kwargs)
             elif len(ligand_names[ii])<13:
-                plt.text(8 * j + 3.5, 8 * i + 2.5, ligand_names[ii], **text_kwargs_fs9)
-            else:
                 plt.text(8 * j + 3.5, 8 * i + 2.5, ligand_names[ii], **text_kwargs_fs8)
+            else:
+                plt.text(8 * j + 3.5, 8 * i + 2.5, ligand_names[ii], **text_kwargs_fs7)
             plt.text(8 * j + 3.5, 8 * i + 4.5, str(round(averages[ii],2)), **text_kwargs)
             ii = ii+1
 
@@ -130,7 +129,7 @@ def plot_all_results(binary=0, cutoff=80):  # heatmap for all results, grouped b
 
     if not binary:
         cbar = plt.colorbar(im)
-        cbar.ax.set_ylabel('yield (%)', rotation=270)
+        cbar.ax.set_ylabel('Yield (%)', rotation=270)
     plt.rcParams['savefig.dpi'] = 300
     plt.show()
     return None
@@ -253,7 +252,7 @@ def plot_one_ligand_result():  # heatmap for one ligand, with numerical yield
     return None
 
 
-def plot_best_ligand_with_diff_metric(n_largest=5):  # 6 bar plots, each with top 5 ligands, and their performance wrt metric
+def plot_best_ligand_with_diff_metric(n_largest=5, preset_color_dict=None):  # 6 bar plots, each with top 5 ligands, and their performance wrt metric
 
     with open('colors.yml', 'r') as file:
         COLORS = yaml.safe_load(file)
@@ -282,10 +281,23 @@ def plot_best_ligand_with_diff_metric(n_largest=5):  # 6 bar plots, each with to
                   COLORS['classic_blue'], COLORS['lime_punch'], COLORS['pirate_black'], COLORS['jasmine_green'],
                   COLORS['red_violet']]
     colors = {}
-    if len(all_top_ligands) > len(color_list):
-        raise RuntimeError('not enough colors for all top ligands. {0} colors, {1} ligands'.format(len(color_list), len(all_top_ligands)))
-    for i in range(len(all_top_ligands)):
-        colors[all_top_ligands[i]] = color_list[i]
+
+    if preset_color_dict is not None:  # provide an color dictionary {ligand_name: color}
+        color_list_count = 0  # this index is used in case the supplied color dict does not contain the ligand that need to be plotted
+        # then colors will be incrementally selected from color_list
+        for i in range(len(all_top_ligands)):
+            ligand = all_top_ligands[i]
+            try:
+                colors[ligand] = preset_color_dict[ligand]
+            except KeyError:
+                colors[ligand] = 'gray'
+                color_list_count += 1
+    else:
+        if len(all_top_ligands) > len(color_list):
+            raise RuntimeError('not enough colors for all top ligands. {0} colors, {1} ligands'.format(len(color_list),
+                                                                                                       len(all_top_ligands)))
+        for i in range(len(all_top_ligands)):
+            colors[all_top_ligands[i]] = color_list[i]
 
     def get_colors(ll):  # for a list of names, get their color from overall color dict
         out = []
@@ -322,7 +334,7 @@ def plot_best_ligand_with_diff_metric(n_largest=5):  # 6 bar plots, each with to
     plt.show()
 
 
-def plot_results_with_model_substrates(cutoff=75, select=True):
+def plot_results_with_model_substrates(cutoff=50, select=False):
     """
     a heatmap, with each substrate pair as model system, highest yielding ligand is identified
 
@@ -374,9 +386,12 @@ def plot_results_with_model_substrates(cutoff=75, select=True):
         max['plot'] = df['ligand_name'].apply(color)
     max['plot'] = max['plot']*max['valid']
     max = max.pivot(index='nucleophile_id', columns='electrophile_id', values='plot')
+    max[max==0] = -1  # set all zeros to -1, this helps with plotting with a cmap, i can set the color for -1
 
     fig, ax = plt.subplots()
-    im = ax.imshow(max, cmap='turbo')
+    cmap = mpl.cm.get_cmap('Paired').copy()
+    cmap.set_under('k')
+    im = ax.imshow(max, cmap=cmap, vmin=1)
 
     # grid line
     for i in range(8):
@@ -395,15 +410,94 @@ def plot_results_with_model_substrates(cutoff=75, select=True):
         ligand_color = list(ligands_to_color)
         ligand_color.insert(0, f'Not optimized (<{cutoff}%)')
     colors = [im.cmap(im.norm(value)) for value in values]
+
     patches = [mpatches.Patch(color=colors[i], label=ligand_color[i]) for i in range(len(values))]
-    plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+    plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., ncol=2)
 
     ax.spines['top'].set_visible(False)  # remove boundaries
     ax.spines['right'].set_visible(False)
 
     plt.rcParams['savefig.dpi'] = 600
     plt.show()
+    return None
 
+
+def plot_results_with_model_substrates_color_match_publication(cutoff=75, preset_color_dict=None):
+    """
+    a heatmap, with each substrate pair as model system, highest yielding ligand is identified
+
+    Parameters
+    ----------
+    cutoff: yield cutoff. If the highest yielding ligand gives a yield lower than cutoff, it's considered not optimized
+    select: plot only selected few ligands for better visualization
+
+    Returns
+    -------
+
+    """
+    fd = df.copy()
+    fd['combo'] = fd['electrophile_id'].astype('str') + fd['nucleophile_id'].astype('str')
+    #fd = fd.sort_values(by=['combo', 'ligand_name'])
+    max = fd.loc[fd.groupby(by=['combo'])['yield'].idxmax()]
+    #print(list(max['ligand_name'].unique()))
+    #print(max.loc[max['plot']!=0]['ligand_name'].value_counts())
+
+    # new way to assign colors for all ligands that give above cutoff yields
+    ligands_to_color = max.loc[max['yield']>cutoff]['ligand_name'].unique()
+
+    val_to_rgb = {}  # {value: rgb}
+    def color(x):
+        # x: ligand name
+        vals = np.arange(len(ligands_to_color)) + 1
+        d = dict(zip(ligands_to_color, vals))  # {name: value}
+        if x not in d:
+            return 0
+        else:
+            if preset_color_dict is not None:
+                val_to_rgb[d[x]] = preset_color_dict[x]
+            return d[x]
+
+    max['valid'] = df['yield'].apply(lambda x: 0 if x<cutoff else 1)  # 0 for plotting, if highest yield < 75%
+    max['plot'] = df['ligand_name'].apply(color)
+    max['plot'] = max['plot']*max['valid']
+    max = max.pivot(index='nucleophile_id', columns='electrophile_id', values='plot')
+    max[max==0] = -1  # set all zeros to -1, this helps with plotting with a cmap, i can set the color for -1
+
+    fig, ax = plt.subplots()
+    if preset_color_dict is not None:
+        # val_to_rgb is unordered dict, have to call one by one with a np.arange() list
+        listedcolors = [val_to_rgb[ii] for ii in np.arange(len(ligands_to_color))+1]
+        cmap = mpl.colors.ListedColormap(listedcolors)
+    else:
+        cmap = mpl.cm.get_cmap('Paired').copy()
+    cmap.set_under('k')
+    im = ax.imshow(max, cmap=cmap, vmin=1)
+
+    # grid line
+    for i in range(8):
+        for j in range(8):
+            ax.add_patch(Rectangle((j-0.5, i-0.5), 1, 1, fill=False, edgecolor='white', lw=1))
+
+    ax.set_xticks(np.arange(8), labels=list(max.columns))
+    ax.set_yticks(np.arange(8), labels=list(max.index))
+    ax.set_xlabel('Electrophile (aryl bromide)')
+    ax.set_ylabel('Nucleophile (imidazole)')
+
+    values = list(np.arange(len(ligands_to_color)+1))
+    ligand_color = list(ligands_to_color)
+    ligand_color.insert(0, f'Not optimized (<{cutoff}%)')
+    colors = [im.cmap(im.norm(value)) for value in values]
+
+    patches = [mpatches.Patch(color=colors[i], label=ligand_color[i]) for i in range(len(values))]
+    plt.legend(title='Optimal ligand', handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., ncol=2)
+    #plt.title('Optimal ligand from model substrate approach')
+
+    ax.spines['top'].set_visible(False)  # remove boundaries
+    ax.spines['right'].set_visible(False)
+
+    plt.rcParams['savefig.dpi'] = 600
+    plt.show()
+    return None
 
 # random sampling baseline, for each ligand, sample n experiments, plot the top 5 ligands as bar plots
 # parameters: identify the ligand of interest, and how many experiments per ligand
@@ -915,7 +1009,9 @@ def simulate_etc(top=1, max_sample=3, n_simulations=10000):
     return None
 
 
-def plot_ligand_perf_expansion(scenario=1, nlargest=5):
+def plot_ligand_perf_expansion(scenario=1, nlargest=5, preset_color_dict=None):
+    # preset_color_dict is used to ensure consistent colors for ligands throughout different plots
+    # one set of color is saved in arylation_colors.json
 
     with open('colors.yml', 'r') as file:
         COLORS = yaml.safe_load(file)
@@ -951,19 +1047,33 @@ def plot_ligand_perf_expansion(scenario=1, nlargest=5):
                   COLORS['classic_blue'], COLORS['lime_punch'], COLORS['pirate_black'], COLORS['jasmine_green'],
                   COLORS['red_violet']]
     colors = {}
-    if len(all_top_ligands) > len(color_list):
-        raise RuntimeError('not enough colors for all top ligands. {0} colors, {1} ligands'.format(len(color_list), len(all_top_ligands)))
-    for i in range(len(all_top_ligands)):
-        colors[all_top_ligands[i]] = color_list[i]
+
+    if preset_color_dict is not None:  # provide an color dictionary {ligand_name: color}
+        print('am i execting')
+        color_list_count = 0  # this index is used in case the supplied color dict does not contain the ligand that need to be plotted
+        # then colors will be incrementally selected from color_list
+        for i in range(len(all_top_ligands)):
+            ligand = all_top_ligands[i]
+            try:
+                colors[ligand] = preset_color_dict[ligand]
+            except KeyError:
+                colors[ligand] = 'gray'
+                color_list_count += 1
+    else:
+        if len(all_top_ligands) > len(color_list):
+            raise RuntimeError('not enough colors for all top ligands. {0} colors, {1} ligands'.format(len(color_list),
+                                                                                                       len(all_top_ligands)))
+        for i in range(len(all_top_ligands)):
+            colors[all_top_ligands[i]] = color_list[i]
 
     # colors here match the accuracy plot
-    colors = {
-        'Cy-BippyPhos': '#1f77b4',
-        'Et-PhenCar-Phos': '#ff7f0e',
-        'tBPh-CPhos': '#2ca02c',
-        'CgMe-PPh': '#d62728',
-        'JackiePhos': '#9467bd',
-    }
+    # colors = {
+    #     'Cy-BippyPhos': '#1f77b4',
+    #     'Et-PhenCar-Phos': '#ff7f0e',
+    #     'tBPh-CPhos': '#2ca02c',
+    #     'CgMe-PPh': '#d62728',
+    #     'JackiePhos': '#9467bd',
+    # }
 
     figsize = (10,6)
     kwargs = {'aa': True, 'width': 0.5}
@@ -990,22 +1100,23 @@ def plot_ligand_perf_expansion(scenario=1, nlargest=5):
             axs[ax_x].set_ylabel(y_label)
         axs[ax_x].set_ylim(top=axs[ax_x].get_ylim()[1] + 5)  # adjust ylim top so value text fits
 
-    ax_plot(0, list_1, title='initial scope (1/4 dataset)', y_label='yield (%)')
-    ax_plot(1, list_2, title='expansion 1 (half dataset)', y_label='yield (%)')
-    ax_plot(2, list_3, title='expansion 2 (full dataset)', y_label='yield (%)')
+    ax_plot(0, list_1, title='Phase I (16 products)', y_label='Yield (%)')
+    ax_plot(1, list_2, title='Phase II (32 products)', y_label='Yield (%)')
+    ax_plot(2, list_3, title='Phase III (64 products)', y_label='Yield (%)')
 
     plt.show()
 
 
-
-
 if __name__ == '__main__':
+    import json
+    with open('arylation_colors.json', 'r') as f:
+        c_dict = json.load(f)
 
-    #plot_all_results()
+    # plot_results_with_model_substrates_color_match_publication(preset_color_dict=c_dict)
 
-    names = ['Cy-BippyPhos', 'Et-PhenCar-Phos', 'tBPh-CPhos', 'CgMe-PPh', 'JackiePhos']
-    plot_all_results()
+    plot_ligand_perf_expansion(preset_color_dict=c_dict)
 
+    # plot_ligand_perf_expansion(preset_color_dict=c_dict)
     # # calculate random sampling accuracy
     # for n in range(4):
     #     d = calculate_random_sampling_n(num=n+1)

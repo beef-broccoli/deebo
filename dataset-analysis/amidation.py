@@ -7,6 +7,7 @@ from matplotlib.patches import Rectangle
 from tqdm import tqdm
 import random
 
+
 def plot_all_results(single_component='activator'):
     """
 
@@ -26,13 +27,12 @@ def plot_all_results(single_component='activator'):
     df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/ami.csv')
 
     short_name_dict = {
-        '1-Methylimidazole': 'MeIm',
+        '1-Methylimidazole': 'NMI',
         '2,6-Lutidine': 'lutidine',
-        'N-methylmorpholine': 'MeMorph',
+        'N-methylmorpholine': 'NMM',
         'Diisopropylethylamine': 'DIPEA'
     }
     nuc_id_dict = dict(zip(df['nucleophile_name'].unique(), [f'n{num}' for num in np.arange(len(df['nucleophile_name'].unique()))+1]))
-    print(nuc_id_dict)
 
     df['base_name_long'] = df['base_name']
     df['base_name'] = df['base_name_long'].apply(lambda x: short_name_dict[x])
@@ -74,16 +74,17 @@ def plot_all_results(single_component='activator'):
             ii = ii + 1
 
     #ax.set_xticks(np.arange(8), activator_labels, rotation=90)
-    ax_t = ax.secondary_xaxis('top')
-    ax_t.set_xticks(np.arange(len(single_component_labels)*5), labels=np.tile(single_component_labels, 5), rotation=90)
-    ax.set_yticks(np.arange(len(combo_labels)*2), labels=np.tile(combo_labels, 2))
+    # ax_t = ax.secondary_xaxis('top')
+    # ax_t.set_xticks(np.arange(len(single_component_labels)*5), labels=np.tile(single_component_labels, 5), rotation=90)
+    # ax.set_yticks(np.arange(len(combo_labels)*2), labels=np.tile(combo_labels, 2))
+    ax.set_yticks([], labels=[])
     ax.set_xticks([], labels=[])
 
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['bottom'].set_visible(False)
     ax.spines['left'].set_visible(False)
-    ax_t.spines['top'].set_visible(False)
+    # ax_t.spines['top'].set_visible(False)
 
     cbar = plt.colorbar(im)
     cbar.ax.tick_params(labelsize=12)
@@ -408,6 +409,81 @@ def plot_best_with_diff_metric(nlargest=8, which_dimension='activator'):  # 6 ba
     plt.show()
 
 
+def plot_best_by_average(nlargest=10):
+    # activator/base combo
+
+    with open('colors.yml', 'r') as file:
+        COLORS = yaml.safe_load(file)
+
+    df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/ami.csv')
+    short_name_dict = {
+        '1-Methylimidazole': 'MeIm',
+        '2,6-Lutidine': 'lut',
+        'N-methylmorpholine': 'MeMor',
+        'Diisopropylethylamine': 'DIPEA'
+    }
+    nuc_id_dict = dict(zip(df['nucleophile_name'].unique(),
+                           [f'n{num}' for num in np.arange(len(df['nucleophile_name'].unique())) + 1]))
+
+    df['base_name_long'] = df['base_name']
+    df['base_name'] = df['base_name_long'].apply(lambda x: short_name_dict[x])
+    df['nucleophile_id'] = df['nucleophile_name'].apply(lambda x: nuc_id_dict[x])
+    df = df[['nucleophile_id', 'base_name', 'activator_name', 'solvent_name','yield']]
+
+    df['combo'] = df['activator_name'].astype('str') + '/' + df['base_name'].astype('str')
+
+    stats = df.groupby(by=['combo']).describe()
+    mean = stats.loc[:, ('yield', 'mean')].nlargest(nlargest)  # average=
+
+    # make color dictionary, one color for one ligand
+    all_top_ligands = []
+    for li in [mean]:
+        all_top_ligands = all_top_ligands + list(li.index)
+    all_top_ligands = list(set(all_top_ligands))
+    # colors = {}
+    # colormap = plt.cm.tab10.colors
+    # for i in range(len(all_top_ligands)):
+    #     colors[all_top_ligands[i]] = colormap[i]
+
+    color_list = [COLORS['coral_essence'], COLORS['cornhusk'], COLORS['stucco'], COLORS['peach_quartz'],
+                  COLORS['baby_blue'], COLORS['monument'], COLORS['provence'], COLORS['pink_tint'],
+                  COLORS['classic_blue'], COLORS['lime_punch'], COLORS['pirate_black'], COLORS['jasmine_green'],
+                  COLORS['red_violet']]
+    colors = {}
+    if len(all_top_ligands) > len(color_list):
+        raise RuntimeError('not enough colors for all top options. {0} colors, {1} options'.format(len(color_list), len(all_top_ligands)))
+    for i in range(len(all_top_ligands)):
+        colors[all_top_ligands[i]] = color_list[i]
+
+    def get_colors(ll):  # for a list of names, get their color from overall color dict
+        out = []
+        for l in ll:
+            out.append(colors[l])
+        return out
+
+    def trim(ll):  # trim the long ligand names
+        return [s[:20] for s in ll]
+
+    figsize = (10,6)
+    kwargs = {'aa': True, 'width': 0.5}
+    plt.rcParams['savefig.dpi'] = 300
+    figs, axs = plt.subplots(2, 2, figsize=figsize, constrained_layout=True)
+
+    def ax_plot(ax_x, ax_y, df, title, y_label=None):
+        x = trim(list(df.index))
+        y = list(df.values)
+        axs[ax_x, ax_y].bar(x, y, color=get_colors(list(df.index)), **kwargs)
+        for i in range(len(x)):  # plot value
+            axs[ax_x, ax_y].text(i, y[i]+0.5, round(y[i], 2), ha='center')
+        axs[ax_x, ax_y].set_title(title)  # title
+        if y_label:  # y label
+            axs[ax_x, ax_y].set_ylabel(y_label)
+        axs[ax_x, ax_y].set_ylim(top=axs[ax_x, ax_y].get_ylim()[1] + 5)  # adjust ylim top so value text fits
+    ax_plot(0,0, mean, title='average')
+
+    plt.show()
+
+
 def simulate_etc_activator(top=1, max_sample=3, n_simulations=10000):
     top1 = ['DPPCl']
     top3 = ['DPPCl', 'BOP-Cl', 'TCFH']
@@ -487,5 +563,53 @@ def simulate_etc_combo(top=1, max_sample=3, n_simulations=10000):
     # top2 [0.0, 0.2031, 0.2934, 0.3476]
 
 
+def compare_conditions():
+    # compare condition performance for each substrate, average of three solvents
+    nuc_ids = ['n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8', 'n9', 'n10']
+    #nuc_ids = ['n1', 'n3', 'n5', 'n7', 'n8', 'n9']
+    df = pd.read_csv(
+        'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/ami.csv')
+    df = df.loc[df['nucleophile_id'].isin(nuc_ids)]
+    df['activator-base'] = df['activator_name'] + '-' + df['base_name']
+    df = df.loc[df['activator-base'].isin(['DPPCl-N-methylmorpholine', 'DPPCl-Diisopropylethylamine', 'HATU-Diisopropylethylamine', 'TCFH-1-Methylimidazole'])]
+    mean = df.groupby(by=['nucleophile_id', 'activator-base'])['yield'].mean()
+
+    plt.rcParams['savefig.dpi'] = 300
+    fig, axs = plt.subplots(1, len(nuc_ids), sharex=True, figsize=(16,2), constrained_layout=True)
+
+    short_name = {'DPPCl-N-methylmorpholine': 'DPPCl / NMM',
+                  'DPPCl-Diisopropylethylamine': 'DPPCl / DIPEA',
+                  'HATU-Diisopropylethylamine': 'HATU / DIPEA',
+                  'TCFH-1-Methylimidazole': 'TCFH / NMI'}
+
+    def ax_plot(ii, df, title, y_ticks=False):
+        colors = ['#f26b5b', '#0f4c81', '#373838', '#a58d7f']
+        labels = [short_name[l] for l in list(df.index)]
+        values = list(df.values)
+        pos = [2,3,1,0]
+        axs[ii].barh(pos, values, height=0.5, color=colors)
+        for p, v in zip(pos, values):
+            axs[ii].text(v+1, p, str(round(v,1)), ha='left', va='center', c='black')
+        axs[ii].set_title(title, fontweight='bold')  # title
+        if y_ticks:  # y label
+            axs[ii].set_yticks(pos, labels)
+        else:
+            axs[ii].set_yticks([])
+        axs[ii].set_xlim([0,100])
+
+    for ii, nid in zip(np.arange(len(nuc_ids)), nuc_ids):
+        if nid == 'n1':
+            ax_plot(ii, mean.loc[nid], title=nid, y_ticks=True)
+        else:
+            ax_plot(ii, mean.loc[nid], title=nid)
+
+    fig.add_subplot(111, frameon=False)
+    plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
+    plt.xlabel("Average yield (%) over three solvents")
+    fig.tight_layout()
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == '__main__':
-    pass
+    compare_conditions()

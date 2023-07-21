@@ -193,7 +193,7 @@ def plot_cutoff_heatmap(cutoff=60, solvent='EtOH', topn=8):
     return None
 
 
-def simulate_etc(max_sample=3, n_simulations=10000):
+def simulate_etc(max_sample=4, n_simulations=10000):
     top_six = ['PPh2Cy', 'CX-PCy', 'PPh3', 'P(p-F-Ph)3', 'P(p-Anis)3', 'Cy-JohnPhos']
     top_three = ['Cy-JohnPhos', 'P(p-Anis)3', 'PPh2Cy']
     top_eight = ['PPh2Cy', 'CX-PCy', 'PPh3', 'P(p-F-Ph)3', 'P(p-Anis)3', 'Cy-JohnPhos', 'A-paPhos', 'Cy-PhenCar-Phos']
@@ -218,7 +218,7 @@ def simulate_etc(max_sample=3, n_simulations=10000):
             #     count = count + 1
             maxs = sample_mean.loc[sample_mean['yield']==sample_mean['yield'].max()]
             random_one = random.choice(list(maxs.index))
-            if random_one in top_eight:
+            if random_one in top_three:
                 count = count+1
         percentages.append(count/n_simulations)
         avg_cumu_rewards.append(reward/n_simulations)
@@ -230,15 +230,16 @@ def simulate_etc(max_sample=3, n_simulations=10000):
     # 60% cutoff binary, with max tie breaking: [0.4301, 0.5488, 0.6136] (helps with sample 1 case, more ties)
     # 60% cutoff binary, cumulative reward: [7.1552, 14.3058, 21.4805]
 
-    # 50% cutoff binary top three: accuracy: [0.2263, 0.3055, 0.3833]; cumu reward [9.7952, 19.6476, 29.4682]
-    # 50% cutoff binary top eight: accur: [0.5371, 0.6623, 0.7558]  cumu: [9.8194, 19.6467, 29.4898]
+    # 50% cutoff binary top three: accuracy: [0.2263, 0.3055, 0.3833, 0.5027]; cumu reward [9.7952, 19.6476, 29.4682, 49.117]
+    # 50% cutoff binary top eight: accur: [0.5371, 0.6623, 0.7558, 0.848]  cumu: [9.8194, 19.6467, 29.4898, 49.0107]
     return None
 
 
 if __name__ == '__main__':
-    a = [0.0, 0.2263, 0.3055, 0.3833]
+    #simulate_etc()
+    a = [0.0, 0.2235, 0.3166, 0.4018, 0.4613]
     a = np.array(a).repeat(23)
-    b = [0.0, 0.5371, 0.6623, 0.7558]
-    b = np.array(b).repeat(23)
+    # b = [0.0, 0.5371, 0.6623, 0.7558, 0.848]
+    # b = np.array(b).repeat(23)
     np.save('top3.npy', a)
-    np.save('top8.npy', b)
+    # np.save('top8.npy', b)
