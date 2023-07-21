@@ -404,11 +404,9 @@ class BayesUCBBeta(UCB1):
         self.ucbs = [m + s for m, s in zip(means, stds)]
 
 
-class BayesUCBBetaPPF(UCB1):
-    # This algo was called NewBayesUCBBeta
+class NewBayesUCBBeta(UCB1):
     # Bayes UCB algorithm with beta prior
     # Implementation 2: use a percent point function to compare posteriors for different arms. From original paper
-    # http://proceedings.mlr.press/v22/kaufmann12/kaufmann12.pdf
     # scipy.Beta.ppf(1-1/t, alpha, beta)
     # https://github.com/Ralami1859/Stochastic-Multi-Armed-Bandit/blob/master/Modules/BayesUCB_RecommendArm.m
 
@@ -458,9 +456,8 @@ class BayesUCBGaussianSquared(UCB1):
         self.ucbs = [m + s for m, s in zip(self.emp_means, stds)]
 
 
-class BayesUCBGaussianPPF(UCB1):
-    # This algo was called NewBayesUCBGaussian
-    # same as BayesUCBBetaPPF, but uses a gaussian prior with fixed variance
+class NewBayesUCBGaussian(UCB1):
+    # same as NewBayesUCBBeta, but uses a gaussian prior with fixed variance
 
     def __str__(self):
         return f'new_bayes_ucb_gaussian'
