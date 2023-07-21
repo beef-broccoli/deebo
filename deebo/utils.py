@@ -66,6 +66,18 @@ def means_from_scenario(scenario=0):
 
 
 def plot_info_file_path_match(fp):
+    """
+    Specific to testing with fixed scenarios, this analyzes the given file path and searches for specifc scenarios
+    and returns relevant information about that scenario for plotting
+
+    Parameters
+    ----------
+    fp: filepath of the folder where results are stored.
+
+    Returns
+    -------
+
+    """
 
     if any(s in fp for s in ['scenario1', 'scenario2', 'scenario3']):
         best_arm_index = 4

@@ -7,42 +7,7 @@ import matplotlib.pyplot as plt
 from glob import glob
 from utils import plot_info_file_path_match
 
-# check chem_analyze for more up to date functions
-
-def plot_probs_choosing_best_arm_all(folder_path=None):
-    """
-    Func that can more efficiently plot results for each algo with all parameters
-
-    Parameters
-    ----------
-    folder_path
-    best_arm
-
-    Returns
-    -------
-
-    """
-    if not folder_path:
-        sys.exit()
-
-    if not folder_path.endswith('/'):
-        folder_path = folder_path + '/'
-
-    fn_list = sorted(glob(f'{folder_path}*.csv'))
-    legend_list = [fn[len(folder_path):-len('.csv')] for fn in fn_list]
-
-    title, legend_title, best_arm_index = plot_info_file_path_match(folder_path)
-
-    plot_probs_choosing_best_arm(fn_list,
-                                 legend_list,
-                                 best_arm_index=best_arm_index,
-                                 fp='./',
-                                 title=f'Accuracy of {title}',
-                                 legend_title=f'{legend_title}',
-                                 long_legend=True)
-
-    return
-
+# check chem_analyze for more up-to-date function with more functionalities
 
 
 def plot_probs_choosing_best_arm(fn_list,
@@ -58,12 +23,13 @@ def plot_probs_choosing_best_arm(fn_list,
                                  long_legend=False,
                                  ignore_first_rounds=0):
     """
+    plot the probabilities of choosing the optimal arm for a list of algorithms using acquisition logs.
 
     Parameters
     ----------
-    fn_list: Collection
+    fn_list: Collection of str
         list of data file names
-    legend_list: Collection
+    legend_list: Collection of str
         list of labels for legend
     hline: int/float
         value for plotting horizontal baseline
@@ -88,7 +54,7 @@ def plot_probs_choosing_best_arm(fn_list,
 
     Returns
     -------
-    matplotlib.pyplot plt object
+    None
 
     """
 
@@ -135,6 +101,7 @@ def plot_probs_choosing_best_arm(fn_list,
         ax.legend(title=legend_title)
 
     plt.show()
+    return None
 
 
 def plot_average_reward(fn_list,
@@ -145,6 +112,35 @@ def plot_average_reward(fn_list,
                         title='',
                         legend_title='',
                         long_legend=False):
+
+    """
+    plot the average reward at each time point for a list of algorithms using acquisition logs.
+
+    Parameters
+    ----------
+    fn_list: Collection of str
+        list of data file names
+    legend_list: Collection of str
+        list of labels for legend
+    baseline: int or float
+        horizontal baseline
+    show_se: bool
+        show the standard error interval or not
+    fp: str
+        the deepest common directory, this is just a convenience to be used with fn_list
+    title: str
+        title for the plot
+    legend_title: str
+        title for the legend
+    long_legend: bool
+        if true, legend will be plotted outside the plot; if false mpl finds the best position within plot
+
+    Returns
+    -------
+    None
+
+    """
+
 
     assert len(fn_list) == len(legend_list)
 
@@ -188,14 +184,37 @@ def plot_average_reward(fn_list,
         ax.legend(title=legend_title)
 
     plt.show()
+    return None
 
 
-#TODO: baseline cumu reward with ETC
+# maybe: baseline cumu reward with ETC
 def plot_cumulative_reward(fn_list,
                            legend_list,
                            fp='',
                            title='',
                            legend_title=''):
+
+    """
+    plot the cumulative reward up to each time point for a list of algorithms using acquisition logs.
+
+    Parameters
+    ----------
+    fn_list: Collection of str
+        list of data file names
+    legend_list: Collection of str
+        list of labels for legend
+    fp: str
+        the deepest common directory, this is just a convenience to be used with fn_list
+    title: str
+        title for the plot
+    legend_title: str
+        title for the legend
+
+    Returns
+    -------
+    None
+
+    """
 
     assert len(fn_list) == len(legend_list)
 
@@ -231,22 +250,21 @@ def plot_cumulative_reward(fn_list,
     ax.legend(title=legend_title, loc='upper left')
 
     plt.show()
+    return None
 
 
-def plot_regret():
-    return
-
-
-def plot_etc_baseline(explore_times,
-                      fn_list,
-                      legend_list,
-                      best_arm_index=0,
-                      fp='',
-                      title='',
-                      legend_title='',
-                      long_legend=False,
-                      ):
+def _plot_etc_baseline(explore_times,
+                       fn_list,
+                       legend_list,
+                       best_arm_index=0,
+                       fp='',
+                       title='',
+                       legend_title='',
+                       long_legend=False,
+                       ):
     """
+    Deprecated. Used to analyze the ETC logs and plot ETC baseline.
+    There is better ways to get the numbers directly during simulation.
 
     Parameters
     ----------
@@ -312,8 +330,45 @@ def plot_etc_baseline(explore_times,
 
     plt.show()
 
+    return None
 
-    return
+
+def plot_probs_choosing_best_arm_all(folder_path=None):
+    """
+    Function that can more efficiently plot results for each algo with all parameters
+    This is written for results for specific test scenario, where results for all algorithms are in the same folder
+    This checks the folder name and its file path, and fetches the pre-set parameter and plots all results in that folder
+    Only works with preset Bernoulli testings done (scenario 1-5)
+
+    Parameters
+    ----------
+    folder_path: file path for the folder where all results are stored.
+
+    Returns
+    -------
+    title (str), legend title (str) and best arm index (int)
+
+    """
+    if not folder_path:
+        sys.exit()
+
+    if not folder_path.endswith('/'):
+        folder_path = folder_path + '/'
+
+    fn_list = sorted(glob(f'{folder_path}*.csv'))
+    legend_list = [fn[len(folder_path):-len('.csv')] for fn in fn_list]
+
+    title, legend_title, best_arm_index = plot_info_file_path_match(folder_path)
+
+    plot_probs_choosing_best_arm(fn_list,
+                                 legend_list,
+                                 best_arm_index=best_arm_index,
+                                 fp='./',
+                                 title=f'Accuracy of {title}',
+                                 legend_title=f'{legend_title}',
+                                 long_legend=True)
+
+    return None
 
 
 def _test_plot():
@@ -377,7 +432,6 @@ def _deprecated_cal_baseline():
 
     # test basline
     #calculate_baseline(arms)
-
 
 
 if __name__ == '__main__':
@@ -557,7 +611,7 @@ if __name__ == '__main__':
             ignore_first_rounds=5
         )
 
-    normal_scenario1_best_performers()
+    plot_average_reward(['logs/scenario1/eps_greedy/annealing.csv'], legend_list=['s'], show_se=True)
 
     # s = 1
     # sd = 0.25
