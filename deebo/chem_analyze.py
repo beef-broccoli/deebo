@@ -409,7 +409,7 @@ def plot_accuracy_best_arm(best_arm_indexes,
                            etc_baseline=False,
                            etc_fp='',
                            title='',
-                           xlabel='time horizon (number of experiments)',
+                           xlabel='Time horizon (number of experiments)',
                            legend_title='',
                            long_legend=False,
                            ignore_first_rounds=0,
@@ -513,7 +513,7 @@ def plot_accuracy_best_arm(best_arm_indexes,
     if shade_first_rounds != 0:
         ax.axvspan(0, shade_first_rounds, facecolor='lightgray', alpha=0.5, zorder=100)
         _, ymax = ax.get_ylim()
-        ax.text(shade_first_rounds/2, ymax*0.75, 'exploration', verticalalignment='center',
+        ax.text(shade_first_rounds/2, ymax*0.75, 'Exploration', verticalalignment='center',
                 horizontalalignment='center', zorder=101, rotation=90)
 
     # ##custom text area
@@ -537,9 +537,11 @@ def plot_accuracy_best_arm(best_arm_indexes,
 
 def plot_accuracy_best_arm_scope_expansion(arm_indexes,
                                            legend_list,
+                                           fp,
                                            baseline_arm_indexes,
-                                           fp='',
-                                           baseline_fp='',
+                                           baseline_fps,
+                                           baseline_labels,
+                                           baseline_kwargs,
                                            hlines=None,
                                            vlines=None,
                                            etc_baseline=False,
@@ -549,7 +551,8 @@ def plot_accuracy_best_arm_scope_expansion(arm_indexes,
                                            long_legend=False,
                                            ignore_first_rounds=0,
                                            shade_first_rounds=0,
-                                           max_horizon_plot=0):
+                                           max_horizon_plot=9999999,
+                                           preset_colors=None):
     """
     Accuracy up to each time point
     At each time point, consider all past experiments until this point, and pick the arm with the highest number of samples
@@ -566,8 +569,12 @@ def plot_accuracy_best_arm_scope_expansion(arm_indexes,
         list of indexes for arms to be plotted from baseline file
     fp: str
         file path of the data file
-    baseline_fp: str
-        file path of the data file where baseline is plotted. In this case it's optimization with the full scope
+    baseline_fps: list of str
+        list of file path of the data file where baseline is plotted. In this case it's optimization with the full scope
+    baseline_labels: list of str
+        list of labels for baseline
+    baseline_kwargs: list of dict
+        list of kwargs for plotting
     hlines: Collection
         list of y axis locations to draw horizontal lines
     vlines: Collection
@@ -588,6 +595,8 @@ def plot_accuracy_best_arm_scope_expansion(arm_indexes,
         plot all data points, but vertically shade until x=n. And mark this area as "exploration"
     max_horizon_plot: int
         plot until this maximum time horizon
+    preset_colors: list-like
+        a list of colors to be used sequentially when plotting
 
     Returns
     -------
@@ -597,6 +606,11 @@ def plot_accuracy_best_arm_scope_expansion(arm_indexes,
     assert len(arm_indexes) == len(legend_list)
 
     plt.rcParams['savefig.dpi'] = 300
+    # transparent settings
+    plt.rcParams['figure.facecolor'] = (1.0, 1.0, 1.0, 0)
+    plt.rcParams['axes.facecolor'] = (1.0, 1.0, 1.0, 0)
+    plt.rcParams['savefig.facecolor'] = (1.0, 1.0, 1.0, 0)
+
     fig, ax = plt.subplots()
 
     if hlines is not None:
@@ -608,69 +622,63 @@ def plot_accuracy_best_arm_scope_expansion(arm_indexes,
 
     max_time_horizon = 0  # etc baseline cuts off at this time horizon
 
-    # this plots accuracies for multiple arms from the data log with scope expansion
+    # this plots accuracies for multiple arms from the one data log with scope expansion
     df = pd.read_csv(fp)
     df = df[['num_sims', 'horizon', 'chosen_arm']]
-
     n_simulations = int(np.max(df['num_sims'])) + 1
     time_horizon = int(np.max(df['horizon'])) + 1
     if time_horizon > max_time_horizon:
         max_time_horizon = time_horizon
-
     best_arms = np.zeros((n_simulations, time_horizon))  # each time point will have a best arm up to that point
-
     # calculate best arms for all time points
     for n in range(int(n_simulations)):
         data = np.array(list(df.loc[df['num_sims'] == n]['chosen_arm']))
         for t in range(len(data)):
             u, counts = np.unique(data[:t + 1], return_counts=True)
             best_arms[n, t] = u[np.random.choice(np.flatnonzero(counts == max(counts)))]
-
+    # check pre-set colors for color consistency
+    if preset_colors is not None:
+        assert len(preset_colors) == len(arm_indexes)
+        colors = preset_colors
+    else:
+        colors = plt.cm.tab10.colors
+    # start plotting for each arm
     for i in range(len(arm_indexes)):
         isinfunc = lambda x: x == arm_indexes[i]
         visinfunc = np.vectorize(isinfunc)
         boo = visinfunc(best_arms)
         probs = boo.sum(axis=0) / n_simulations
-
-        if max_horizon_plot == 0:
-            ax.plot(np.arange(time_horizon)[ignore_first_rounds:], probs[ignore_first_rounds:],
-                    label=str(legend_list[i]))
-        else:
-            ax.plot(np.arange(time_horizon)[ignore_first_rounds:max_horizon_plot],
-                    probs[ignore_first_rounds:max_horizon_plot],
-                    label=str(legend_list[i]))
+        ax.plot(np.arange(time_horizon)[ignore_first_rounds:max_horizon_plot],
+                probs[ignore_first_rounds:max_horizon_plot],
+                lw=2,
+                label=str(legend_list[i]),
+                color=colors[i])
 
     # this plots a baseline, where the same algorithm picks the overall top-1 arm with all the data
-    df = pd.read_csv(baseline_fp)
-    df = df[['num_sims', 'horizon', 'chosen_arm']]
+    for baseline_fp, baseline_arm_index, baseline_label, kwargs in zip(baseline_fps, baseline_arm_indexes, baseline_labels, baseline_kwargs):
+        df = pd.read_csv(baseline_fp)
+        df = df[['num_sims', 'horizon', 'chosen_arm']]
 
-    n_simulations = int(np.max(df['num_sims'])) + 1
-    time_horizon = int(np.max(df['horizon'])) + 1
-    if time_horizon > max_time_horizon:
-        max_time_horizon = time_horizon
+        n_simulations = int(np.max(df['num_sims'])) + 1
+        time_horizon = int(np.max(df['horizon'])) + 1
+        if time_horizon > max_time_horizon:
+            max_time_horizon = time_horizon
 
-    best_arms = np.zeros((n_simulations, time_horizon))  # each time point will have a best arm up to that point
+        best_arms = np.zeros((n_simulations, time_horizon))  # each time point will have a best arm up to that point
 
-    # calculate best arms for all time points
-    for n in range(int(n_simulations)):
-        data = np.array(list(df.loc[df['num_sims'] == n]['chosen_arm']))
-        for t in range(len(data)):
-            u, counts = np.unique(data[:t + 1], return_counts=True)
-            best_arms[n, t] = u[np.random.choice(np.flatnonzero(counts == max(counts)))]
-
-    for i in range(len(baseline_arm_indexes)):
-        isinfunc = lambda x: x == baseline_arm_indexes[i]
+        # calculate best arms for all time points
+        for n in range(int(n_simulations)):
+            data = np.array(list(df.loc[df['num_sims'] == n]['chosen_arm']))
+            for t in range(len(data)):
+                u, counts = np.unique(data[:t + 1], return_counts=True)
+                best_arms[n, t] = u[np.random.choice(np.flatnonzero(counts == max(counts)))]
+        isinfunc = lambda x: x in baseline_arm_index
         visinfunc = np.vectorize(isinfunc)
         boo = visinfunc(best_arms)
         probs = boo.sum(axis=0) / n_simulations
-
-        if max_horizon_plot == 0:
-            ax.plot(np.arange(time_horizon)[ignore_first_rounds:], probs[ignore_first_rounds:],
-                    label=f'{legend_list[0]} (full scope)', alpha=0.5, lw=2, c='#1f77b4')
-        else:
-            ax.plot(np.arange(time_horizon)[ignore_first_rounds:max_horizon_plot],
-                    probs[ignore_first_rounds:max_horizon_plot],
-                    label=f'{legend_list[0]} (full scope)', alpha=0.5, lw=2, c='#1f77b4')
+        ax.plot(np.arange(time_horizon)[ignore_first_rounds:max_horizon_plot],
+                probs[ignore_first_rounds:max_horizon_plot],
+                label=baseline_label, **kwargs)
 
     if max_horizon_plot != 0:
         max_time_horizon = max_horizon_plot  # adjust max_time_horizon again before plotting ETC
@@ -679,14 +687,14 @@ def plot_accuracy_best_arm_scope_expansion(arm_indexes,
         base = np.load(etc_fp)
         plt.plot(np.arange(len(base))[ignore_first_rounds:max_time_horizon], base[ignore_first_rounds:max_time_horizon],
                  color='black',
-                 label='explore-then-commit',
+                 label='Explore-then-commit',
                  lw=2,
                  zorder=-100)
 
     if shade_first_rounds != 0:
         ax.axvspan(0, shade_first_rounds, facecolor='lightgray', alpha=0.5, zorder=100)
         _, ymax = ax.get_ylim()
-        ax.text(shade_first_rounds / 2, ymax * 0.75, 'exploration', verticalalignment='center',
+        ax.text(shade_first_rounds / 2, ymax * 0.75, 'Exploration', verticalalignment='center',
                 horizontalalignment='center', zorder=101, rotation=90)
 
     # ##custom text area
@@ -694,12 +702,20 @@ def plot_accuracy_best_arm_scope_expansion(arm_indexes,
     # ax.text(70, 0.96, '2% of data', c='black', backgroundcolor='whitesmoke', fontstyle='italic', fontweight='semibold', ha='center', va='center')
     # ##
 
-    ax.set_xlabel('time horizon (number of experiments)')
+    ax.set_xlabel('Time horizon (number of experiments)')
     ax.set_ylabel(f'Accuracy of identifying best arm')
-    ax.set_title(title)
+    #ax.set_title(title)
     ax.grid(visible=True, which='both', alpha=0.5)
     if long_legend:
-        ax.legend(title=legend_title, bbox_to_anchor=(1.02, 1), loc="upper left")
+        #ax.legend(title=legend_title, bbox_to_anchor=(1.02, 1), loc="upper left")
+
+        handles, labels = plt.gca().get_legend_handles_labels()
+        # specify order of items in legend
+        order = [0,6,1,4,2,5,3]
+        # add legend to plot
+        ax.legend([handles[idx] for idx in order], [labels[idx] for idx in order],
+                  loc='upper center', bbox_to_anchor=(0.5, 1.2), ncol=4)
+        #ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.1), ncol=4)
         plt.tight_layout()
     else:
         ax.legend(title=legend_title)
@@ -1011,39 +1027,42 @@ def figure_dimensionality_gm():
     maldi_baseline = np.load('/Users/mac/Desktop/project deebo/deebo/deebo/dataset_logs/merck-maldi/amine/baseline.npy')
 
     legends = [
-        'Nickel borylation, top-3 accuracy, Bayes UCB (beta prior)',
-        'Deoxyfluorination, top-2 accuracy, Bayes UCB (gaussian prior)',
-        'C-N cross-coupling, top-1 accuracy, UCB1'
+        'Nickel borylation, \n top-3 accuracy, \n Bayes UCB (beta prior)',
+        'Deoxyfluorination, \n top-2 accuracy, \n Bayes UCB (gaussian prior)',
+        'C-N cross-coupling, \n top-1 accuracy, \n UCB1'
     ]
 
     plt.rcParams['savefig.dpi'] = 300
-    plt.plot([], label='ETC baseline', ls='-.', color='k')
-    plt.plot([], label='pure exploration baseline', ls='--', color='k')
 
-    plt.plot(nib[:100], label=legends[0], color='#1f77b4', alpha=0.2)
-    plt.plot(nib_baseline[:100], color='#1f77b4', ls='-.', alpha=0.2)
-    plt.hlines([1/23], 0, 100, color='#1f77b4', ls='--', alpha=0.2)
+    plt.plot(nib[:100], label=legends[0], color='#1f77b4', alpha=1, lw=2)
+    plt.plot(nib_baseline[:100], color='#1f77b4', ls='-.', alpha=1, lw=2)
+    plt.hlines([3/23], 0, 100, color='#1f77b4', ls='--', alpha=1, lw=2)
 
-    plt.plot(deoxyf[:100], label=legends[1], color='#ff7f0e', alpha=0.2)
-    plt.plot(deoxyf_baseline[:100], color='#ff7f0e', ls='-.', alpha=0.2)
-    plt.hlines([1/20], 0, 100, color='#ff7f0e', ls='--', alpha=0.2)
+    plt.plot(deoxyf[:100], label=legends[1], color='#ff7f0e', alpha=1, lw=2)
+    plt.plot(deoxyf_baseline[:100], color='#ff7f0e', ls='-.', alpha=1, lw=2)
+    plt.hlines([2/20], 0, 100, color='#ff7f0e', ls='--', alpha=1, lw=2)
 
-    plt.plot(maldi[:100], label=legends[2], color='#2ca02c', alpha=1)
-    plt.plot(maldi_baseline[:100], color='#2ca02c', ls='-.', alpha=1)
-    plt.hlines([1/4], 0, 100, color='#2ca02c', ls='--', alpha=1)
+    plt.plot(maldi[:100], label=legends[2], color='#2ca02c', alpha=1, lw=2)
+    plt.plot(maldi_baseline[:100], color='#2ca02c', ls='-.', alpha=1, lw=2)
+    plt.hlines([1/4], 0, 100, color='#2ca02c', ls='--', alpha=1, lw=2)
+
+    plt.plot([], label='Baseline \n Explore-then-commit', ls='-.', color='k')
+    plt.plot([], label='Baseline \n Pure exploration', ls='--', color='k')
 
     plt.grid(visible=True, which='both', alpha=0.5)
-    plt.legend(title='dataset, metric, algorithm', bbox_to_anchor=(0.5, -0.2), loc="upper center", fancybox=True)
-    plt.xlabel('number of experiments')
-    plt.ylabel('top-n accuracy')
+    #plt.legend(bbox_to_anchor=(1, 1), loc="upper left", labelspacing=1, ncols=2, columnspacing=3)
+    #title='Dataset, metric, algorithm',
+    plt.xlabel('Number of experiments')
+    plt.ylabel('Top-n accuracy')
     plt.title('Accuracy of identifying top general conditions for 3 datasets')
     plt.tight_layout()
     plt.show()
-    pass
+    return
 
 
 if __name__ == '__main__':
     import pickle
+    import json
 
     def nib():
         dd = 'dataset_logs/nib/etoh-60cutoff/'
@@ -1383,6 +1402,12 @@ if __name__ == '__main__':
                        'Bayes ucb (2SD, squared)',
                        'Bayes ucb (2SD, 0.25)',
                        'ε-greedy',]
+        legend_list = ['TS (implementation 1)',
+                       'TS (implementation 2)',
+                       'UCB1-Tuned',
+                       'Bayes ucb (implementation 1)',
+                       'Bayes ucb (implementation 2)',
+                       'ε-greedy',]
         #f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-{num_round}r-{num_exp}e',
         # 'Bayes ucb (2SD, 0.25)',
         fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/cn-processed.csv'
@@ -1407,16 +1432,15 @@ if __name__ == '__main__':
                                etc_baseline=False,
                                etc_fp=f'{dd}/etc/top3.npy',
                                shade_first_rounds=12,
-                               ignore_first_rounds=12,
-                               title=f'Accuracy of identifying {ligands} as optimal',
-                               legend_title='algorithm',
+                               title=f'',
+                               xlabel='Number of experiments (time horizon)',
+                               legend_title='Algorithm',
                                long_legend=False,
                                max_horizon_plot=100,
-                               vlines=[36, 72],
-                               hlines=[0.96])
+                               vlines=[36, 72],)
 
-    def aryl(top=1):
-        dd = 'dataset_logs/aryl-scope-ligand/'
+    def aryl(top=5):
+        dd = 'dataset_logs/aryl-scope-ligand/expansion/scenario1/'
         num_sims = 500
         num_round = 200
         num_exp = 1
@@ -1466,7 +1490,7 @@ if __name__ == '__main__':
         plot_accuracy_best_arm(best_arm_indexes=indexes,
                                fn_list=fn_list,
                                legend_list=legend_list,
-                               etc_baseline=True,
+                               etc_baseline=False,
                                etc_fp=f'{dd}/etc/top{top}.npy',
                                shade_first_rounds=24,
                                ignore_first_rounds=0,
@@ -1517,10 +1541,13 @@ if __name__ == '__main__':
         if not combo:  # just activators
             top1 = ['DPPCl']
             top3 = ['DPPCl', 'BOP-Cl', 'TCFH']
+            top4 = ['DPPCl', 'BOP-Cl', 'TCFH', 'HATU']
             if top == 1:
                 ligands = [(l,) for l in top1]
             elif top == 3:
                 ligands = [(l,) for l in top3]
+            elif top == 4:
+                ligands = [(l,) for l in top4]
             else:
                 exit()
         else:  # base + activators
@@ -1540,7 +1567,7 @@ if __name__ == '__main__':
                                fn_list=fn_list,
                                legend_list=legend_list,
                                etc_baseline=True,
-                               etc_fp=f'{dd}/etc/top{top}.npy',
+                               etc_fp=f'{dd}etc/top{top}.npy',
                                shade_first_rounds=shade_n,
                                ignore_first_rounds=0,
                                title=f'Accuracy of identifying top {top} {what}',
@@ -1617,22 +1644,42 @@ if __name__ == '__main__':
         top9 = ['Cy-BippyPhos', 'Et-PhenCar-Phos', 'tBPh-CPhos', 'CgMe-PPh', 'JackiePhos',
                 'Cy-vBRIDP', 'Cy-DavePhos', 'X-Phos', 'CX-PICy']
 
-        indexes = [reverse_arms_dict[(l,)] for l in legend_list]
-        baseline_indexes = [reverse_arms_dict[('Cy-BippyPhos',)]]
-        baseline_fp = '/Users/mac/Desktop/project deebo/deebo/deebo/dataset_logs/aryl-scope-ligand/ucb1tuned-500s-200r-1e/log.csv'
+        indexes = [reverse_arms_dict[(l,)] for l in top5]
+        baseline_indexes = [indexes,
+                            [reverse_arms_dict[(l,)] for l in top1]
+                            ]
+        baseline_fps = ['./dataset_logs/aryl-scope-ligand/ucb1tuned-500s-200r-1e/log.csv',
+                        './dataset_logs/aryl-scope-ligand/ucb1tuned-500s-200r-1e/log.csv'
+                        ]
+        baseline_labels = ['Top-5 overall accuracy', 'Cy-BippyPhos (full scope)']
+        baseline_kwargs = [
+            {'color': 'k',
+             'lw': 2,},
+            {'color': [0.8901960784313725, 0.10196078431372549, 0.10980392156862745, 1.0],
+             'alpha': 0.6,
+             'ls': (0, (1, 1)),
+             'lw': 2,}
+        ]
+
+        with open('/Users/mac/Desktop/project deebo/deebo/dataset-analysis/arylation_colors.json', 'r') as f:
+            color_dict = json.load(f)
+        colors = [color_dict[l] for l in top5]
 
         plot_accuracy_best_arm_scope_expansion(arm_indexes=indexes,
                                                fp=log_fp,
-                                               baseline_fp=baseline_fp,
+                                               baseline_fps=baseline_fps,
                                                baseline_arm_indexes=baseline_indexes,
+                                               baseline_labels=baseline_labels,
+                                               baseline_kwargs=baseline_kwargs,
                                                legend_list=legend_list,
                                                shade_first_rounds=24,
                                                ignore_first_rounds=0,
                                                title=f'Accuracy of identifying ligand as optimal',
-                                               legend_title='ligand',
-                                               long_legend=True,
+                                               legend_title='Ligand',
                                                max_horizon_plot=200,
-                                               vlines=[50, 100])
+                                               long_legend=True,
+                                               vlines=[50, 100],
+                                               preset_colors=colors)
 
     def maldi():
         name = 'amine'
@@ -1680,8 +1727,8 @@ if __name__ == '__main__':
         plot_accuracy_best_arm(best_arm_indexes=indexes,
                                fn_list=fn_list,
                                legend_list=legend_list,
-                               etc_baseline=False,
-                               etc_fp=f'{dd}/etc/top3.npy',
+                               etc_baseline=True,
+                               etc_fp=f'{dd}/baseline-200.npy',
                                ignore_first_rounds=4,
                                title=f'Accuracy of identifying optimal conditions for {name}',
                                legend_title='algorithm',
@@ -1690,7 +1737,7 @@ if __name__ == '__main__':
                                vlines=None,
                                hlines=None)
 
-    deoxyf_batch_interpolation()
+    maldi()
     # plot_arm_counts('dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10, bar_errbar=True, plot='box', title='Average # of samples')
 
     # plot_arm_rewards(fp, d='dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10)

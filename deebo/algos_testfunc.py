@@ -5,6 +5,25 @@ import utils
 
 
 def test_algorithm_regret(algo, arms, num_sims, horizon):
+    """
+    testing function for regret-type bandit algorithms
+
+    Parameters
+    ----------
+    algo: algos_regret.RegretAlgorithm
+        a regret bandit algorithm
+    arms: list of arms
+        a list of arms from arms.py
+    num_sims: int
+        total number of simulations
+    horizon: int
+        maximum time horizon for each simulation
+
+    Returns
+    -------
+    dataframe of testing result logs
+
+    """
 
     cols = ['num_sims', 'horizon', 'chosen_arm', 'reward', 'cumulative_reward']
     ar = np.zeros((num_sims*horizon, len(cols)))
@@ -44,6 +63,7 @@ def test_algorithm_regret_multidraw(algo, arms, num_sims, horizon, n_exps=1):
 
     Returns
     -------
+    dataframe of testing result logs
 
     """
     n_rounds = horizon // int(n_exps)  # num of complete rounds
@@ -95,6 +115,7 @@ def test_algorithm_regret_multialgos(algo_list, arms, num_sims, horizon):
 
     Returns
     -------
+    dataframe of testing result logs
 
     """
     # designed for ucb-type algorithms, with external exploration round

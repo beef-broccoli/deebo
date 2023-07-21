@@ -54,5 +54,6 @@ def test_func(algo, scenario, n_sims, n_horizon, folder_name):
 
 
 if __name__ == '__main__':
-    algo = SequentialHalving(n_arms=5, time_limit=20)
-    test_func(algo, 3, 1, 100, './test/')
+    algo = SequentialHalving(n_arms=5, time_limit=50)
+    #algo = LilUCB(n_arms=5)
+    test_func(algo, 3, 500, 250, './logs/arms')

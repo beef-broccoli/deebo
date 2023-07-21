@@ -273,6 +273,11 @@ class Scope:
         Xs_train = Xs[train_mask, :]
         Xs_test = Xs[~train_mask, :]
 
+        # np.save('xs_train_ohe.npy', Xs_train)
+        # np.save('ys_train_ohe.npy', ys_train)
+        # np.save('xs_ohe.npy', Xs)
+        # exit()
+
         if model == 'rf':
             model = RFR()
         else:
@@ -740,6 +745,7 @@ def propose_initial_experiments_interpolation(scope_dict, arms_dict, algo, dir='
     return None
 
 
+# TODO: a method to generate again if not happy with the proposal: verify if you can just call propose only
 def update_and_propose_interpolation(dir='./test/', num_exp=2, propose_mode='random', encoding_dict=None, update_only=False, propose_only=False):
 
     """

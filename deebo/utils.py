@@ -23,6 +23,8 @@ def scaler(x):
     x = x/100
     if x > 1:
         return 1.0
+    elif x < 0:
+        return 0.0
     else:
         return x
 
