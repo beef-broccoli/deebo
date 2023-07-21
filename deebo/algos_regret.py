@@ -404,7 +404,8 @@ class BayesUCBBeta(UCB1):
         self.ucbs = [m + s for m, s in zip(means, stds)]
 
 
-class NewBayesUCBBeta(UCB1):
+class BayesUCBBetaPPF(UCB1):
+    # used to be callaed NewBayesUCBBeta
     # Bayes UCB algorithm with beta prior
     # Implementation 2: use a percent point function to compare posteriors for different arms. From original paper
     # scipy.Beta.ppf(1-1/t, alpha, beta)
@@ -417,7 +418,7 @@ class NewBayesUCBBeta(UCB1):
         return
 
     def __str__(self):
-        return 'new_bayes_ucb_beta'
+        return 'bayes_ucb_beta_ppf'
 
     def reset(self, n_arms):
         UCB1.reset(self, n_arms)
@@ -456,11 +457,12 @@ class BayesUCBGaussianSquared(UCB1):
         self.ucbs = [m + s for m, s in zip(self.emp_means, stds)]
 
 
-class NewBayesUCBGaussian(UCB1):
-    # same as NewBayesUCBBeta, but uses a gaussian prior with fixed variance
+class BayesUCBGaussianPPF(UCB1):
+    # Used to be called NewBayesUCBGaussian
+    # same as BayesUCBBetaPPF, but uses a gaussian prior with fixed variance
 
     def __str__(self):
-        return f'new_bayes_ucb_gaussian'
+        return f'bayes_ucb_gaussian_ppf'
 
     def update(self, chosen_arm, reward):
         RegretAlgorithm.update(self, chosen_arm, reward)

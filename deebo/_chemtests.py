@@ -181,7 +181,7 @@ def nickel_borylation():
              algos_regret.UCB1(len(ligands)),
              algos_regret.BayesUCBGaussianSquared(len(ligands)),
              algos_regret.BayesUCBBeta(len(ligands)),
-             algos_regret.NewBayesUCBBeta(len(ligands)),
+             algos_regret.BayesUCBBetaPPF(len(ligands)),
              algos_regret.AnnealingEpsilonGreedy(len(ligands)),
              algos_regret.Random(len(ligands))
              ]
