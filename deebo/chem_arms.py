@@ -769,7 +769,14 @@ def update_and_propose_interpolation(dir='./test/', num_exp=2, propose_mode='ran
     propose_mode: str
         choose from {'random', 'highest', 'random_highest'}
         See Scope.propose_experiment()
-
+    encoding_dict: dict
+        a two-level dictionary of encodings or features used to train prediction model
+        e.g., {'substrate': {'A': [1,2,3], 'B': [4,5,6]}
+            'solvent': {'C': [7,8,9], 'D': [10, 11, 12]}}
+    update_only: bool
+        if True, this method only updates the existing results, and not propose any new ones
+    propose_only: bool
+        if True, this method proposes a new set of experiments, in case you do not like what's already proposed.
     Returns
     -------
     None
