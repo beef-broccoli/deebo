@@ -776,7 +776,7 @@ def update_and_propose_interpolation(dir='./test/', num_exp=2, propose_mode='ran
     update_only: bool
         if True, this method only updates the existing results, and not propose any new ones
     propose_only: bool
-        if True, this method proposes a new set of experiments, in case you do not like what's already proposed.
+        if True, this method only proposes a new set of experiments, in case there's nothing to update.
     Returns
     -------
     None
@@ -922,7 +922,6 @@ def update_and_propose_interpolation(dir='./test/', num_exp=2, propose_mode='ran
     return None
 
 
-# skipping prediction for now
 def simulate_propose_and_update(scope_dict,
                                 arms_dict,
                                 ground_truth,
@@ -941,9 +940,20 @@ def simulate_propose_and_update(scope_dict,
     Parameters
     ----------
     scope_dict: dict
-    arms_dict
-    ground_truth
-    algo
+        dictionary used to build scope.
+        e.g.,
+            x = {'component_a': ['a1', 'a2', 'a3'],
+                'component_b': ['b1', 'b2'],
+                'component_c': ['c1', 'c2', 'c3', 'c4']}
+    arms_dict: dict
+        dictionary used to build arms
+        e.g.,
+            y = {'component_a': ['a1', 'a3'],
+                 'component_b': ['b1', 'b2']}
+    ground_truth: pandas.DataFrame
+        Dataframe with all reaction components and yields.
+    algo: deebo.algos_regret.RegretAlgorithm
+        implemented bandit algorithms
     dir: str
         directory to save files into
     num_sims: int
@@ -957,6 +967,9 @@ def simulate_propose_and_update(scope_dict,
         dictionary for expansion, {round for expansion: individual_expansion_dict}
         e.g. {50: {component_a: [a4, a5, a6]},
               100: {component_a: [a7, a8]}}
+    predict: bool
+        if false, no prediction model will be trained.
+        This speeds up the simulation significantly, because at each update the model is retrained, which can be slow
 
     Returns
     -------
@@ -1078,7 +1091,7 @@ def simulate_propose_and_update(scope_dict,
                                                                                 cumulative_reward]
                     history_prefix_arr[sim * num_round * num_exp + r * num_exp + ii, :] = [sim, r, ii, r * num_exp + ii]
             else:  # this is where no exp is available and algorithm refuses to choose any other arms
-                exit()  #TODO: fix? maybe, problem when it comes to analysis
+                exit()  # fix this maybe, problem when it comes to analysis
 
             if predict:
                 scope.predict()  # update prediction models
