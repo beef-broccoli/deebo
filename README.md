@@ -55,5 +55,5 @@ can be installed via pip or conda.
 ## What is "deebo"?
 Somewhat of a failed acronym attempt for "**d**esign **e**fficient **e**xperiments via **b**andit **o**ptimization"
 
-Originally intended to match the name of another optimization model from our group: [EDBO](https://github.com/b-shields/edbo).
+Originally intended to match the name of another optimization model from the Doyle group: [EDBO](https://github.com/b-shields/edbo).
 
