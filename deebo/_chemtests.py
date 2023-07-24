@@ -352,7 +352,7 @@ def arylation_expansion():
 def amidation():
     # fetch ground truth data
     ground_truth = pd.read_csv(
-        'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/ami.csv')
+        'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/amidation.csv')
 
     ground_truth['yield'] = ground_truth['yield'].apply(utils.scaler)
     short_name_dict = {

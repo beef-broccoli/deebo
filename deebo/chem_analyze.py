@@ -1531,7 +1531,7 @@ if __name__ == '__main__':
                        'pure exploration']
         #f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-{num_round}r-{num_exp}e',
         # 'Bayes ucb (2SD, 0.25)',
-        fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/ami.csv'
+        fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/amidation.csv'
         with open(f'{dd}ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e/arms.pkl', 'rb') as f:
             arms_dict = pickle.load(f)
 

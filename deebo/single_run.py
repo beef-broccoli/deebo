@@ -127,7 +127,7 @@ def amidation_phase1(dir='./single_run_logs/amidation/phase1/'):
         return None
 
     # load data
-    df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/ami.csv')
+    df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/amidation.csv')
     df['yield'] = df['yield'].apply(utils.scaler)
     # make dictionary for querying yield
     df['combined'] = df[['activator_name', 'solvent_name', 'base_name', 'nucleophile_id']].apply(lambda x: frozenset(x), axis=1)
@@ -201,7 +201,7 @@ def amidation_phase2(dir='./single_run_logs/amidation/phase2/'):
         return None
 
     # load data
-    df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/ami.csv')
+    df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/amidation.csv')
     df['yield'] = df['yield'].apply(utils.scaler)
     # make dictionary for querying yield
     df['combined'] = df[['activator_name', 'solvent_name', 'base_name', 'nucleophile_id']].apply(lambda x: frozenset(x), axis=1)
@@ -306,7 +306,7 @@ def plot_prediction_model_accuracy():
 
     pred = s.data
     pred = pred.sort_values(by=['activator_name', 'base_name', 'nucleophile_id', 'solvent_name'])
-    ground_truth = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/ami.csv')
+    ground_truth = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/amidation.csv')
     ground_truth = ground_truth.sort_values(by=['activator_name', 'base_name', 'nucleophile_id', 'solvent_name'])
     pred['true_yield'] = ground_truth['yield'].apply(utils.scaler).values
     # CAREFUL: need to strip index off the series above. pandas seems to sort by index when you assign series to a col
@@ -366,7 +366,7 @@ def retrain_model():
     ys_train = np.load(f'{dir}ys_train_ohe.npy')
     Xs = np.load(f'{dir}xs_ohe.npy')
     print(Xs_train.shape)
-    ground_truth = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/ami.csv')
+    ground_truth = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/amidation.csv')
     ground_truth = ground_truth.sort_values(by=['activator_name', 'base_name', 'nucleophile_id', 'solvent_name'])
     ys_true = ground_truth['yield'].apply(utils.scaler).values
 
@@ -381,7 +381,7 @@ def retrain_model():
     pred = s.data
     pred['prediction'] = ys_pred  # assign new prediction results
     pred = pred.sort_values(by=['activator_name', 'base_name', 'nucleophile_id', 'solvent_name'])
-    ground_truth = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/ami.csv')
+    ground_truth = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/amidation.csv')
     ground_truth = ground_truth.sort_values(by=['activator_name', 'base_name', 'nucleophile_id', 'solvent_name'])
     pred['true_yield'] = ground_truth['yield'].apply(utils.scaler).values
 
@@ -432,7 +432,7 @@ if __name__ == '__main__':
     #     s = pickle.load(f)
     #
     # # grab encodings for substrates
-    # df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/ami.csv')
+    # df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/amidation.csv')
     # df['yield'] = df['yield'].apply(utils.scaler)
     # # make dictionary for querying yield
     # df['combined'] = df[['activator_name', 'solvent_name', 'base_name', 'nucleophile_id']].apply(lambda x: frozenset(x), axis=1)

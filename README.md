@@ -1,5 +1,9 @@
 ## General descriptions
+This github repository accompanies manuscript "Reinforcement learning prioritizes general applicability in reaction optimization"
+
 [dataset-analysis](./dataset-analysis) contains analysis functions for all datasets 
+
+[deebo](./deebo) contains all algorithm, 
 
 ## Dataset availability
 All datasets that were used in this study can be found in a separate [reaction dataset repo](https://github.com/doyle-lab-ucla/ochem-data/tree/main/deebo) by our group.
