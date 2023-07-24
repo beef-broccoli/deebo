@@ -1,4 +1,5 @@
 # Reinforcement learning prioritizes general applicability in reaction optimization
+[![DOI](https://zenodo.org/badge/665410961.svg)](https://zenodo.org/badge/latestdoi/665410961)
 
 ## General descriptions
 [dataset-analysis](./dataset-analysis) contains analysis functions for all datasets 
