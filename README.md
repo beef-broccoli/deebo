@@ -8,8 +8,11 @@
 
 Please see [demo](./deebo/demo.ipynb) jupyter notebook for example usages. 
 
-## Dataset availability
+## Reaction dataset availability
 All datasets that were used in this study can be found in a separate [reaction dataset repo](https://github.com/doyle-lab-ucla/ochem-data/tree/main/deebo) by our group.
+
+## Testing data logs availability
+All testing log files can be found in this Zenodo repository [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8170875.svg)](https://doi.org/10.5281/zenodo.8170875)
 
 ## Installation requirements
 Our software is written with minimal dependencies in mind. Only the essential packages are required. 
