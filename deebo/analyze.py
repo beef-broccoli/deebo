@@ -39,8 +39,8 @@ def plot_probs_choosing_best_arm(fn_list,
         display explore-then-commit baseline or not
     etc_fp: str
         file path for calculated etc baseline at each time point, a numpy array object
-    best_arm_index: int
-        the index for best arm (needed for calculation)
+    best_arm_index: int or list-like
+        a single index for best arm (needed for calculation), or a list of indexes if best arms are different
     fp: str
         deepest common directory for where the data files are stored
     title: str
@@ -74,6 +74,12 @@ def plot_probs_choosing_best_arm(fn_list,
         base = np.load(etc_fp)
         plt.plot(np.arange(len(base))[ignore_first_rounds:], base[ignore_first_rounds:], color='black', label='explore-then-commit', lw=2)
 
+    if isinstance(best_arm_index, int):
+        best_arm_index = [best_arm_index]*len(fps)  # best_arm_index supplied as a single number, duplicate into list
+    else:
+        assert len(best_arm_index) == len(fps), \
+            'if best_arm_index is supplied as a list, its length needs to match the number of files'
+
     for i in range(len(fps)):
         fp = fps[i]
         df = pd.read_csv(fp)
@@ -86,7 +92,7 @@ def plot_probs_choosing_best_arm(fn_list,
         for ii in range(int(n_simulations)):
             all_arms[ii, :] = list(df.loc[df['num_sims'] == ii]['chosen_arm'])
 
-        counts = np.count_nonzero(all_arms == best_arm_index, axis=0)  # average across simulations. shape: (1, time_horizon)
+        counts = np.count_nonzero(all_arms == best_arm_index[i], axis=0)  # average across simulations. shape: (1, time_horizon)
         probs = counts / n_simulations
         ax.plot(np.arange(time_horizon)[ignore_first_rounds:], probs[ignore_first_rounds:], label=str(legend_list[i]))
 
@@ -585,6 +591,26 @@ if __name__ == '__main__':
         )
         return None
 
+    def scalability():
+        fn_list = [f'logs/scalability/scenario{n}/optim/TS.csv' for n in [11, 12, 13, 14, 15]]
+        # plot_average_reward(
+        #     fn_list=fn_list,
+        #     legend_list=['20', '50', '100', '500', '1000'],
+        #     title='Average reward with TS (beta prior)',
+        #     legend_title='# of arms',
+        #     show_se=True,
+        #     long_legend=False,
+        # )
+        plot_probs_choosing_best_arm(
+            fn_list=fn_list,
+            legend_list=['20', '50', '100', '500', '1000'],
+            title='Accuracy with TS (beta prior)',
+            legend_title='# of arms',
+            best_arm_index=[19, 49, 99, 499, 999],
+            long_legend=False,
+        )
+        return None
+
     def normal_scenario1_best_performers(sd=0.5):
         prefix = 'logs/normal arm/scenario1/'
         n_list = [f'eps_greedy_annealing_real_sd_{sd}',
@@ -611,7 +637,8 @@ if __name__ == '__main__':
             ignore_first_rounds=5
         )
 
-    plot_average_reward(['logs/scenario1/eps_greedy/annealing.csv'], legend_list=['s'], show_se=True)
+    scalability()
+
 
     # s = 1
     # sd = 0.25
