@@ -611,5 +611,59 @@ def compare_conditions():
     plt.show()
 
 
+def compare_conditions_grouped_by_solvents():
+    # compare condition performance for each substrate, and divided by solvents
+    nuc_ids = ['n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8', 'n9', 'n10']
+    #nuc_ids = ['n1', 'n3', 'n5', 'n7', 'n8', 'n9']
+    df = pd.read_csv(
+        'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/amidation.csv')
+    df = df.loc[df['nucleophile_id'].isin(nuc_ids)]
+    df['activator-base'] = df['activator_name'] + '-' + df['base_name']
+    df = df.loc[df['activator-base'].isin(['DPPCl-N-methylmorpholine', 'DPPCl-Diisopropylethylamine', 'HATU-Diisopropylethylamine', 'TCFH-1-Methylimidazole'])]
+    thf = df.loc[df['solvent_name']=='THF'].groupby(by=['nucleophile_id', 'activator-base'])['yield'].mean()
+    dmf = df.loc[df['solvent_name']=='DMF'].groupby(by=['nucleophile_id', 'activator-base'])['yield'].mean()
+    mecn = df.loc[df['solvent_name']=='MeCN'].groupby(by=['nucleophile_id', 'activator-base'])['yield'].mean()
+
+    plt.rcParams['savefig.dpi'] = 300
+    fig, axs = plt.subplots(3, len(nuc_ids), sharex=True, figsize=(16,6), constrained_layout=True)
+
+    short_name = {'DPPCl-N-methylmorpholine': 'DPPCl / NMM',
+                  'DPPCl-Diisopropylethylamine': 'DPPCl / DIPEA',
+                  'HATU-Diisopropylethylamine': 'HATU / DIPEA',
+                  'TCFH-1-Methylimidazole': 'TCFH / NMI'}
+
+    def ax_plot(x, ii, df, title, y_ticks=False):
+        colors = ['#f26b5b', '#0f4c81', '#373838', '#a58d7f']
+        labels = [short_name[l] for l in list(df.index)]
+        values = list(df.values)
+        pos = [2,3,1,0]
+        axs[x, ii].barh(pos, values, height=0.5, color=colors)
+        for p, v in zip(pos, values):
+            axs[x, ii].text(v+1, p, str(round(v,1)), ha='left', va='center', c='black')
+        axs[x, ii].set_title(title, fontweight='bold')  # title
+        if y_ticks:  # y label
+            axs[x, ii].set_yticks(pos, labels)
+        else:
+            axs[x, ii].set_yticks([])
+        axs[x, ii].set_xlim([0,100])
+
+    for sol, row_num in zip([thf, dmf, mecn], [0,1,2]):
+        for ii, nid in zip(np.arange(len(nuc_ids)), nuc_ids):
+            if nid == 'n1':
+                ax_plot(row_num, ii, sol.loc[nid], title=nid, y_ticks=True)
+            else:
+                ax_plot(row_num, ii, sol.loc[nid], title=nid)
+
+    axs[0, 0].set_ylabel('THF')
+    axs[1, 0].set_ylabel('DMF')
+    axs[2, 0].set_ylabel('MeCN')
+    fig.add_subplot(111, frameon=False)
+    plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
+    plt.xlabel("Yield (%)")
+    fig.tight_layout()
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == '__main__':
-    compare_conditions()
+    compare_conditions_grouped_by_solvents()
