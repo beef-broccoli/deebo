@@ -430,6 +430,14 @@ def test_TS_gaussian(scenario, n_sims, n_horizon):
     return None
 
 
+def test_n_arms(folder_name, n_sims=1000, n_horizon=10000):
+    for s in [11, 12, 13, 14, 15]:
+        ts_beta(scenario=s,
+                n_sims=n_sims,
+                n_horizon=n_horizon,
+                folder_name=folder_name)
+
+
 if __name__ == '__main__':
     #test_TS_gaussian(0, 1000, 250)
 
@@ -439,5 +447,6 @@ if __name__ == '__main__':
     #etc(scenario=5, n_sims=1000, n_horizon=500, folder_name='./baseline_logs/')
 
     #test_eps_greedy(1, 3, 200, './test/')
-    # for s in [0.1, 0.25, 0.5]:
-    ucb1tunednormal(1, 1000, 250, './logs/normal arm/')
+
+    test_n_arms('logs/scalibility')
+

@@ -48,6 +48,8 @@ def means_from_scenario(scenario=0):
     mean reward for each stochastic arm
 
     """
+    import numpy as np
+
     if scenario == 1:
         means = [0.1, 0.2, 0.3, 0.4, 0.9]
     elif scenario == 2:
@@ -59,6 +61,17 @@ def means_from_scenario(scenario=0):
     elif scenario == 5:
         means = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5,
                  0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+    elif scenario == 11:
+        # starting here, 1 is an option
+        means = list(np.linspace(0, 1, 20))
+    elif scenario == 12:
+        means = list(np.linspace(0, 1, 50))
+    elif scenario == 13:
+        means = list(np.linspace(0, 1, 100))
+    elif scenario == 14:
+        means = list(np.linspace(0, 1, 500))
+    elif scenario == 15:
+        means = list(np.linspace(0, 1, 1000))
     else:
         means = None
         sys.exit('invalid test scenario number')
