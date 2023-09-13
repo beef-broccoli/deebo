@@ -5,7 +5,8 @@ from matplotlib.patches import Rectangle
 import matplotlib.patches as mpatches
 import itertools
 import yaml
-
+from tqdm import tqdm
+import random
 
 with open('colors.yml', 'r') as file:
     COLORS = yaml.safe_load(file)
@@ -284,9 +285,55 @@ def plot_condition_comparison(which_stat='average'):
     return
 
 
+def simulate_etc(max_sample=8, n_simulations=10000):
+
+    optimal = [('BTPP', 'PBSF'), ('BTMG', 'PBSF'), ('MTBD', 'PBSF')]
+
+    # fetch ground truth data
+    df = pd.read_csv(
+        'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv', index_col=0)
+    df['yield'] = df['yield'].apply(lambda x: 0 if x<50 else 1)
+
+    percentages = []
+    avg_cumu_rewards = []
+    gb = df.groupby(by=['base_name', 'fluoride_name'])
+    for n_sample in tqdm(range(max_sample), desc='1st loop'):
+        count = 0
+        reward = 0
+        for i in tqdm(range(n_simulations), desc='2nd loop', leave=False):
+            sample = gb.sample(n_sample+1).groupby(by=['base_name', 'fluoride_name'])
+            sample_mean = sample.mean(numeric_only=True)
+            sample_sum = sample.sum(numeric_only=True).sum().values[0]
+            reward = reward+sample_sum
+            # if sample['yield'].idxmax() in top_six:  # no tie breaking when sampling 1 with yield cutoff
+            #     count = count + 1
+            maxs = sample_mean.loc[sample_mean['yield']==sample_mean['yield'].max()]
+            random_one = random.choice(list(maxs.index))
+            if random_one in optimal:
+                count = count+1
+        percentages.append(count/n_simulations)
+        avg_cumu_rewards.append(reward/n_simulations)
+
+    print(percentages)
+    print(avg_cumu_rewards)
+    # with yield: [0.5971, 0.66, 0.7173]
+    # 60% cutoff binary, no max tie breaking: [0.388, 0.5382, 0.6154]
+    # 60% cutoff binary, with max tie breaking: [0.4301, 0.5488, 0.6136] (helps with sample 1 case, more ties)
+    # 60% cutoff binary, cumulative reward: [7.1552, 14.3058, 21.4805]
+
+    # 50% cutoff binary top three: accuracy: [0.2263, 0.3055, 0.3833, 0.5027]; cumu reward [9.7952, 19.6476, 29.4682, 49.117]
+    # 50% cutoff binary top eight: accur: [0.5371, 0.6623, 0.7558, 0.848]  cumu: [9.8194, 19.6467, 29.4898, 49.0107]
+    return None
+
+
 if __name__ == '__main__':
     df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv')
     #plot_best_with_diff_metric(df=df, nlargest=5, which_dimension='base_name')
-    plot_condition_comparison()
 
+    # base/SF top3 ETC
+    # accuracy [0.244, 0.3638, 0.4407, 0.4928, 0.5383, 0.5911, 0.6375, 0.6726]
+    # cumulative reward [7.3592, 14.7448, 22.0455, 29.3722, 36.7635, 44.0817, 51.4216, 58.7918]
+    a = [0.0, 0.244, 0.3638, 0.4407, 0.4928, 0.5383, 0.5911, 0.6375, 0.6726]
+    a = np.array(a).repeat(20)
+    np.save('top3.npy', a)
 
