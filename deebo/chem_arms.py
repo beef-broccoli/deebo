@@ -104,6 +104,57 @@ class Scope:
 
         return
 
+    # def build_incomplete_scope(self, d, pre_built_scope):
+    #     """
+    #     Same as build_scope, except in this case a dataframe with values are directly used to build a scope,
+    #     rather than doing the full combinations of all components.
+    #     This is helpful when simulating an incomplete dataset.
+    #
+    #     d: dict
+    #         dictionary of reaction components
+    #         e.g., d = {
+    #             'component_a': ['a1', 'a2', 'a3'],
+    #             'component_b': ['b1', 'b2'],
+    #             'component_c': ['c1', 'c2', 'c3', 'c4']
+    #         }
+    #     pre_built_scope: pd.DataFrame
+    #         a dataframe with combinations of reaction components pre-specified.
+    #         This might be a partial scope with components in d
+    #
+    #     """
+    #     if self.data is not None:
+    #         exit('scope already exists, cannot build')
+    #
+    #     # sanity check for component labels, make sure everything is defined in scope dictionary
+    #     component_names = sorted(d)
+    #     for col in pre_built_scope.columns:
+    #         if not col in component_names:
+    #             exit(f'Column {col} in pre_built_scope is not in scope dictionary supplied')
+    #
+    #     # sanity check for component values, make sure everything is defined in scope dictionary
+    #     for c in component_names:
+    #         if not np.isin(pre_built_scope[c].unique(), d[c]).all():
+    #             exit(f'Error for {c}. Check pre_built_scope, '
+    #                  f'some components were not included in the scope dictionary supplied')
+    #
+    #     pre_built_scope = pre_built_scope[component_names]
+    #     self.data = copy.deepcopy(pre_built_scope)
+    #     # check column dtypes for int or float. These cause issues for value matching when querying/updating
+    #     # add column name as prefix to force string
+    #     for col in self.data.columns:
+    #         if self.data[col].dtype == 'int64' or self.data[col].dtype == 'float64':
+    #             print(f'Warning: attempting to pass int/float as values for {col}.\n'
+    #                   f'Renaming values with prefix, e.g., {self.data[col][0]} -> {col} {self.data[col][0]}\n'
+    #                   f'Modifications to values needed when building arms')
+    #             new_val = [col+' '+str(v) for v in list(self.data[col])]
+    #             self.data[col] = new_val
+    #             d[col] = list(set(new_val))
+    #     self.data_dic = copy.deepcopy(d)  # important that this is copy, otherwise will create reference to dict
+    #     self.data['yield'] = np.nan
+    #     self.data['prediction'] = np.ones(len(self.data))
+    #
+    #     return
+
     def expand_scope(self, expand_d):
         """
 
@@ -1312,6 +1363,214 @@ def simulate_propose_and_update_interpolation(scope_dict,
     return
 
 
+def simulate_propose_and_update_incomplete_data(scope_dict,
+                                                arms_dict,
+                                                ground_truth,
+                                                algo,
+                                                dir='./test/',
+                                                num_sims=10,
+                                                num_exp=1,
+                                                num_round=20,
+                                                propose_mode='random',
+                                                expansion_dict=None,
+                                                predict=False,
+                                                ):
+    """
+    Method for simulation; skipping the saving and loading by user, query dataset with full results instead
+    This simulation is done with incomplete data. When proposed experiments do not have yield, it keeps proposing with
+    the same arm until a reaction yield is available
+
+    Parameters
+    ----------
+    scope_dict: dict
+        dictionary used to build scope.
+        e.g.,
+            x = {'component_a': ['a1', 'a2', 'a3'],
+                'component_b': ['b1', 'b2'],
+                'component_c': ['c1', 'c2', 'c3', 'c4']}
+    arms_dict: dict
+        dictionary used to build arms
+        e.g.,
+            y = {'component_a': ['a1', 'a3'],
+                 'component_b': ['b1', 'b2']}
+    ground_truth: pandas.DataFrame
+        Dataframe with all reaction components and yields.
+    algo: deebo.algos_regret.RegretAlgorithm
+        implemented bandit algorithms
+    dir: str
+        directory to save files into
+    num_sims: int
+    num_exp: int
+        number of experiments for the scope object
+    num_round: int
+        number of rounds
+    propose_mode: str
+        how to propose experiments (choosing from substrates)
+    expansion_dict: dict
+        dictionary for expansion, {round for expansion: individual_expansion_dict}
+        e.g. {50: {component_a: [a4, a5, a6]},
+              100: {component_a: [a7, a8]}}
+    predict: bool
+        if false, no prediction model will be trained.
+        This speeds up the simulation significantly, because at each update the model is retrained, which can be slow
+
+    Returns
+    -------
+
+    """
+    THRESHOLD = 100
+
+    ground_truth_cols = set(ground_truth.columns)
+    ground_truth_cols.remove('yield')
+    assert set(scope_dict.keys()) == ground_truth_cols, \
+        'ground truth and scope do not have the same fields'
+
+    # numpy array for acquisition log
+    log_cols = ['num_sims', 'round', 'experiment', 'horizon', 'chosen_arm', 'reward', 'cumulative_reward']
+    log_arr = np.zeros((num_sims * num_round * num_exp, len(log_cols)))
+
+    # numpy array for experimental history. This is just the prefix
+    history_prefix_cols = ['num_sims', 'round', 'experiment', 'horizon']
+    history_prefix_arr = np.zeros((num_sims * num_round * num_exp, len(history_prefix_cols)))
+    history = None  # actual experimental history
+
+    def ground_truth_query(ground_truth, to_query):
+        """
+        helper function to query ground truth dataset for yield result
+
+        Parameters
+        ----------
+        ground_truth: dataframe with all components + yield
+        to_query: list of dictionaries of component name/values to be queried
+
+        Returns
+        -------
+        a list of yields after query
+
+        """
+
+        # adapted from Scope.query()
+        names = set(list(ground_truth.columns))
+        names.remove('yield')  # remove yield from column labels, then match
+        component_names = sorted(to_query[0])  # only need one list of component names from dict; they are all the same
+
+        ground_truth = ground_truth.sort_index(axis=1)  # important to sort here with column name also
+        ground_truth_np = ground_truth.to_numpy(copy=False)
+        ys = []
+        for d in to_query:
+            assert ground_truth.shape[1] - 1 == len(d.items()), f'Missing reaction components when querying {d}'
+            assert names == set(d.keys()), f'labels not fully matched for {d}, cannot query'
+            values = [d[c] for c in component_names]
+            y = ground_truth[np.equal.outer(ground_truth_np, values).any(axis=1).all(axis=1)]['yield']
+            if y.empty or np.isnan(list(y)[0]):
+                return []
+            else:
+                assert len(list(y)) == 1, f'multiple result exist for query {d}'
+                ys.append(list(y)[0])
+        return ys
+
+    # initialize scope object
+    scope = Scope()
+    scope.build_scope(scope_dict)
+    scope.build_arms(arms_dict)
+
+    # write arm dictionary into file
+    # example: {<arm_index1>: <arm_name1>, <arm_index2>: <arm_name2>}
+    d = dict(zip(np.arange(len(scope.arms)), scope.arms))
+    with open(f'{dir}arms.pkl', 'wb') as f:
+        pickle.dump(d, f)
+
+    # performance upgrade
+    if expansion_dict is not None:
+        expansion_rounds = expansion_dict.keys()
+        check_expand = True
+    else:
+        check_expand = False
+
+    # simulation starts
+    for sim in tqdm(range(num_sims), desc='simulations'):
+
+        # reset scope and algo; arm settings are kept
+        scope.reset(scope_dict)
+        algo.reset(len(scope.arms))
+        cumulative_reward = 0
+
+        for r in tqdm(range(num_round), leave=False, desc='rounds'):
+            chosen_arm = algo.select_next_arm()  # choose an arm
+            proposed_experiments = scope.propose_experiment(chosen_arm, num_exp=num_exp,
+                                                            mode=propose_mode)  # scope proposes experiment
+            if proposed_experiments is None:
+                threshold = 0
+                print(
+                    f'[simulation {sim}, round {r}]: no experiments available for arm {chosen_arm}: {scope.arms[chosen_arm]}. Trying to find new experiments')
+                while proposed_experiments is None:
+                    if threshold > THRESHOLD:
+                        print(
+                            f'[simulation {sim}, round {r}]: no experiments available for arm {chosen_arm}: {scope.arms[chosen_arm]} after '
+                            f'{THRESHOLD} attempts; it might be the best arm')
+                        break
+                    algo.update(chosen_arm, algo.emp_means[chosen_arm])
+                    new_chosen_arm = algo.select_next_arm()
+                    if new_chosen_arm == chosen_arm:
+                        threshold = threshold + 1
+                        continue
+                    else:
+                        chosen_arm = new_chosen_arm
+                        proposed_experiments = scope.propose_experiment(chosen_arm, num_exp=num_exp, mode=propose_mode)
+
+            if proposed_experiments is not None:
+                to_query = proposed_experiments[scope_dict.keys()].to_dict(
+                    'records')  # generate a list of dicts to query
+                rewards = ground_truth_query(ground_truth, to_query)  # ground truth returns all yields
+
+                # algorithm keeps proposing experiments with the same arm until a yield is available
+                if len(rewards)==0:
+                    counter = 0
+                    while len(rewards)==0 and counter<100:  # experiemnt does not exist
+                        proposed_experiments = scope.propose_experiment(chosen_arm, num_exp=num_exp,
+                                                                        mode=propose_mode)
+                        to_query = proposed_experiments[scope_dict.keys()].to_dict(
+                            'records')  # generate a list of dicts to query
+                        rewards = ground_truth_query(ground_truth, to_query)
+                        counter = counter+1
+                    if counter >=100:
+                        print(scope.data)
+                        exit(f'[simulation {sim}, round {r}]: proposed 100 times and still no yield for {scope.arms[chosen_arm]}')
+
+                proposed_experiments['yield'] = rewards  # mimic user behavior and fill proposed experiments with yield
+                history = pd.concat([history, proposed_experiments], ignore_index=True)
+                # TODO: above; will create bug, need to leave space for empty experiments before concat
+                # because log uses indexes to directly set values, this needs to match that as well
+                # which means figure out the number of blank lines, and then concat
+
+                for ii in range(len(rewards)):  # update cumulative_reward, scope, algo and log results
+                    cumulative_reward = cumulative_reward + rewards[ii]
+                    scope.update_with_index(scope.current_experiment_index[ii], rewards[ii])
+                    algo.update(scope.current_arms[ii], rewards[ii])
+                    log_arr[sim * num_round * num_exp + r * num_exp + ii, :] = [sim, r, ii, r * num_exp + ii,
+                                                                                chosen_arm, rewards[ii],
+                                                                                cumulative_reward]
+                    history_prefix_arr[sim * num_round * num_exp + r * num_exp + ii, :] = [sim, r, ii, r * num_exp + ii]
+            else:  # this is where no exp is available and algorithm refuses to choose any other arms
+                exit()  # fix this maybe, problem when it comes to analysis
+
+            if predict:
+                scope.predict()  # update prediction models
+
+            # check if expansion is needed
+            if check_expand and (r in expansion_rounds):
+                scope.expand_scope(expansion_dict[int(r)])
+
+    log_df = pd.DataFrame(log_arr, columns=log_cols)
+    history_df = pd.concat([pd.DataFrame(history_prefix_arr, columns=history_prefix_cols), history], axis=1).drop(
+        columns=['prediction'])
+
+    history_df.to_csv(f'{dir}history.csv')
+    log_df.to_csv(f'{dir}log.csv')
+
+    return
+
+
 if __name__ == '__main__':
 
     # scope
@@ -1325,10 +1584,13 @@ if __name__ == '__main__':
     z = {'component_a': ['a1', 'a2'],
          'component_c': ['c1', 'c2']}
 
-    algo = algos_regret.UCB1Tuned(4)
+    incomplete = pd.DataFrame([['b1', 'a1'], ['b1', 'a3']], columns=['component_b', 'component_a'])
+
+
+    #algo = algos_regret.UCB1Tuned(4)
 
     #propose_initial_experiments_interpolation(x, y, algo, dir='./test/', num_exp=2, propose_mode='random')
-    update_and_propose_interpolation(dir='./test/', num_exp=5, propose_mode='random')
+    #update_and_propose_interpolation(dir='./test/', num_exp=5, propose_mode='random')
 
     #
     # d1 = {'component_a': 'a1',
