@@ -314,10 +314,13 @@ class UCB1Tuned(RegretAlgorithm):  # seems like V value are a lot bigger than 1/
 
     def __update_ucbs(self):
         count_sum = sum(self.counts)
-        n_arms = len(self.counts)
-        Vs = [self.m2[arm] / (self.counts[arm]+1e-7) + math.sqrt(2 * math.log(count_sum+1) / float(self.counts[arm] + 1e-7)) for arm in range(n_arms)]
+        count_sum_log = math.log(count_sum+1)  # for UCB values calculations
+        #n_arms = len(self.counts)
+        #Vs = [self.m2[arm] / (self.counts[arm]+1e-7) + math.sqrt(2 * math.log(count_sum+1) / float(self.counts[arm] + 1e-7)) for arm in range(n_arms)]
+        Vs = [m / (c + 1e-7) + math.sqrt(2 * count_sum_log / float(c + 1e-7)) for c, m in zip(self.counts, self.m2)]
         mins = [min(1/4, v) for v in Vs]
-        bonuses = [math.sqrt((math.log(count_sum+1)) / float(self.counts[arm] + 1e-7) * mins[arm]) for arm in range(n_arms)]
+        #bonuses = [math.sqrt((math.log(count_sum+1)) / float(self.counts[arm] + 1e-7) * mins[arm]) for arm in range(n_arms)]
+        bonuses = [math.sqrt(count_sum_log / float(c + 1e-7) * m) for c, m in zip(self.counts, mins)]
         self.ucbs = [e + b for e, b in zip(self.emp_means, bonuses)]
         return
 
