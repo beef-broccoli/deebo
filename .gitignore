@@ -164,3 +164,5 @@ cython_debug/
 /deebo/burke_comparison.py
 /deebo/single_run_logs/
 /deebo/demofiles/
+!/dataset-analysis/revision.py
+/dataset-analysis/revision files/
