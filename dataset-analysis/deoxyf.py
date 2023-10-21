@@ -287,7 +287,7 @@ def plot_condition_comparison(which_stat='average'):
 
 def simulate_etc(max_sample=8, n_simulations=10000):
 
-    optimal = [('BTPP', 'PBSF'), ('BTMG', 'PBSF'), ('MTBD', 'PBSF')]
+    optimal = [('BTPP', 'PBSF'), ('BTMG', 'PBSF'), ]
 
     # fetch ground truth data
     df = pd.read_csv(
@@ -297,7 +297,7 @@ def simulate_etc(max_sample=8, n_simulations=10000):
     percentages = []
     avg_cumu_rewards = []
     gb = df.groupby(by=['base_name', 'fluoride_name'])
-    for n_sample in tqdm(range(max_sample), desc='1st loop'):
+    for n_sample in tqdm([8, 9, 10], desc='1st loop'):
         count = 0
         reward = 0
         for i in tqdm(range(n_simulations), desc='2nd loop', leave=False):
@@ -316,24 +316,116 @@ def simulate_etc(max_sample=8, n_simulations=10000):
 
     print(percentages)
     print(avg_cumu_rewards)
-    # with yield: [0.5971, 0.66, 0.7173]
-    # 60% cutoff binary, no max tie breaking: [0.388, 0.5382, 0.6154]
-    # 60% cutoff binary, with max tie breaking: [0.4301, 0.5488, 0.6136] (helps with sample 1 case, more ties)
-    # 60% cutoff binary, cumulative reward: [7.1552, 14.3058, 21.4805]
-
-    # 50% cutoff binary top three: accuracy: [0.2263, 0.3055, 0.3833, 0.5027]; cumu reward [9.7952, 19.6476, 29.4682, 49.117]
-    # 50% cutoff binary top eight: accur: [0.5371, 0.6623, 0.7558, 0.848]  cumu: [9.8194, 19.6467, 29.4898, 49.0107]
-    return None
-
-
-if __name__ == '__main__':
-    df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv')
-    #plot_best_with_diff_metric(df=df, nlargest=5, which_dimension='base_name')
 
     # base/SF top3 ETC
     # accuracy [0.244, 0.3638, 0.4407, 0.4928, 0.5383, 0.5911, 0.6375, 0.6726]
     # cumulative reward [7.3592, 14.7448, 22.0455, 29.3722, 36.7635, 44.0817, 51.4216, 58.7918]
-    a = [0.0, 0.244, 0.3638, 0.4407, 0.4928, 0.5383, 0.5911, 0.6375, 0.6726]
-    a = np.array(a).repeat(20)
-    np.save('top3.npy', a)
+    return None
+
+
+def train_pred_model_for_general_conditon():
+
+    """
+    This approach randomly selects x% of the data for training, and then uses the prediction model to predict
+    the results for all reactions, which is then used to predict what's the most general conditions.
+
+    the training set size is decided by the user to compare with bandit algorithms at different # experiments.
+
+    Returns
+    -------
+
+    """
+
+    import math
+    from statistics import mean
+    import pandas as pd
+    import numpy as np
+    from tqdm import tqdm
+    from sklearn.preprocessing import OneHotEncoder as OHE
+    from sklearn.ensemble import RandomForestRegressor as RFR
+    from sklearn.linear_model import LinearRegression as LR
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
+
+    from rdkit.Chem import AllChem
+    from rdkit.Chem import rdMolDescriptors, DataStructs
+    from rdkit import Chem
+
+    N_SIMS = 100
+
+    n_exps = [20, 40, 60, 80, 100]
+
+    general_conditions = [
+        ('CC(N=P(N1CCCC1)(N2CCCC2)N3CCCC3)(C)C', 'FC(C(F)(S(=O)(F)=O)F)(F)C(F)(F)C(F)(F)F'),
+        ('CN(C)/C(N(C)C)=N/C(C)(C)C', 'FC(C(F)(S(=O)(F)=O)F)(F)C(F)(F)C(F)(F)F')
+    ]
+
+    general_conditions_three = [
+        ('CC(N=P(N1CCCC1)(N2CCCC2)N3CCCC3)(C)C', 'FC(C(F)(S(=O)(F)=O)F)(F)C(F)(F)C(F)(F)F'),
+        ('CN(C)/C(N(C)C)=N/C(C)(C)C', 'FC(C(F)(S(=O)(F)=O)F)(F)C(F)(F)C(F)(F)F'),
+        ('CN1CCCN2CCCN=C21', 'FC(C(F)(S(=O)(F)=O)F)(F)C(F)(F)C(F)(F)F')
+    ]
+
+    # # dft features from paper
+    # df = pd.read_csv('https://raw.githubusercontent.com/doyle-lab-ucla/ochem-data/main/deoxyF/rxns/dft_from_paper/train.csv')
+    # names = df[['alcohol', 'base', 'sulfonyl.fluoride']]
+    # ys = df[['yield']].to_numpy().ravel()
+    # Xs = df.drop(['alcohol', 'base', 'sulfonyl.fluoride', 'yield'], axis=1)
+    #
+    # # OHE features
+    # df_ohe = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deoxyF/rxns/ohe.csv')
+    # ys = df_ohe[['yield']].to_numpy().ravel()
+    # Xs = df_ohe.drop(['index', 'yield'], axis=1)
+
+    # fingerprint for substrates, ohe others
+    df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deoxyF/rxns/smiles.csv')
+
+    def smiles_to_ecfp(x):
+        mol = Chem.MolFromSmiles(x)
+        if mol is not None:
+            fp_obj = rdMolDescriptors.GetMorganFingerprintAsBitVect(mol, 2, nBits=2048, useFeatures=True)
+            fp = np.zeros((0,), dtype=int)
+            DataStructs.ConvertToNumpyArray(fp_obj, fp)
+            return fp
+        else:  # some smiles invalid for rdkit
+            return None
+
+    # fingerprint for substrates
+    df['ecfp'] = df['substrate_SMILES'].apply(smiles_to_ecfp)
+    df = df.dropna(subset=['ecfp'])
+    X = np.stack(df['ecfp'].values)
+    # OHE for others
+    to_add = OHE().fit_transform(df[['base_SMILES', 'fluoride_SMILES']]).toarray()
+    Xs = np.hstack([X, to_add])
+    ys = df[['yield']].to_numpy().ravel()
+    df = df.drop(['ecfp', 'yield'], axis=1)
+
+    train_sizes = np.array(n_exps)/740
+    test_sizes = 1 - train_sizes
+
+    accuracies_across_testsizes = []
+    for t in test_sizes:
+        count = 0
+        for n in tqdm(range(N_SIMS), leave=False):
+            X_train, X_test, y_train, y_test = train_test_split(Xs, ys, test_size=t)
+            model = RFR()
+            model.fit(X_train, y_train)
+            ys_pred = model.predict(Xs)
+            df['pred'] = ys_pred
+
+            pred_max = df.groupby(by=['base_SMILES', 'fluoride_SMILES'])['pred'].mean().idxmax()
+            if pred_max in general_conditions_three:
+                count += 1
+        accuracy = count/N_SIMS
+        accuracies_across_testsizes.append(accuracy)
+
+    results = dict(zip(n_exps, accuracies_across_testsizes))
+
+    return results
+
+
+if __name__ == '__main__':
+    print(
+        train_pred_model_for_general_conditon()
+    )
 

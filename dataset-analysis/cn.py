@@ -142,7 +142,7 @@ def plot_acquisition_history_heatmap_cn(history_fp='./test/history.csv', sim=0, 
         indexes.append(np.argwhere(np.isin(ground_truth, history[row, :]).all(axis=1))[0, 0])
     fd = df.reset_index()
     idx_to_set = fd.index.difference(indexes)
-    fd.loc[idx_to_set, 'yield'] = -1
+    fd.loc[idx_to_set, 'yield'] = -20
 
     # sort data into matrixes
     ds = []
@@ -157,7 +157,7 @@ def plot_acquisition_history_heatmap_cn(history_fp='./test/history.csv', sim=0, 
         ds.append(a)
 
         # do average
-        to_average = fd.loc[(fd['ligand_name'] == l) & (fd['base_name'] == b) & (fd['yield'] != -1)]['yield'].to_numpy()
+        to_average = fd.loc[(fd['ligand_name'] == l) & (fd['base_name'] == b) & (fd['yield'] != -20)]['yield'].to_numpy()
         if len(to_average) == 0:  # catch the np.average warning for empty array
             averages.append('n/a')
         else:
@@ -169,7 +169,7 @@ def plot_acquisition_history_heatmap_cn(history_fp='./test/history.csv', sim=0, 
                       np.hstack(ds[9:12])])
 
     fig, ax = plt.subplots()
-    im = ax.imshow(data, cmap='inferno', vmin=0, vmax=110)
+    im = ax.imshow(data, cmap='inferno', vmin=-15, vmax=105)
     text_kwargs = dict(ha='center', va='center', fontsize=15, color='white')
     ii = 0
     for i in range(4):
@@ -295,4 +295,4 @@ if __name__ == '__main__':
     #                  save_fp='test.gif')
 
     plot_acquisition_history_heatmap_cn('/Users/mac/Desktop/project deebo/deebo/deebo/dataset_logs/cn/bayes_ucb_gaussian_c=2_assumed_sd=0.25-500s-100r-1e/history.csv',
-                                        roun=99)
+                                        roun=12)

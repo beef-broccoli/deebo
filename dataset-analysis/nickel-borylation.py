@@ -236,10 +236,12 @@ def simulate_etc(max_sample=4, n_simulations=10000):
 
 
 if __name__ == '__main__':
+
+    #plot_cutoff_heatmap(cutoff=60)
+
     #simulate_etc()
-    a = [0.0, 0.2235, 0.3166, 0.4018, 0.4613]
+
+    a = np.array([0.0, 9.7952, 19.6476, 29.4682, 49.117])
     a = np.array(a).repeat(23)
-    # b = [0.0, 0.5371, 0.6623, 0.7558, 0.848]
-    # b = np.array(b).repeat(23)
-    np.save('top3.npy', a)
+    np.save('top3_cumu.npy', a)
     # np.save('top8.npy', b)
