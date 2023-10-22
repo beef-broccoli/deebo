@@ -7,6 +7,7 @@ import matplotlib.patches as mpatches
 import gif
 import itertools
 from utils import scaler
+from scipy import stats
 
 la_gold = '#FDB927'
 la_purple = '#552583'
@@ -410,11 +411,13 @@ def plot_accuracy_best_arm(best_arm_indexes,
                            etc_fp='',
                            title='',
                            xlabel='Time horizon (number of experiments)',
+                           ylabel=None,
                            legend_title='',
                            long_legend=False,
                            ignore_first_rounds=0,
                            shade_first_rounds=0,
-                           max_horizon_plot=0):
+                           max_horizon_plot=0,
+                           calc_random_exploration=False):
     """
     Accuracy up to each time point
     At each time point, consider all past experiments until this point, and pick the arm with the highest number of samples
@@ -471,8 +474,15 @@ def plot_accuracy_best_arm(best_arm_indexes,
             plt.axvline(x=vline, ymin=0, ymax=1, linestyle='dashed', color='black', alpha=0.5)
 
     max_time_horizon = 0  # etc baseline cuts off at this time horizon
+
+    random_exploration_fp_for_calc = None
+
     for i in range(len(fps)):
         fp = fps[i]
+
+        if calc_random_exploration and 'random' in fp:  # save the fp for random exploration, calcualte baseline and plot
+            random_exploration_fp_for_calc = fp
+
         df = pd.read_csv(fp)
         df = df[['num_sims', 'horizon', 'chosen_arm']]
 
@@ -512,6 +522,35 @@ def plot_accuracy_best_arm(best_arm_indexes,
                  lw=2,
                  zorder=-100)
 
+    if calc_random_exploration:
+        df = pd.read_csv(random_exploration_fp_for_calc)
+        df = df[['num_sims', 'horizon', 'chosen_arm', 'reward']]
+        n_simulations = int(np.max(df['num_sims'])) + 1
+        time_horizon = int(np.max(df['horizon'])) + 1
+
+        best_arms = np.zeros((n_simulations, time_horizon))  # each time point will have a best arm up to that point
+
+        for n in range(int(n_simulations)):
+            data = df.loc[df['num_sims'] == n][['chosen_arm', 'reward']]
+            for t in range(len(data)):
+                mean = data[:t + 1]
+                mean = mean.groupby(by='chosen_arm').mean()  # mean metric for every arm
+                maxes = list(mean.index[mean['reward'] == mean[
+                    'reward'].values.max()])  # find all maxes. idxmax() selects first instance
+                best_arms[n, t] = np.random.choice(maxes)  # randomly break ties
+
+        isinfunc = lambda x: x in best_arm_indexes
+        visinfunc = np.vectorize(isinfunc)
+        boo = visinfunc(best_arms)
+        probs = boo.sum(axis=0) / n_simulations
+
+        plt.plot(np.arange(len(probs))[ignore_first_rounds:max_time_horizon], probs[ignore_first_rounds:max_time_horizon],
+                 color='black',
+                 label='Pure exploration',
+                 lw=2,
+                 ls=':',
+                 zorder=-101)
+
     if shade_first_rounds != 0:
         ax.axvspan(0, shade_first_rounds, facecolor='lightgray', alpha=0.5, zorder=100)
         _, ymax = ax.get_ylim()
@@ -524,7 +563,9 @@ def plot_accuracy_best_arm(best_arm_indexes,
     # ##
 
     ax.set_xlabel(xlabel)
-    ax.set_ylabel(f'Accuracy of identifying best arm: {best_arm_indexes}')
+    if not ylabel:
+        ylabel = f'Accuracy of identifying best arm: {best_arm_indexes}'
+    ax.set_ylabel(ylabel)
     ax.set_title(title)
     ax.grid(visible=True, which='both', alpha=0.5)
     if long_legend:
@@ -537,7 +578,47 @@ def plot_accuracy_best_arm(best_arm_indexes,
     return None
 
 
-def get_accuracy_random_exploration(fp, best_arm_indexes, title='', ):
+def get_accuracy_bandit_algos(fp, best_arm_indexes):
+
+    """
+    Calculates the accuracy with the simulation log files of a bandit algorithm and the indices of the best arms
+
+    Parameters
+    ----------
+    fp: str
+        file path of the log.csv file generated from simulation
+    best_arm_indexes: list of int
+        a list of integer indices for the best conditions.
+        These can be identified from the arms.pkl file in the same folder
+
+    Returns
+    -------
+
+    """
+
+    df = pd.read_csv(fp)
+    df = df[['num_sims', 'horizon', 'chosen_arm']]
+
+    n_simulations = int(np.max(df['num_sims'])) + 1
+    time_horizon = int(np.max(df['horizon'])) + 1
+
+    best_arms = np.zeros((n_simulations, time_horizon))  # each time point will have a best arm up to that point
+
+    for n in range(int(n_simulations)):
+        data = np.array(list(df.loc[df['num_sims'] == n]['chosen_arm']))
+        for t in range(len(data)):
+            u, counts = np.unique(data[:t+1], return_counts=True)
+            best_arms[n, t] = u[np.random.choice(np.flatnonzero(counts == max(counts)))]
+
+    isinfunc = lambda x: x in best_arm_indexes
+    visinfunc = np.vectorize(isinfunc)
+    boo = visinfunc(best_arms)
+    probs = boo.sum(axis=0)/n_simulations
+
+    return probs
+
+
+def get_accuracy_random_exploration(fp, best_arm_indexes, title='',):
 
     """
     Accuracy of random exploration. Rather than looking at the number of samples
@@ -547,20 +628,18 @@ def get_accuracy_random_exploration(fp, best_arm_indexes, title='', ):
     -------
 
     """
-
-
-    plt.rcParams['savefig.dpi'] = 300
-    fig, ax = plt.subplots()
-
-    max_time_horizon = 0  # etc baseline cuts off at this time horizon
+    #
+    #
+    # plt.rcParams['savefig.dpi'] = 300
+    # fig, ax = plt.subplots()
 
     df = pd.read_csv(fp)
     df = df[['num_sims', 'horizon', 'chosen_arm', 'reward']]
 
     n_simulations = int(np.max(df['num_sims'])) + 1
     time_horizon = int(np.max(df['horizon'])) + 1
-    if time_horizon > max_time_horizon:
-        max_time_horizon = time_horizon
+    # if time_horizon > max_time_horizon:
+    #     max_time_horizon = time_horizon
 
     best_arms = np.zeros((n_simulations, time_horizon))  # each time point will have a best arm up to that point
 
@@ -579,13 +658,13 @@ def get_accuracy_random_exploration(fp, best_arm_indexes, title='', ):
     #print(list(probs))
     #print('')
 
-    ax.plot(np.arange(time_horizon), probs, label='random exploration')
-
-    ax.set_xlabel('N experiments')
-    ax.set_ylabel(f'Accuracy of identifying best arm: {best_arm_indexes}')
-    ax.set_title(title)
-    ax.grid(visible=True, which='both', alpha=0.5)
-    plt.show()
+    # ax.plot(np.arange(time_horizon), probs, label='random exploration')
+    #
+    # ax.set_xlabel('N experiments')
+    # ax.set_ylabel(f'Accuracy of identifying best arm: {best_arm_indexes}')
+    # ax.set_title(title)
+    # ax.grid(visible=True, which='both', alpha=0.5)
+    # plt.show()
 
     return probs
 
@@ -743,6 +822,7 @@ def plot_accuracy_best_arm_scope_expansion(arm_indexes,
                  color='black',
                  label='Explore-then-commit',
                  lw=2,
+                 ls='dashed',
                  zorder=-100)
 
     if shade_first_rounds != 0:
@@ -765,7 +845,7 @@ def plot_accuracy_best_arm_scope_expansion(arm_indexes,
 
         handles, labels = plt.gca().get_legend_handles_labels()
         # specify order of items in legend
-        order = [0,6,1,4,2,5,3]
+        order = [0,6,1,4,2,3,5,7]
         # add legend to plot
         ax.legend([handles[idx] for idx in order], [labels[idx] for idx in order],
                   loc='upper center', bbox_to_anchor=(0.5, 1.2), ncol=4)
@@ -787,7 +867,8 @@ def plot_cumulative_reward(fn_list,
                            shade_first_rounds=0,
                            long_legend=False,
                            etc_baseline=False,
-                           etc_fp=''):
+                           etc_fp='',
+                           show_std=False):
 
     assert len(fn_list) == len(legend_list)
 
@@ -817,7 +898,14 @@ def plot_cumulative_reward(fn_list,
             all_rewards[ii, :] = rewards
 
         avg_reward = np.average(all_rewards, axis=0)  # average across simulations. shape: (1, time_horizon)
+
+        interval = np.std(all_rewards, axis=0)  # standard error
+        lower_bound = avg_reward - interval
+        upper_bound = avg_reward + interval
+
         ax.plot(np.arange(time_horizon)[ignore_first_rounds:], avg_reward[ignore_first_rounds:], label=str(legend_list[i]))
+        if show_std:  # makes me dizzy; se too small
+            ax.fill_between(np.arange(time_horizon)[ignore_first_rounds:], lower_bound, upper_bound, alpha=0.3)
 
     if shade_first_rounds != 0:
         ax.axvspan(0, shade_first_rounds, facecolor='lightgray', alpha=0.5, zorder=100)
@@ -1071,40 +1159,50 @@ def figure_dimensionality():
     pass
 
 
-def figure_dimensionality_gm():
-    nib = [0.0, 0.0, 0.0, 0.0, 0.19, 0.214, 0.136, 0.108, 0.118, 0.102, 0.104, 0.078, 0.074, 0.062, 0.052, 0.06, 0.114, 0.088, 0.164, 0.172, 0.148, 0.138, 0.136, 0.052, 0.094, 0.166, 0.2, 0.236, 0.284, 0.32, 0.332, 0.366, 0.398, 0.392, 0.392, 0.4, 0.43, 0.446, 0.452, 0.452, 0.456, 0.474, 0.496, 0.496, 0.506, 0.522, 0.532, 0.54, 0.536, 0.548, 0.548, 0.56, 0.572, 0.566, 0.582, 0.578, 0.592, 0.608, 0.616, 0.624, 0.63, 0.636, 0.63, 0.638, 0.632, 0.638, 0.64, 0.642, 0.65, 0.646, 0.648, 0.654, 0.656, 0.676, 0.678, 0.682, 0.676, 0.682, 0.682, 0.688, 0.708, 0.704, 0.702, 0.702, 0.708, 0.716, 0.722, 0.724, 0.724, 0.736, 0.728, 0.734, 0.734, 0.738, 0.736, 0.752, 0.758, 0.758, 0.75, 0.766]
-    deoxyf = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0575, 0.055, 0.055, 0.055, 0.055, 0.0975, 0.21, 0.2125, 0.1775, 0.2275, 0.26, 0.2375, 0.26, 0.2625, 0.295, 0.31, 0.3, 0.3275, 0.325, 0.34, 0.375, 0.395, 0.4025, 0.4075, 0.4175, 0.4225, 0.42, 0.435, 0.4375, 0.4225, 0.4375, 0.4375, 0.4475, 0.45, 0.465, 0.4625, 0.4825, 0.495, 0.505, 0.5, 0.5175, 0.51, 0.53, 0.5175, 0.525, 0.53, 0.54, 0.5475, 0.55, 0.5525, 0.545, 0.54, 0.545, 0.5575, 0.5875, 0.585, 0.6025, 0.5975, 0.6025, 0.59, 0.6075, 0.5975, 0.615, 0.62, 0.6175, 0.635, 0.6275, 0.635, 0.6375, 0.635, 0.645, 0.6475, 0.655, 0.655, 0.6575, 0.6625, 0.665, 0.675, 0.68, 0.675, 0.685, 0.685, 0.7125, 0.715, 0.715, 0.7275]
-    maldi = [0.0, 0.0, 0.338, 0.248, 0.486, 0.336, 0.302, 0.338, 0.512, 0.442, 0.47, 0.512, 0.552, 0.508, 0.556, 0.592, 0.59, 0.61, 0.606, 0.658, 0.664, 0.636, 0.658, 0.684, 0.7, 0.71, 0.73, 0.732, 0.74, 0.742, 0.76, 0.754, 0.768, 0.774, 0.774, 0.786, 0.79, 0.816, 0.8, 0.81, 0.8, 0.804, 0.814, 0.824, 0.832, 0.832, 0.85, 0.844, 0.862, 0.86, 0.864, 0.878, 0.88, 0.89, 0.898, 0.886, 0.9, 0.91, 0.906, 0.91, 0.924, 0.914, 0.9, 0.922, 0.936, 0.93, 0.926, 0.928, 0.93, 0.944, 0.938, 0.944, 0.948, 0.952, 0.96, 0.956, 0.952, 0.946, 0.944, 0.956, 0.95, 0.946, 0.954, 0.954, 0.956, 0.952, 0.95, 0.942, 0.952, 0.95, 0.954, 0.956, 0.958, 0.956, 0.96, 0.956, 0.962, 0.966, 0.966, 0.97, 0.964, 0.972, 0.968, 0.97, 0.97, 0.972, 0.972, 0.976, 0.974, 0.972, 0.972, 0.974, 0.972, 0.974, 0.976, 0.974, 0.974, 0.974, 0.976, 0.978, 0.98, 0.978, 0.98, 0.98, 0.98, 0.98, 0.978, 0.982, 0.984, 0.98, 0.984, 0.984, 0.982, 0.984, 0.986, 0.982, 0.986, 0.986, 0.986, 0.986, 0.988, 0.988, 0.99, 0.99, 0.99, 0.99, 0.992, 0.99, 0.992, 0.992, 0.992, 0.992, 0.992, 0.994, 0.994, 0.994, 0.994, 0.992, 0.992, 0.994, 0.992, 0.992, 0.994, 0.992, 0.994, 0.996, 0.996, 0.994, 0.994, 0.992, 0.994, 0.994, 0.994, 0.994, 0.996, 0.996, 0.996, 0.996, 0.996, 0.996, 0.996, 0.996, 0.996, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994, 0.994]
+def figure_dimensionality_fig2():
+    nib = get_accuracy_bandit_algos('dataset_logs/nib/etoh-50cutoff/new_bayes_ucb_beta-500s-100r-1e/log.csv', best_arm_indexes=[4, 16, 18])
+    deoxyf = get_accuracy_bandit_algos('dataset_logs/deoxyf/combo/bayes_ucb_gaussian_c=2_assumed_sd=0.25-400s-100r-1e/log.csv', best_arm_indexes=[14, 19])
+    maldi = get_accuracy_bandit_algos('dataset_logs/merck-maldi/bromide/bayes_ucb_gaussian_c=2_assumed_sd=0.25-500s-200r-1e/log.csv', best_arm_indexes=[0])
+    maldi = np.insert(maldi[1:], [0], [0])  # gets rid of exploration artifact (first experiment is always Cu due to how exploration is implemented)
 
-    nib_baseline = np.load('/Users/mac/Desktop/project deebo/deebo/deebo/dataset_logs/nib/etoh-50cutoff/top3.npy')
-    deoxyf_baseline = np.load('/Users/mac/Desktop/project deebo/deebo/deebo/dataset_logs/deoxyf/combo/etc/pbsf_btpp_btmg.npy')
-    maldi_baseline = np.load('/Users/mac/Desktop/project deebo/deebo/deebo/dataset_logs/merck-maldi/amine/baseline.npy')
+
+    nib_etc_baseline = np.load('/Users/mac/Desktop/project deebo/deebo/deebo/dataset_logs/nib/etoh-50cutoff/top3.npy')
+    deoxyf_etc_baseline = np.load('/Users/mac/Desktop/project deebo/deebo/deebo/dataset_logs/deoxyf/combo/etc/pbsf_btpp_btmg.npy')
+    maldi_etc_baseline = np.load('/Users/mac/Desktop/project deebo/deebo/deebo/dataset_logs/merck-maldi/bromide/etc.npy')
+
+    nib_random_baseline = get_accuracy_random_exploration('dataset_logs/nib/etoh-50cutoff/random-500s-100r-1e/log.csv', best_arm_indexes=[4, 16, 18])
+    deoxyf_random_baseline = get_accuracy_random_exploration('dataset_logs/deoxyf/combo/random-400s-150r-1e/log.csv', best_arm_indexes=[14, 19])
+    maldi_random_baseline = get_accuracy_random_exploration('dataset_logs/merck-maldi/bromide/random-500s-200r-1e/log.csv', best_arm_indexes=[0])
 
     legends = [
         'Nickel borylation, \n top-3 accuracy, \n Bayes UCB (beta prior)',
         'Deoxyfluorination, \n top-2 accuracy, \n Bayes UCB (gaussian prior)',
-        'C-N cross-coupling, \n top-1 accuracy, \n UCB1'
+        'C-N cross-coupling, \n top-1 accuracy, \n Bayes UCB (gaussian prior)'
     ]
 
     plt.rcParams['savefig.dpi'] = 300
 
     plt.plot(nib[:100], label=legends[0], color='#1f77b4', alpha=1, lw=2)
-    plt.plot(nib_baseline[:100], color='#1f77b4', ls='-.', alpha=1, lw=2)
-    plt.hlines([3/23], 0, 100, color='#1f77b4', ls='--', alpha=1, lw=2)
+    plt.plot(nib_etc_baseline[:100], color='#1f77b4', ls='--', alpha=1, lw=2)
+    plt.plot(nib_random_baseline[:100], color='#1f77b4', ls=(0, (3, 1, 1, 1, 1, 1)), alpha=1, lw=2)
+    #plt.hlines([3/23], 0, 100, color='#1f77b4', ls='--', alpha=1, lw=2)
 
     plt.plot(deoxyf[:100], label=legends[1], color='#ff7f0e', alpha=1, lw=2)
-    plt.plot(deoxyf_baseline[:100], color='#ff7f0e', ls='-.', alpha=1, lw=2)
-    plt.hlines([2/20], 0, 100, color='#ff7f0e', ls='--', alpha=1, lw=2)
+    plt.plot(deoxyf_etc_baseline[:100], color='#ff7f0e', ls='--', alpha=1, lw=2)
+    plt.plot(deoxyf_random_baseline[:100], color='#ff7f0e', ls=(0, (3, 1, 1, 1, 1, 1)), alpha=1, lw=2)
+    #plt.hlines([2/20], 0, 100, color='#ff7f0e', ls='--', alpha=1, lw=2)
 
     plt.plot(maldi[:100], label=legends[2], color='#2ca02c', alpha=1, lw=2)
-    plt.plot(maldi_baseline[:100], color='#2ca02c', ls='-.', alpha=1, lw=2)
-    plt.hlines([1/4], 0, 100, color='#2ca02c', ls='--', alpha=1, lw=2)
+    plt.plot(maldi_etc_baseline[:100], color='#2ca02c', ls='--', alpha=1, lw=2)
+    plt.plot(maldi_random_baseline[:100], color='#2ca02c', ls=(0, (3, 1, 1, 1, 1, 1)), alpha=1, lw=2)
+    #plt.hlines([1/4], 0, 100, color='#2ca02c', ls='--', alpha=1, lw=2)
 
-    plt.plot([], label='Baseline \n Explore-then-commit', ls='-.', color='k')
-    plt.plot([], label='Baseline \n Pure exploration', ls='--', color='k')
+    plt.plot([], label='Baseline \n Explore-then-commit', ls='--', color='k')
+    #plt.plot([], label='Baseline \n Random pick', ls='--', color='k')
+    plt.plot([], label='Baseline \n Pure exploration', ls=(0, (3, 1, 1, 1, 1, 1)), color='k')
 
     plt.grid(visible=True, which='both', alpha=0.5)
-    #plt.legend(bbox_to_anchor=(1, 1), loc="upper left", labelspacing=1, ncols=2, columnspacing=3)
+    plt.legend(bbox_to_anchor=(1, -1), loc="upper left", labelspacing=1, ncols=2, columnspacing=3)
     #title='Dataset, metric, algorithm',
     plt.xlabel('Number of experiments')
     plt.ylabel('Top-n accuracy')
@@ -1112,6 +1210,52 @@ def figure_dimensionality_gm():
     plt.tight_layout()
     plt.show()
     return
+
+
+def figure_2b_cumu():
+    dd = 'dataset_logs/nib/etoh-50cutoff/'
+    num_sims = 500
+    num_round = 75
+    num_exp = 1
+    fn_list = [f'{dd}{n}/log.csv' for n in
+               [f'ts_gaussian_squared-{num_sims}s-{num_round}r-{num_exp}e',
+                f'ts_beta-{num_sims}s-{num_round}r-{num_exp}e',
+                f'ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e',
+                f'ucb1-{num_sims}s-{num_round}r-{num_exp}e',
+                f'bayes_ucb_gaussian_squared_c=2-{num_sims}s-{num_round}r-{num_exp}e',
+                f'bayes_ucb_beta_c=2-{num_sims}s-{num_round}r-{num_exp}e',
+                f'new_bayes_ucb_beta-{num_sims}s-{num_round}r-{num_exp}e',
+                f'eps_greedy_annealing-{num_sims}s-{num_round}r-{num_exp}e',
+                f'random-{num_sims}s-{num_round}r-{num_exp}e',
+                ]]
+    legend_list = ['TS (normal prior)',
+                   'TS (beta prior)',
+                   'ucb1-tuned',
+                   'ucb1',
+                   'Bayes ucb (normal prior)',
+                   'Bayes ucb (beta prior, 2SD)',
+                   'Bayes ucb (beta prior, ppf)',
+                   'Annealing ε-greedy',
+                   'Random pick', ]
+    fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/nib-etoh.csv'
+    with open(f'{dd}random-{num_sims}s-{num_round}r-{num_exp}e/arms.pkl', 'rb') as f:
+        arms_dict = pickle.load(f)
+
+    reverse_arms_dict = {v: k for k, v in arms_dict.items()}
+    top_three = ['Cy-JohnPhos', 'P(p-Anis)3', 'PPh2Cy']
+
+    ligands = [(l,) for l in top_three]
+    indexes = [reverse_arms_dict[l] for l in ligands]
+
+    plot_cumulative_reward(fn_list=fn_list,
+                           legend_list=legend_list,
+                           title='Cumulative rewards for Ni borylation dataset',
+                           legend_title='Algorithm',
+                           shade_first_rounds=23,
+                           long_legend=True,
+                           etc_baseline=True,
+                           etc_fp=f'{dd}top3_cumu.npy',
+                           show_std=False)
 
 
 if __name__ == '__main__':
@@ -1176,6 +1320,7 @@ if __name__ == '__main__':
         return
 
     def nib_50(top=3):
+        # used in paper
         dd = 'dataset_logs/nib/etoh-50cutoff/'
         num_sims = 500
         num_round = 75
@@ -1199,7 +1344,7 @@ if __name__ == '__main__':
                        'Bayes ucb (beta prior, 2SD)',
                        'Bayes ucb (beta prior, ppf)',
                        'Annealing ε-greedy',
-                       'pure exploration',]
+                       'Random pick',]
         fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/nib-etoh.csv'
         with open(f'{dd}random-{num_sims}s-{num_round}r-{num_exp}e/arms.pkl', 'rb') as f:
             arms_dict = pickle.load(f)
@@ -1212,9 +1357,9 @@ if __name__ == '__main__':
         top_three = ['Cy-JohnPhos', 'P(p-Anis)3', 'PPh2Cy']
         top_eight = ['PPh2Cy', 'CX-PCy', 'PPh3', 'P(p-F-Ph)3', 'P(p-Anis)3', 'Cy-JohnPhos', 'A-paPhos',
                      'Cy-PhenCar-Phos']
-        if top == 3:
+        if top == 3:  # [4, 16, 18]
             ligands = [(l,) for l in top_three]
-        elif top == 8:
+        elif top == 8:  # [18, 2, 19, 17, 16, 4, 0, 5]
             ligands = [(l,) for l in top_eight]
         else:
             exit()
@@ -1228,7 +1373,8 @@ if __name__ == '__main__':
                                shade_first_rounds=23,
                                title=f'Accuracy of identifying top{top} optimal ligands',
                                legend_title='algorithm',
-                               long_legend=True)
+                               long_legend=True,
+                               calc_random_exploration=True)
 
         # plot_cumulative_reward(fn_list=fn_list,
         #                        legend_list=legend_list,
@@ -1240,7 +1386,7 @@ if __name__ == '__main__':
         #                        etc_fp=f'{dd}etc_cumu_reward.npy')
         return
 
-    def deoxyf():
+    def deoxyf(top=2):
         dd = 'dataset_logs/deoxyf/combo/'
         num_sims = 400
         num_round = 150
@@ -1252,13 +1398,15 @@ if __name__ == '__main__':
                     f'bayes_ucb_gaussian_squared_c=2-{num_sims}s-{num_round}r-{num_exp}e',
                     f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-100r-{num_exp}e',
                     f'eps_greedy_annealing-{num_sims}s-{num_round}r-{num_exp}e',
+                    f'random-{num_sims}s-{num_round}r-{num_exp}e',
                     ]]
         legend_list = ['TS (squared)',
                        'TS (fixed sd 0.25)',
                        'ucb1-tuned',
                        'Bayes ucb (2SD, squared)',
                        'Bayes ucb (2SD, 0.25)',
-                       'ε-greedy',]
+                       'ε-greedy',
+                       'Random pick']
         #f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-{num_round}r-{num_exp}e',
         # 'Bayes ucb (2SD, 0.25)',
         fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/deoxyf.csv'
@@ -1266,22 +1414,26 @@ if __name__ == '__main__':
             arms_dict = pickle.load(f)
 
         reverse_arms_dict = {v: k for k, v in arms_dict.items()}
-        # ligands = ['Cy-BippyPhos', 'CgMe-PPh', 'Et-PhenCar-Phos', 'JackiePhos', 'tBPh-CPhos']
-        # ligands = ['Et-PhenCar-Phos', 'JackiePhos']
-        #ligands = [(b,) for b in bs]
-        ligands = [('BTMG', 'PBSF'), ('BTPP', 'PBSF'), ('MTBD', 'PBSF')]
+        if top == 2:
+            ligands = [('BTMG', 'PBSF'), ('BTPP', 'PBSF')]  # [14, 19]
+        elif top == 3:
+            ligands = [('BTMG', 'PBSF'), ('BTPP', 'PBSF'), ('MTBD', 'PBSF')]  #[14, 19, 9]
+        else:
+            exit()
         indexes = [reverse_arms_dict[l] for l in ligands]
 
         plot_accuracy_best_arm(best_arm_indexes=indexes,
                                fn_list=fn_list,
                                legend_list=legend_list,
                                etc_baseline=True,
-                               etc_fp=f'{dd}etc/top3.npy',
+                               etc_fp=f'{dd}etc/top{top}.npy',
                                shade_first_rounds=20,
                                title=f'Accuracy of identifying {ligands} as optimal',
                                legend_title='algorithm',
-                               long_legend=False,
-                               max_horizon_plot=100)
+                               long_legend=True,
+                               max_horizon_plot=100,
+                               calc_random_exploration=True,
+                               )
 
         # plot_cumulative_reward(fn_list=fn_list,
         #                        legend_list=legend_list,
@@ -1456,7 +1608,7 @@ if __name__ == '__main__':
         plt.xlabel('Actual time horizon (number of rounds)')
         plt.show()
 
-    def cn():
+    def cn(top=3):
         dd = 'dataset_logs/cn/'
         num_sims = 500
         num_round = 100
@@ -1471,16 +1623,17 @@ if __name__ == '__main__':
                     ]]
         legend_list = ['TS (squared)',
                        'TS (fixed sd 0.25)',
-                       'ucb1-tuned',
-                       'Bayes ucb (2SD, squared)',
-                       'Bayes ucb (2SD, 0.25)',
-                       'ε-greedy',]
+                       'UCB1-tuned',
+                       'Bayes UCB (2SD, squared)',
+                       'Bayes UCB (2SD, 0.25)',
+                       'ε-greedy',
+                       'Random pick']
         legend_list = ['TS (implementation 1)',
                        'TS (implementation 2)',
                        'UCB1-Tuned',
-                       'Bayes ucb (implementation 1)',
-                       'Bayes ucb (implementation 2)',
-                       'ε-greedy',]
+                       'Bayes UCB (implementation 1)',
+                       'Bayes UCB (implementation 2)',
+                       'Annealing ε-greedy',]
         #f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-{num_round}r-{num_exp}e',
         # 'Bayes ucb (2SD, 0.25)',
         fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/cn-processed.csv'
@@ -1491,29 +1644,36 @@ if __name__ == '__main__':
         # ligands = ['Cy-BippyPhos', 'CgMe-PPh', 'Et-PhenCar-Phos', 'JackiePhos', 'tBPh-CPhos']
         # ligands = ['Et-PhenCar-Phos', 'JackiePhos']
         #ligands = [(b,) for b in bs]
-        ligands = [('MTBD', 'tBuXPhos'),
-                   ('MTBD', 'tBuBrettPhos'),
-                   ('MTBD', 'AdBrettPhos')]
-        # ligands = [('MTBD', 'tBuXPhos'),
-        #            ('MTBD', 'tBuBrettPhos')]
-        # ligands = [('MTBD', 'tBuXPhos'),]
+        if top == 3:
+            ligands = [('MTBD', 'tBuXPhos'),
+                       ('MTBD', 'tBuBrettPhos'),
+                       ('MTBD', 'AdBrettPhos')]
+        elif top == 2:
+            ligands = [('MTBD', 'tBuXPhos'),
+                       ('MTBD', 'tBuBrettPhos')]
+        elif top == 1:
+            ligands = [('MTBD', 'tBuXPhos'),]
+        else:
+            exit()
         indexes = [reverse_arms_dict[l] for l in ligands]
 
         plot_accuracy_best_arm(best_arm_indexes=indexes,
                                fn_list=fn_list,
                                legend_list=legend_list,
-                               etc_baseline=False,
-                               etc_fp=f'{dd}/etc/top3.npy',
+                               etc_baseline=True,
+                               etc_fp=f'{dd}/etc/top{top}.npy',
                                shade_first_rounds=12,
                                title=f'',
                                xlabel='Number of experiments (time horizon)',
                                legend_title='Algorithm',
                                long_legend=False,
-                               max_horizon_plot=100,
-                               vlines=[36, 72],)
+                               max_horizon_plot=96,
+                               vlines=[36, 72],
+                               calc_random_exploration=False,
+                               ylabel='Accuracy of identifying top-3 conditions')
 
     def aryl(top=5):
-        dd = 'dataset_logs/aryl-scope-ligand/expansion/scenario1/'
+        dd = 'dataset_logs/aryl-scope-ligand/'
         num_sims = 500
         num_round = 200
         num_exp = 1
@@ -1534,7 +1694,7 @@ if __name__ == '__main__':
                        'Bayes ucb (2SD, squared)',
                        'Bayes ucb (2SD, 0.25)',
                        'ε-greedy',
-                       'pure exploration']
+                       'Random pick']
         #f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-{num_round}r-{num_exp}e',
         # 'Bayes ucb (2SD, 0.25)',
         fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/aryl-scope-ligand.csv'
@@ -1563,16 +1723,17 @@ if __name__ == '__main__':
         plot_accuracy_best_arm(best_arm_indexes=indexes,
                                fn_list=fn_list,
                                legend_list=legend_list,
-                               etc_baseline=False,
+                               etc_baseline=True,
                                etc_fp=f'{dd}/etc/top{top}.npy',
                                shade_first_rounds=24,
                                ignore_first_rounds=0,
                                title=f'Accuracy of identifying top {top} optimal ligands',
                                legend_title='algorithm',
                                long_legend=True,
-                               max_horizon_plot=150,)
+                               max_horizon_plot=150,
+                               calc_random_exploration=True)
 
-    def amidation(top=1, combo=True):
+    def amidation(top=3, combo=False):
         if combo:
             dd = 'dataset_logs/amidation/combo/'
             shade_n = 32
@@ -1601,7 +1762,7 @@ if __name__ == '__main__':
                        'Bayes ucb (2SD, squared)',
                        'Bayes ucb (2SD, 0.25)',
                        'ε-greedy',
-                       'pure exploration']
+                       'Random pick']
         #f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-{num_round}r-{num_exp}e',
         # 'Bayes ucb (2SD, 0.25)',
         fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/amidation.csv'
@@ -1644,8 +1805,9 @@ if __name__ == '__main__':
                                shade_first_rounds=shade_n,
                                ignore_first_rounds=0,
                                title=f'Accuracy of identifying top {top} {what}',
-                               legend_title='algorithm',
-                               long_legend=True,)
+                               legend_title='Algorithm',
+                               long_legend=True,
+                               calc_random_exploration=True)
 
     def aryl_sampling_mode_from_legacy(top=1):
         dd = 'dataset_logs/aryl-scope-ligand-legacy/'
@@ -1752,30 +1914,49 @@ if __name__ == '__main__':
                                                max_horizon_plot=200,
                                                long_legend=True,
                                                vlines=[50, 100],
-                                               preset_colors=colors)
+                                               preset_colors=colors,
+                                               etc_baseline=True,
+                                               etc_fp='dataset_logs/aryl-scope-ligand/etc/top5.npy')
 
-    def maldi():
-        name = 'amine'
+    def maldi(name='amine'):
         dd = f'dataset_logs/merck-maldi/{name}/'
         num_sims = 500
         num_round = 200
         num_exp = 1
-        fn_list = [f'{dd}{n}/log.csv' for n in
-                   [f'ts_gaussian_squared-{num_sims}s-190r-{num_exp}e',
-                    f'ts_gaussian_assumed_sd_0.25-{num_sims}s-190r-{num_exp}e',
-                    f'ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e',
-                    f'ucb1-{num_sims}s-{num_round}r-{num_exp}e',
-                    f'bayes_ucb_gaussian_squared_c=2-{num_sims}s-190r-{num_exp}e',
-                    f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-190r-{num_exp}e',
-                    f'eps_greedy_annealing-{num_sims}s-{num_round}r-{num_exp}e',
-                    ]]
+        # for amine
+        if name == 'amine':
+            fn_list = [f'{dd}{n}/log.csv' for n in
+                       [f'ts_gaussian_squared-{num_sims}s-190r-{num_exp}e',
+                        f'ts_gaussian_assumed_sd_0.25-{num_sims}s-190r-{num_exp}e',
+                        f'ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e',
+                        f'ucb1-{num_sims}s-{num_round}r-{num_exp}e',
+                        f'bayes_ucb_gaussian_squared_c=2-{num_sims}s-190r-{num_exp}e',
+                        f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-190r-{num_exp}e',
+                        f'eps_greedy_annealing-{num_sims}s-{num_round}r-{num_exp}e',
+                        f'random-1000s-200r-{num_exp}e',
+                        ]]
+        # for bromide
+        elif name == 'bromide':
+            fn_list = [f'{dd}{n}/log.csv' for n in
+                       [f'ts_gaussian_squared-{num_sims}s-{num_round}r-{num_exp}e',
+                        f'ts_gaussian_assumed_sd_0.25-{num_sims}s-{num_round}r-{num_exp}e',
+                        f'ucb1tuned-{num_sims}s-{num_round}r-{num_exp}e',
+                        f'ucb1-{num_sims}s-{num_round}r-{num_exp}e',
+                        f'bayes_ucb_gaussian_squared_c=2-{num_sims}s-{num_round}r-{num_exp}e',
+                        f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-{num_round}r-{num_exp}e',
+                        f'eps_greedy_annealing-{num_sims}s-{num_round}r-{num_exp}e',
+                        f'random-{num_sims}s-{num_round}r-{num_exp}e',
+                        ]]
+        else:
+            exit()
         legend_list = ['TS (squared)',
                        'TS (fixed sd 0.25)',
                        'ucb1-tuned',
                        'ucb1',
                        'Bayes ucb (2SD, squared)',
                        'Bayes ucb (2SD, 0.25)',
-                       'ε-greedy',]
+                       'ε-greedy',
+                       'Random pick']
         #f'bayes_ucb_gaussian_c=2_assumed_sd=0.25-{num_sims}s-{num_round}r-{num_exp}e',
         # 'Bayes ucb (2SD, 0.25)',
         fp = f'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/maldi-{name}.csv'
@@ -1795,36 +1976,24 @@ if __name__ == '__main__':
         # ligands = [('MTBD', 'tBuXPhos'),
         #            ('MTBD', 'tBuBrettPhos')]
         # ligands = [('MTBD', 'tBuXPhos'),]
-        indexes = [reverse_arms_dict[l] for l in ligands]
+        indexes = [reverse_arms_dict[l] for l in ligands]  # bromide: 0
 
         plot_accuracy_best_arm(best_arm_indexes=indexes,
                                fn_list=fn_list,
                                legend_list=legend_list,
                                etc_baseline=True,
-                               etc_fp=f'{dd}/baseline-200.npy',
+                               etc_fp=f'{dd}/etc.npy',
                                ignore_first_rounds=4,
                                title=f'Accuracy of identifying optimal conditions for {name}',
                                legend_title='algorithm',
                                long_legend=False,
                                max_horizon_plot=200,
                                vlines=None,
-                               hlines=None)
+                               hlines=None,
+                               calc_random_exploration=True)
 
+    aryl()
 
-    fp = 'https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/nib-etoh.csv'
-    with open(f'dataset_logs/nib/etoh-50cutoff/random-500s-75r-1e/arms.pkl', 'rb') as f:
-        arms_dict = pickle.load(f)
-
-    reverse_arms_dict = {v: k for k, v in arms_dict.items()}
-
-    top_three = ['Cy-JohnPhos', 'P(p-Anis)3', 'PPh2Cy']
-    top_eight = ['PPh2Cy', 'CX-PCy', 'PPh3', 'P(p-F-Ph)3', 'P(p-Anis)3', 'Cy-JohnPhos', 'A-paPhos',
-                 'Cy-PhenCar-Phos']
-    ligands = [(l,) for l in top_three]
-    #ligands = [(l,) for l in top_eight]
-    indexes = [reverse_arms_dict[l] for l in ligands]
-    plot_accuracy_random_exploration('dataset_logs/nib/etoh-50cutoff/random-500s-75r-1e/log.csv',
-                                     best_arm_indexes=indexes)
     # plot_arm_counts('dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10, bar_errbar=True, plot='box', title='Average # of samples')
 
     # plot_arm_rewards(fp, d='dataset_logs/aryl-scope-ligand/BayesUCBGaussian-400s-200r-1e', top_n=10)
