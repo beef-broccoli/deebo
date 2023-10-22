@@ -29,10 +29,10 @@ def deoxyf():
     arms_dict = {'base_name': bases,
                  'fluoride_name': fluorides}
     #algo = algos_regret.ThompsonSamplingGaussianFixedVar(len(bases)*len(fluorides), assumed_sd=0.25)
-    algo = algos_regret.UCB1(len(bases)*len(fluorides))
-    wkdir = './dataset_logs/deoxyf/test/'
-    num_sims = 5
-    num_round = 100
+    algo = algos_regret.UCB1Tuned(len(bases)*len(fluorides))
+    wkdir = './dataset_logs/deoxyf/combo/'
+    num_sims = 400
+    num_round = 200
     num_exp = 1
     propose_mode = 'random'
 #######################################################################################################################
@@ -132,12 +132,12 @@ def deoxyf_interpolation():
                  'fluoride_name': fluorides}
     # algo = algos_regret.ThompsonSamplingGaussianFixedVar(len(bases)*len(fluorides), assumed_sd=0.25)
     algo = algos_regret.UCB1Tuned(len(bases) * len(fluorides))
-    wkdir = './dataset_logs/deoxyf/combo/test/'
+    wkdir = './dataset_logs/deoxyf/combo/interpolation/'
     num_sims = 200
-    num_round = 100
+    num_round = 200
     num_exp = 1
     propose_mode = 'random'
-    batch_size = 6
+    batch_size = 50
     #######################################################################################################################
 
     dir_name = f'{wkdir}{algo.__str__()}-{num_sims}s-{num_round}r-{batch_size}b/'
@@ -155,7 +155,7 @@ def nickel_borylation():
     # top 6 ligand is identical to the ones in the paper
 
     # second version:
-    # 60% cutoff for yield, EtOH, use the top ligands identified by z score in paper
+    # 50% cutoff for yield, EtOH, use the top ligands identified by z score in paper
     # top 3 and top 8 ligands are identical to the ones in the paper
 
     top_three = ['Cy-JohnPhos', 'P(p-Anis)3', 'PPh2Cy']
@@ -183,6 +183,9 @@ def nickel_borylation():
              algos_regret.BayesUCBBeta(len(ligands)),
              algos_regret.BayesUCBBetaPPF(len(ligands)),
              algos_regret.AnnealingEpsilonGreedy(len(ligands)),
+             algos_regret.Random(len(ligands))
+             ]
+    algos = [
              algos_regret.Random(len(ligands))
              ]
     wkdir = './dataset_logs/nib/etoh-50cutoff/'
@@ -433,15 +436,11 @@ def cn_maldi():
     #          algos_regret.BayesUCBGaussian(n_arms, assumed_sd=0.25, c=2),
     #          algos_regret.BayesUCBGaussianSquared(n_arms, c=2),
     #          algos_regret.Random(n_arms)]
-    algos = [algos_regret.ThompsonSamplingGaussianFixedVar(n_arms, assumed_sd=0.25),
-             algos_regret.ThompsonSamplingGaussianFixedVarSquared(n_arms),
-             algos_regret.BayesUCBGaussian(n_arms, assumed_sd=0.25, c=2),
-             algos_regret.BayesUCBGaussianSquared(n_arms, c=2),
-             algos_regret.Random(n_arms)]
+    algos = [algos_regret.Random(n_arms)]
     # algo = algos_regret.ThompsonSamplingGaussianFixedVar(len(bases)*len(fluorides), assumed_sd=0.25)
-    wkdir = './dataset_logs/merck-maldi/amine/'
-    num_sims = 500
-    num_round = 190
+    wkdir = './test/merck-maldi/amine/'
+    num_sims = 1000
+    num_round = 200
     num_exp = 1
     propose_mode = 'random'
     #######################################################################################################################
@@ -456,4 +455,4 @@ def cn_maldi():
 
 
 if __name__ == '__main__':
-    deoxyf()
+    cn_maldi()
