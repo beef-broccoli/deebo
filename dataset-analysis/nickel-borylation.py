@@ -194,6 +194,22 @@ def plot_cutoff_heatmap(cutoff=60, solvent='EtOH', topn=8):
 
 
 def simulate_etc(max_sample=4, n_simulations=10000):
+
+    """
+    Functions to simulate explore-then-commit baseline
+
+    Parameters
+    ----------
+    max_sample: int
+        maximum number of samples for each condition. Usually (# of budget experiments) % (# of conditions).
+    n_simulations: int
+        how many times explore-then-commit is simulated on the same dataset.
+
+    Returns
+    -------
+
+    """
+
     top_six = ['PPh2Cy', 'CX-PCy', 'PPh3', 'P(p-F-Ph)3', 'P(p-Anis)3', 'Cy-JohnPhos']
     top_three = ['Cy-JohnPhos', 'P(p-Anis)3', 'PPh2Cy']
     top_eight = ['PPh2Cy', 'CX-PCy', 'PPh3', 'P(p-F-Ph)3', 'P(p-Anis)3', 'Cy-JohnPhos', 'A-paPhos', 'Cy-PhenCar-Phos']
