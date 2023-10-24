@@ -1,19 +1,24 @@
 # Reinforcement learning prioritizes general applicability in reaction optimization
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8181284.svg)](https://doi.org/10.5281/zenodo.8181284)
-Paper is out on [Chemrxiv](https://chemrxiv.org/engage/chemrxiv/article-details/64c7e2e1658ec5f7e5808425)
+[DOI: 10.5281/zenodo.8181283](https://zenodo.org/doi/10.5281/zenodo.8181283)\
+[Preprint](https://chemrxiv.org/engage/chemrxiv/article-details/64c7e2e1658ec5f7e5808425) on Chemrxiv
+
 
 ## General descriptions
 [dataset-analysis](./dataset-analysis) contains analysis functions for all datasets 
 
 [deebo](./deebo) contains all implemented algorithms, optimization model and testing methods used in the study. 
 
-Please see [demo](./deebo/demo.ipynb) jupyter notebook for example usages. 
+# Demo Jupyter notebook
+- [demo](./deebo/demo.ipynb): general notebook for example usages. 
+- [manuscript figures](./deebo/manuscript%20figures.ipynb): necessary functions to reproduce all figures in the manuscript.
+- [phenol alkylation](./deebo/demo%20phenol%20akylation.ipynb): the full workflow of the phenol alkylation test reaction. 
 
 ## Reaction dataset availability
-All datasets that were used in this study can be found in a separate [reaction dataset repo](https://github.com/doyle-lab-ucla/ochem-data/tree/main/deebo) by our group.
+All datasets that were used in this study can be found in [datasets](./datasets).\
+These files are also hosted in a [reaction dataset repo](https://github.com/doyle-lab-ucla/ochem-data/tree/main/deebo) by our group, so they can be streamed and used anywhere with a URL (raw.githubusercontent.com/OWNER/REPO/main/FILEPATH)
 
 ## Testing data logs availability
-All testing log files can be found in this Zenodo repository [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8170875.svg)](https://doi.org/10.5281/zenodo.8170875)
+All testing log files can be found in this Zenodo repository [DOI: 10.5281/zenodo.8170874](https://zenodo.org/doi/10.5281/zenodo.8170874)
 
 ## Installation requirements
 Our software is written with minimal dependencies in mind. Only the essential packages are required. 
@@ -57,7 +62,7 @@ can be installed via pip or conda.
 `pip install rdkit gif`
 
 5. Download the source code folder from GitHub (by clicking "Download"), or from Zenodo repository 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8181284.svg)](https://doi.org/10.5281/zenodo.8181284), 
+[DOI: 10.5281/zenodo.8181283](https://zenodo.org/doi/10.5281/zenodo.8181283), 
 or with git clone by running:
 
 `git clone https://github.com/doyle-lab-ucla/bandit-optimization.git`
@@ -77,6 +82,7 @@ Example usage are detailed in [demo.ipynb](./deebo/demo.ipynb).
 - Jason M. Stevens
 - Stavros K. Kariofillis
 - Mai-Jan Tom
+- Dung L. Golden
 - Jun Li
 - Jose E. Tabora
 - Marvin Parasram
@@ -94,5 +100,5 @@ Example usage are detailed in [demo.ipynb](./deebo/demo.ipynb).
 ## What is "deebo"?
 Somewhat of a failed acronym attempt for "**d**esign **e**fficient **e**xperiments via **b**andit **o**ptimization"
 
-Originally intended to match the name of another optimization model from the Doyle group: [EDBO](https://github.com/b-shields/edbo).
+Originally derived from the name of another optimization model from the Doyle group: [EDBO](https://github.com/b-shields/edbo).
 
