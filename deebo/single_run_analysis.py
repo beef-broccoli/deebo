@@ -7,6 +7,8 @@ from chem_arms import propose_initial_experiments_interpolation, update_and_prop
 import algos_regret
 import utils
 
+"""Some analysis functions for the single optimization run logs in (single_run_logs)"""
+
 
 def deoxyf(dir='./single_run_logs/deoxyf/'):
     # check file path, some are hard coded
@@ -299,7 +301,7 @@ def plot_prediction_model_accuracy():
     plt.rcParams['savefig.dpi']=600
     import scipy
     import math
-    from sklearn.metrics import mean_squared_error, mean_absolute_error
+    from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
     with open('./single_run_logs/amidation/phase2/cache/scope.pkl', 'rb') as f:
         s = pickle.load(f)
@@ -333,18 +335,21 @@ def plot_prediction_model_accuracy():
     y_pred = training_data['prediction']
     print(f'rmse: {math.sqrt(mean_squared_error(y_true, y_pred))}')
     print(f'mae: {mean_absolute_error(y_true, y_pred)}')
+    print(f'r2: {r2_score(y_true, y_pred)}\n')
 
     print(f'unrun, eliminated activators data')
     y_true = eliminated_activators['true_yield']
     y_pred = eliminated_activators['prediction']
     print(f'rmse: {math.sqrt(mean_squared_error(y_true, y_pred))}')
     print(f'mae: {mean_absolute_error(y_true, y_pred)}')
+    print(f'r2: {r2_score(y_true, y_pred)}\n')
 
     print(f'unrun, retained activators data')
     y_true = included_activators['true_yield']
     y_pred = included_activators['prediction']
     print(f'rmse: {math.sqrt(mean_squared_error(y_true, y_pred))}')
     print(f'mae: {mean_absolute_error(y_true, y_pred)}')
+    print(f'r2: {r2_score(y_true, y_pred)}\n')
 
     #plt.legend(bbox_to_anchor=(0.5, 1.3), loc='upper center')
     plt.legend()
@@ -449,22 +454,22 @@ if __name__ == '__main__':
     #
     # s.predict(encoding_dict=None)
 
-    dir = '/Users/mac/Desktop/project deebo/deebo/deebo/single_run_logs/amidation/phase2/'
-    # output some quick stats from this optimization
-    with open(f'{dir}cache/scope.pkl', 'rb') as f:
-        scope = pickle.load(f)
-    with open(f'{dir}cache/algo.pkl', 'rb') as f:
-        algo = pickle.load(f)
+    # dir = '/Users/mac/Desktop/project deebo/deebo/deebo/single_run_logs/amidation/phase2/'
+    # # output some quick stats from this optimization
+    # with open(f'{dir}cache/scope.pkl', 'rb') as f:
+    #     scope = pickle.load(f)
+    # with open(f'{dir}cache/algo.pkl', 'rb') as f:
+    #     algo = pickle.load(f)
+    #
+    # ranks = algo.ranking
+    # old_arms = scope.arms
+    # old_arm_labels = scope.arm_labels
+    # print(f'rankings for {old_arm_labels}:')
+    # print(f'{[old_arms[r] for r in ranks]}')
+    # print(f'counts: {[algo.counts[r] for r in ranks]}\n')
+    # print(f'means: {[round(algo.emp_means[r],2) for r in ranks]}\n')
 
-    ranks = algo.ranking
-    old_arms = scope.arms
-    old_arm_labels = scope.arm_labels
-    print(f'rankings for {old_arm_labels}:')
-    print(f'{[old_arms[r] for r in ranks]}')
-    print(f'counts: {[algo.counts[r] for r in ranks]}\n')
-    print(f'means: {[round(algo.emp_means[r],2) for r in ranks]}\n')
-
-    #plot_prediction_model_accuracy()
+    plot_prediction_model_accuracy()
 
     # args = np.argsort(a.emp_means)
     # print(f'ranks: {np.array(s.arms)[args]}')
