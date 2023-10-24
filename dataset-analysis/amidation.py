@@ -24,7 +24,7 @@ def plot_all_results(single_component='activator'):
     # processing dataset
     # use shorter name for bases
     # use labels for nucleophiles
-    df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/ami.csv')
+    df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/amidation.csv')
 
     short_name_dict = {
         '1-Methylimidazole': 'NMI',

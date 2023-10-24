@@ -181,7 +181,7 @@ def ucb1_tuned(scenario, n_sims, n_horizon, folder_name):
     algo = UCB1Tuned(n_arms)
     algo.reset(n_arms)
     results = test_algorithm_regret(algo, arms, n_sims, n_horizon)
-    filename = 'ucb1_tuned.csv'
+    filename = f'ucb1_tuned-{n_sims}s-{n_horizon}r.csv'
     results.to_csv(output_dir / filename)
 
     return None
@@ -296,7 +296,7 @@ def ts_beta(scenario, n_sims, n_horizon, folder_name):
     algo = ThompsonSamplingBeta(n_arms)
     algo.reset(n_arms)
     results = test_algorithm_regret(algo, arms, n_sims, n_horizon)
-    filename = 'TS.csv'
+    filename = f'TS-{n_sims}s-{n_horizon}r.csv'
     results.to_csv(output_dir / filename)
 
     return None
@@ -430,8 +430,8 @@ def test_TS_gaussian(scenario, n_sims, n_horizon):
     return None
 
 
-def test_n_arms(folder_name, n_sims=1000, n_horizon=10000):
-    for s in [11, 12, 13, 14, 15]:
+def test_n_arms(folder_name, n_sims=500, n_horizon=15000):
+    for s in [15]:
         ts_beta(scenario=s,
                 n_sims=n_sims,
                 n_horizon=n_horizon,
@@ -448,5 +448,5 @@ if __name__ == '__main__':
 
     #test_eps_greedy(1, 3, 200, './test/')
 
-    test_n_arms('logs/scalibility')
+    test_n_arms('logs/scalability')
 

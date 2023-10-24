@@ -6,12 +6,15 @@ import json
 import pandas as pd
 import numpy as np
 import os
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
+# from tqdm import tqdm   # if tqdm.autonotebook breaks
 from sklearn.preprocessing import OneHotEncoder as OHE
 from sklearn.ensemble import RandomForestRegressor as RFR
 from sklearn.linear_model import LinearRegression as LR
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
+from sklearn.metrics import (r2_score,
+                             mean_squared_error,
+                             mean_absolute_error)
 
 
 import algos_regret

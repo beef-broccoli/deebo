@@ -438,12 +438,12 @@ def plot_results_with_model_substrates_color_match_publication(cutoff=75, preset
     fd = df.copy()
     fd['combo'] = fd['electrophile_id'].astype('str') + fd['nucleophile_id'].astype('str')
     #fd = fd.sort_values(by=['combo', 'ligand_name'])
-    max = fd.loc[fd.groupby(by=['combo'])['yield'].idxmax()]
+    maxes = fd.loc[fd.groupby(by=['combo'])['yield'].idxmax()]
     #print(list(max['ligand_name'].unique()))
     #print(max.loc[max['plot']!=0]['ligand_name'].value_counts())
 
     # new way to assign colors for all ligands that give above cutoff yields
-    ligands_to_color = max.loc[max['yield']>cutoff]['ligand_name'].unique()
+    ligands_to_color = maxes.loc[maxes['yield']>cutoff]['ligand_name'].unique()
 
     val_to_rgb = {}  # {value: rgb}
     def color(x):
@@ -457,11 +457,11 @@ def plot_results_with_model_substrates_color_match_publication(cutoff=75, preset
                 val_to_rgb[d[x]] = preset_color_dict[x]
             return d[x]
 
-    max['valid'] = df['yield'].apply(lambda x: 0 if x<cutoff else 1)  # 0 for plotting, if highest yield < 75%
-    max['plot'] = df['ligand_name'].apply(color)
-    max['plot'] = max['plot']*max['valid']
-    max = max.pivot(index='nucleophile_id', columns='electrophile_id', values='plot')
-    max[max==0] = -1  # set all zeros to -1, this helps with plotting with a cmap, i can set the color for -1
+    maxes['valid'] = df['yield'].apply(lambda x: 0 if x<cutoff else 1)  # 0 for plotting, if highest yield < 75%
+    maxes['plot'] = df['ligand_name'].apply(color)
+    maxes['plot'] = maxes['plot']*maxes['valid']
+    maxes = maxes.pivot(index='nucleophile_id', columns='electrophile_id', values='plot')
+    maxes[maxes==0] = -1  # set all zeros to -1, this helps with plotting with a cmap, i can set the color for -1
 
     fig, ax = plt.subplots()
     if preset_color_dict is not None:
@@ -469,17 +469,17 @@ def plot_results_with_model_substrates_color_match_publication(cutoff=75, preset
         listedcolors = [val_to_rgb[ii] for ii in np.arange(len(ligands_to_color))+1]
         cmap = mpl.colors.ListedColormap(listedcolors)
     else:
-        cmap = mpl.cm.get_cmap('Paired').copy()
+        cmap = mpl.colormaps.get_cmap('Paired').copy()
     cmap.set_under('k')
-    im = ax.imshow(max, cmap=cmap, vmin=1)
+    im = ax.imshow(maxes, cmap=cmap, vmin=1)
 
     # grid line
     for i in range(8):
         for j in range(8):
             ax.add_patch(Rectangle((j-0.5, i-0.5), 1, 1, fill=False, edgecolor='white', lw=1))
 
-    ax.set_xticks(np.arange(8), labels=list(max.columns))
-    ax.set_yticks(np.arange(8), labels=list(max.index))
+    ax.set_xticks(np.arange(8), labels=list(maxes.columns))
+    ax.set_yticks(np.arange(8), labels=list(maxes.index))
     ax.set_xlabel('Electrophile (aryl bromide)')
     ax.set_ylabel('Nucleophile (imidazole)')
 
@@ -1012,6 +1012,23 @@ def simulate_etc(top=1, max_sample=3, n_simulations=10000):
 def plot_ligand_perf_expansion(scenario=1, nlargest=5, preset_color_dict=None):
     # preset_color_dict is used to ensure consistent colors for ligands throughout different plots
     # one set of color is saved in arylation_colors.json
+    """
+    bar plots for ligand expansions schemes.
+    Plot the average yield of the top-<nlargest> ligands before each expansion
+
+    Parameters
+    ----------
+    scenario:
+    nlargest: int
+        decides how many top ligands are plotted
+    preset_color_dict: dict
+        dictionary with pre-specified ligand color {ligand_name: ligand_color}
+        if None (default), use customized colors
+
+    Returns
+    -------
+
+    """
 
     with open('colors.yml', 'r') as file:
         COLORS = yaml.safe_load(file)

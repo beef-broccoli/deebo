@@ -592,7 +592,8 @@ if __name__ == '__main__':
         return None
 
     def scalability():
-        fn_list = [f'logs/scalability/scenario{n}/optim/TS.csv' for n in [11, 12, 13, 14, 15]]
+        # # Average reward
+        # fn_list = [f'logs/scalability/scenario{n}/optim/TS.csv' for n in [11, 12, 13, 14, 15]]
         # plot_average_reward(
         #     fn_list=fn_list,
         #     legend_list=['20', '50', '100', '500', '1000'],
@@ -601,12 +602,29 @@ if __name__ == '__main__':
         #     show_se=True,
         #     long_legend=False,
         # )
+
+        # Accuracy
+        fn_list = ['logs/scalability/scenario11/optim/TS-1000s-10000r.csv',
+                   'logs/scalability/scenario12/optim/TS-1000s-10000r.csv',
+                   'logs/scalability/scenario13/optim/TS-1000s-10000r.csv',
+                   'logs/scalability/scenario14/optim/TS-1000s-15000r.csv',
+                   'logs/scalability/scenario15/optim/TS-500s-15000r.csv',]
+        fn_list = ['logs/scalability/scenario11/optim/ucb1_tuned-1000s-10000r.csv',
+                   'logs/scalability/scenario12/optim/ucb1_tuned-1000s-10000r.csv',
+                   'logs/scalability/scenario13/optim/ucb1_tuned-1000s-10000r.csv',]
         plot_probs_choosing_best_arm(
             fn_list=fn_list,
             legend_list=['20', '50', '100', '500', '1000'],
             title='Accuracy with TS (beta prior)',
             legend_title='# of arms',
             best_arm_index=[19, 49, 99, 499, 999],
+            long_legend=False,
+        )
+        plot_average_reward(
+            fn_list=fn_list,
+            legend_list=['20', '50', '100'],
+            title='Accuracy with TS (beta prior)',
+            legend_title='# of arms',
             long_legend=False,
         )
         return None

@@ -8,7 +8,7 @@ import yaml
 import gif
 
 
-def plot_all_results():
+def plot_all_rmesults():
     df = pd.read_csv('https://raw.githubusercontent.com/beef-broccoli/ochem-data/main/deebo/cn-processed.csv')
     df = df[['base_name', 'ligand_name', 'substrate_id', 'additive_id', 'yield']]
 
@@ -107,8 +107,8 @@ def plot_acquisition_history_heatmap_cn(history_fp='./test/history.csv', sim=0, 
     ----------
     history_fp: str
         file path of history.csv
-    roun: list-like
-        snapshot of heatmap at this round
+    roun: int
+        snapshot of heatmap up until round <roun>
     sim: int
         which simulation to plot
     binary: bool
