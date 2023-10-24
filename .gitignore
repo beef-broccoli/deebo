@@ -166,3 +166,4 @@ cython_debug/
 /deebo/demofiles/
 !/dataset-analysis/revision.py
 /dataset-analysis/revision files/
+/deebo/demo notebook files/
