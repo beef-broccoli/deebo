@@ -1,7 +1,7 @@
 # Reinforcement learning prioritizes general applicability in reaction optimization
-This work has been published in [Nature](https://www.nature.com/articles/s41586-024-07021-y)\
-[Zenodo repository](https://zenodo.org/doi/10.5281/zenodo.8181283) for this codebase at the time of publication\
-[Preprint](https://chemrxiv.org/engage/chemrxiv/article-details/64c7e2e1658ec5f7e5808425) on Chemrxiv
+- This work has been published in [Nature](https://www.nature.com/articles/s41586-024-07021-y)
+- [Zenodo repository](https://zenodo.org/doi/10.5281/zenodo.8181283) for this codebase at the time of publication
+- [Preprint](https://chemrxiv.org/engage/chemrxiv/article-details/64c7e2e1658ec5f7e5808425) on Chemrxiv (old version)
 
 
 ## General descriptions
