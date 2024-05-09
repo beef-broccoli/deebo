@@ -11,7 +11,7 @@
 
 ## Demo Jupyter notebook
 - [demo](./deebo/demo.ipynb): general notebook for example usages. 
-- [manuscript figures](./deebo/manuscript%20figures.ipynb): necessary functions to reproduce all figures in the manuscript.
+- [manuscript figures](./deebo/manuscript%20figures.ipynb): necessary functions to reproduce all figures in the manuscript (most figures were reformatted during the publishing process to conform to journal requirements, these figures reproduce ones in the preprint version).
 - [phenol alkylation](./deebo/demo%20phenol%20akylation.ipynb): the full workflow of the phenol alkylation test reaction. 
 
 ## Reaction dataset availability
