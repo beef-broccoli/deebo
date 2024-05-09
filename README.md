@@ -9,7 +9,7 @@
 
 [deebo](./deebo) contains all implemented algorithms, optimization model and testing methods used in the study. 
 
-# Demo Jupyter notebook
+## Demo Jupyter notebook
 - [demo](./deebo/demo.ipynb): general notebook for example usages. 
 - [manuscript figures](./deebo/manuscript%20figures.ipynb): necessary functions to reproduce all figures in the manuscript.
 - [phenol alkylation](./deebo/demo%20phenol%20akylation.ipynb): the full workflow of the phenol alkylation test reaction. 
